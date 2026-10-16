@@ -1,5 +1,6 @@
 import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
 import { StoreProfile, StoreServiceItem } from '../../models/store.model';
@@ -7,7 +8,7 @@ import { StoreProfile, StoreServiceItem } from '../../models/store.model';
 @Component({
   selector: 'app-store-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-slate-50/70 pb-24">
       
@@ -154,6 +155,191 @@ import { StoreProfile, StoreServiceItem } from '../../models/store.model';
                 </div>
               </div>
 
+              <!-- Store Owner Ratings & Customer Reviews Section -->
+              <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
+                
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-100">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h2 class="text-lg font-bold text-slate-900">Store Owner Reviews & Ratings</h2>
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        1.0 - 5.0 RATING
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">Verified feedback from neighborhood clients</p>
+                  </div>
+
+                  <!-- Average Rating Display -->
+                  <div class="flex items-center gap-3 bg-amber-50/80 px-4 py-2 rounded-2xl border border-amber-200">
+                    <span class="text-amber-500 text-xl">⭐</span>
+                    <div>
+                      <div class="flex items-baseline gap-1">
+                        <span class="text-xl font-black text-amber-950">{{ s.rating | number:'1.1-1' }}</span>
+                        <span class="text-xs font-semibold text-slate-400">/ 5.0</span>
+                      </div>
+                      <span class="text-[10px] font-semibold text-slate-500 block">
+                        {{ (s.reviews?.length || s.reviewCount) }} Client Reviews
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Review Form or Store Owner Notice -->
+                @if (isOwner()) {
+                  <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 mb-6 flex items-start gap-3">
+                    <span class="text-xl">👑</span>
+                    <div>
+                      <h4 class="text-xs font-bold text-indigo-950">Store Owner Dashboard View</h4>
+                      <p class="text-xs text-indigo-800 leading-relaxed mt-0.5">
+                        You are the owner of this store. Customer ratings (min 1.0 to max 5.0) and messages left by clients appear below.
+                      </p>
+                    </div>
+                  </div>
+                } @else {
+                  <!-- Client Review Submission Form -->
+                  <div class="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <h3 class="text-xs uppercase tracking-wider font-bold text-slate-800 flex items-center gap-1.5">
+                        <span>✍️ Leave a Review for {{ s.ownerName }}</span>
+                      </h3>
+                      <span class="text-[10px] font-semibold text-slate-400">Scale: 1.0 (min) to 5.0 (max)</span>
+                    </div>
+
+                    <div class="space-y-4">
+                      <!-- Row 1: Review User Name & Rating Selector -->
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Review User Name *
+                          </label>
+                          <input 
+                            type="text" 
+                            [(ngModel)]="reviewUserName" 
+                            placeholder="Your Name (e.g. Rahul Verma)"
+                            class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
+
+                        <div>
+                          <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Rating: <span class="text-amber-600 font-extrabold text-sm">{{ reviewRating | number:'1.1-1' }} ⭐</span>
+                            <span class="text-[10px] font-normal text-slate-400 ml-1">(Min 1.0, Max 5.0)</span>
+                          </label>
+                          <div class="flex items-center gap-1">
+                            @for (star of [1, 2, 3, 4, 5]; track star) {
+                              <button 
+                                type="button" 
+                                (click)="setRating(star)"
+                                class="p-1 rounded-lg hover:scale-125 transition text-base cursor-pointer"
+                                [title]="'Set ' + star + '.0 rating'"
+                              >
+                                {{ star <= reviewRating ? '⭐' : '☆' }}
+                              </button>
+                            }
+                            <!-- Number stepper input with strict min 1.0 and max 5.0 -->
+                            <div class="flex items-center gap-1 ml-auto">
+                              <input 
+                                type="number" 
+                                min="1.0" 
+                                max="5.0" 
+                                step="0.1" 
+                                [(ngModel)]="reviewRating" 
+                                (ngModelChange)="setRating($event)"
+                                class="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center"
+                              />
+                              <span class="text-xs text-slate-400 font-semibold">/ 5.0</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Row 2: Message -->
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                          Review Message *
+                        </label>
+                        <textarea 
+                          [(ngModel)]="reviewMessage" 
+                          rows="3" 
+                          placeholder="Share details about the work done, punctuality, communication, or service quality..."
+                          class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                        ></textarea>
+                      </div>
+
+                      <!-- Validation error alert -->
+                      @if (reviewError) {
+                        <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                          <span>⚠️</span>
+                          <span>{{ reviewError }}</span>
+                        </div>
+                      }
+
+                      <div class="flex items-center justify-between pt-1">
+                        <span class="text-[11px] text-slate-400">
+                          Ratings directly update {{ s.ownerName }}'s neighborhood profile.
+                        </span>
+                        <button 
+                          type="button" 
+                          (click)="submitReview()"
+                          class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs hover:shadow-md transition active:scale-98 cursor-pointer"
+                        >
+                          Submit Review
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Customer Reviews List -->
+                <div class="space-y-3">
+                  <h3 class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-3">
+                    Recent Customer Ratings & Feedback
+                  </h3>
+
+                  @if (s.reviews && s.reviews.length > 0) {
+                    @for (rev of s.reviews; track rev.id) {
+                      <div class="p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-200 transition-all shadow-2xs">
+                        <div class="flex items-start justify-between gap-3 mb-2">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                              {{ rev.userName.slice(0, 2).toUpperCase() }}
+                            </div>
+                            <div>
+                              <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-slate-900">{{ rev.userName }}</h4>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  ✓ Verified Client
+                                </span>
+                              </div>
+                              <span class="text-[11px] text-slate-400 font-medium">{{ rev.date }}</span>
+                            </div>
+                          </div>
+
+                          <!-- Rating Score Badge (1.0 to 5.0) -->
+                          <div class="flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-black">
+                            <span>⭐</span>
+                            <span>{{ rev.rating | number:'1.1-1' }}</span>
+                            <span class="text-[10px] text-amber-600 font-normal">/ 5.0</span>
+                          </div>
+                        </div>
+
+                        <!-- Message -->
+                        <div class="pl-13 text-xs text-slate-700 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                          "{{ rev.message }}"
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <div class="p-8 text-center rounded-2xl bg-slate-50 border border-slate-200/80">
+                      <span class="text-2xl mb-1 block">💬</span>
+                      <h4 class="text-xs font-bold text-slate-800">No customer reviews yet</h4>
+                      <p class="text-[11px] text-slate-500 mt-1">Be the first client to book and review {{ s.ownerName }}'s store!</p>
+                    </div>
+                  }
+                </div>
+
+              </div>
+
             </div>
 
             <!-- Right 1 Col: Rates & Direct Contact Card -->
@@ -275,9 +461,15 @@ import { StoreProfile, StoreServiceItem } from '../../models/store.model';
 })
 export class StoreDetailComponent {
   private route = inject(ActivatedRoute);
-  private storeService = inject(StoreService);
+  storeService = inject(StoreService);
 
   notificationMessage: string | null = null;
+
+  // Review Form state
+  reviewUserName: string = this.storeService.currentUser().name;
+  reviewRating: number = 5.0;
+  reviewMessage: string = '';
+  reviewError: string | null = null;
 
   store = computed(() => {
     const id = this.route.snapshot.paramMap.get('id');
@@ -288,6 +480,46 @@ export class StoreDetailComponent {
     const s = this.store();
     return s && s.userId === this.storeService.currentUser().id;
   });
+
+  setRating(val: number): void {
+    const num = Number(val);
+    if (isNaN(num)) {
+      this.reviewRating = 5.0;
+      return;
+    }
+    // Strictly enforce min 1.0 and max 5.0
+    this.reviewRating = Math.max(1.0, Math.min(5.0, Math.round(num * 10) / 10));
+  }
+
+  submitReview(): void {
+    const s = this.store();
+    if (!s) return;
+
+    if (!this.reviewUserName || !this.reviewUserName.trim()) {
+      this.reviewError = 'Please provide the Review User Name.';
+      return;
+    }
+
+    if (this.reviewRating < 1.0 || this.reviewRating > 5.0) {
+      this.reviewError = 'Rating must be between 1.0 (minimum) and 5.0 (maximum).';
+      return;
+    }
+
+    if (!this.reviewMessage || !this.reviewMessage.trim()) {
+      this.reviewError = 'Please enter a review message.';
+      return;
+    }
+
+    this.reviewError = null;
+    this.storeService.addReview(s.id, {
+      userName: this.reviewUserName.trim(),
+      rating: this.reviewRating,
+      message: this.reviewMessage.trim()
+    });
+
+    this.showToast(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
+    this.reviewMessage = '';
+  }
 
   selectService(srv: StoreServiceItem): void {
     this.showToast(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);

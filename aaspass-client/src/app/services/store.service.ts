@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { StoreProfile } from '../models/store.model';
+import { StoreProfile, StoreReview } from '../models/store.model';
 import { UserProfile } from '../models/user.model';
 
 @Injectable({
@@ -53,6 +53,32 @@ export class StoreService {
       ],
       rating: 4.9,
       reviewCount: 38,
+      reviews: [
+        {
+          id: 'rev-101',
+          storeId: 'store-1',
+          userName: 'Rahul Verma',
+          rating: 5.0,
+          message: 'Priya edited 3 Instagram reels for our cafe in Indiranagar. Pacing, hooks and audio transitions were super clean and delivered in under 24 hours!',
+          date: '2 days ago'
+        },
+        {
+          id: 'rev-102',
+          storeId: 'store-1',
+          userName: 'Sneha Patel',
+          rating: 4.8,
+          message: 'Great communication and fast turnaround. Very easy to meet in person to discuss video concepts over coffee.',
+          date: '1 week ago'
+        },
+        {
+          id: 'rev-103',
+          storeId: 'store-1',
+          userName: 'Arjun Das',
+          rating: 4.9,
+          message: 'Top-tier color grading and motion text. Highly recommend for any local creators who need urgent delivery.',
+          date: '2 weeks ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-pink-500 to-rose-600',
       isAvailable: true,
@@ -86,6 +112,24 @@ export class StoreService {
       ],
       rating: 4.8,
       reviewCount: 22,
+      reviews: [
+        {
+          id: 'rev-201',
+          storeId: 'store-2',
+          userName: 'Kavita Sundaram',
+          rating: 5.0,
+          message: 'Rohan built a responsive landing page for our boutique. Met at Starbucks in Domlur to finalize specs.',
+          date: '3 days ago'
+        },
+        {
+          id: 'rev-202',
+          storeId: 'store-2',
+          userName: 'Sameer Khan',
+          rating: 4.6,
+          message: 'Fixed our Shopify checkout issues within a couple hours. Professional, fast and knowledgeable.',
+          date: '2 weeks ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-blue-600 to-indigo-700',
       isAvailable: true,
@@ -118,6 +162,24 @@ export class StoreService {
       ],
       rating: 5.0,
       reviewCount: 46,
+      reviews: [
+        {
+          id: 'rev-301',
+          storeId: 'store-3',
+          userName: 'Divya R.',
+          rating: 5.0,
+          message: 'Stunning menu photography! Our dishes look mouth-watering on Zomato now. Super cooperative and quick with edits.',
+          date: 'Yesterday'
+        },
+        {
+          id: 'rev-302',
+          storeId: 'store-3',
+          userName: 'Naveen Kumar',
+          rating: 5.0,
+          message: 'Ananya took candid photos at our anniversary party. The natural light shots were amazing!',
+          date: '1 week ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-amber-500 to-orange-600',
       isAvailable: true,
@@ -148,6 +210,24 @@ export class StoreService {
       ],
       rating: 4.9,
       reviewCount: 19,
+      reviews: [
+        {
+          id: 'rev-401',
+          storeId: 'store-4',
+          userName: 'Meera Iyer',
+          rating: 5.0,
+          message: 'Explained Class 12 Calculus concepts so clearly. My daughter improved her test scores significantly.',
+          date: '4 days ago'
+        },
+        {
+          id: 'rev-402',
+          storeId: 'store-4',
+          userName: 'Aditya Gupta',
+          rating: 4.8,
+          message: 'Great mentor for Python basics. Gives practical exercises and helps debug patiently.',
+          date: '2 weeks ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-emerald-500 to-teal-700',
       isAvailable: true,
@@ -179,6 +259,24 @@ export class StoreService {
       ],
       rating: 4.7,
       reviewCount: 31,
+      reviews: [
+        {
+          id: 'rev-501',
+          storeId: 'store-5',
+          userName: 'Pooja Hegde',
+          rating: 4.8,
+          message: 'Designed beautiful social media templates and logo for my bakery business. Very modern aesthetic!',
+          date: '5 days ago'
+        },
+        {
+          id: 'rev-502',
+          storeId: 'store-5',
+          userName: 'Karan Mehra',
+          rating: 4.6,
+          message: 'Creative graphic designer, gave multiple options to pick from.',
+          date: '3 weeks ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-purple-600 to-violet-800',
       isAvailable: true,
@@ -209,6 +307,24 @@ export class StoreService {
       ],
       rating: 4.9,
       reviewCount: 54,
+      reviews: [
+        {
+          id: 'rev-601',
+          storeId: 'store-6',
+          userName: 'Siddharth Nair',
+          rating: 5.0,
+          message: 'Assembled my entire gaming rig and managed all cables cleanly. Boots in 5 seconds!',
+          date: '3 days ago'
+        },
+        {
+          id: 'rev-602',
+          storeId: 'store-6',
+          userName: 'Tanvi Shah',
+          rating: 4.8,
+          message: 'Upgraded SSD and thermal paste on my old laptop, running fast like new.',
+          date: '1 week ago'
+        }
+      ],
       avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-cyan-600 to-blue-800',
       isAvailable: true,
@@ -283,12 +399,22 @@ export class StoreService {
     const user = this.currentUser();
     const newStoreId = 'store-' + (this.stores().length + 1);
 
+    const initialReview: StoreReview = {
+      id: 'rev-welcome-' + Date.now(),
+      storeId: newStoreId,
+      userName: 'AasPass Community Member',
+      rating: 5.0,
+      message: 'Welcome to the AasPass neighborhood network! Your store is live and ready to receive client ratings and gigs.',
+      date: 'Just now'
+    };
+
     const newStore: StoreProfile = {
       ...storeData,
       id: newStoreId,
       userId: user.id,
       rating: 5.0,
       reviewCount: 1,
+      reviews: [initialReview],
       memberSince: 'Just now'
     };
 
@@ -303,6 +429,129 @@ export class StoreService {
     }));
 
     return newStore;
+  }
+
+  // Add customer review for a store owner (rating bounded between 1.0 and 5.0)
+  addReview(storeId: string, reviewData: { userName: string; rating: number; message: string }): StoreReview {
+    const rawRating = Number(reviewData.rating);
+    // Enforce 1.0 min and 5.0 max
+    const clampedRating = Math.max(1.0, Math.min(5.0, isNaN(rawRating) ? 5.0 : Math.round(rawRating * 10) / 10));
+
+    const newReview: StoreReview = {
+      id: 'rev-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      storeId,
+      userName: reviewData.userName.trim() || 'Verified Neighbor',
+      rating: clampedRating,
+      message: reviewData.message.trim(),
+      date: 'Just now'
+    };
+
+    this.stores.update(list => list.map(store => {
+      if (store.id !== storeId) return store;
+      const existingReviews = store.reviews || [];
+      const updatedReviews = [newReview, ...existingReviews];
+      const totalScore = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
+      const avgRating = Math.round((totalScore / updatedReviews.length) * 10) / 10;
+
+      return {
+        ...store,
+        rating: Math.max(1.0, Math.min(5.0, avgRating)),
+        reviewCount: updatedReviews.length,
+        reviews: updatedReviews
+      };
+    }));
+
+    // If this store belongs to the current user, update currentUser as well
+    const user = this.currentUser();
+    if (user.store && user.store.id === storeId) {
+      const updatedStore = this.getStoreById(storeId);
+      if (updatedStore) {
+        this.currentUser.update(u => ({
+          ...u,
+          store: updatedStore
+        }));
+      }
+    }
+
+    return newReview;
+  }
+
+  // Helper to toggle demo store for easy previewing of the Store Owner Review section
+  toggleDemoStore(): void {
+    const user = this.currentUser();
+    if (user.hasStore) {
+      this.currentUser.update(u => ({
+        ...u,
+        hasStore: false,
+        store: undefined
+      }));
+    } else {
+      const demoStore: StoreProfile = {
+        id: 'store-user-001',
+        userId: user.id,
+        ownerName: user.name,
+        storeName: 'Aman Tech & Creative Studio',
+        tagline: 'Modern Web Apps, Python Scripts & Tech Consulting',
+        category: 'Web & Tech',
+        skills: ['Angular', 'TypeScript', 'Python', 'Tailwind CSS', 'API Integration'],
+        experienceYears: 2,
+        hourlyRate: 650,
+        startingPrice: 500,
+        area: user.area,
+        city: user.city,
+        distanceKm: 0.1,
+        serviceRadiusKm: 8,
+        socialLinks: {
+          github: 'https://github.com/amansharma',
+          linkedin: 'https://linkedin.com/in/amansharma',
+          portfolio: 'https://amansharma.dev'
+        },
+        description: 'Passionate developer offering quick frontend/backend solutions, web automations, and local tech support for startups and neighborhood businesses in Indiranagar.',
+        services: [
+          { id: 'usr-s1', name: 'Custom Landing Page / Web App Module', price: 2500, duration: '2 days', description: 'Fast, responsive website built with modern UI frameworks.' },
+          { id: 'usr-s2', name: '1-on-1 Coding Mentorship / Bug Fix', price: 650, duration: 'Hourly', description: 'Hands-on debugging and code walkthrough.' }
+        ],
+        rating: 4.9,
+        reviewCount: 3,
+        reviews: [
+          {
+            id: 'rev-u1',
+            storeId: 'store-user-001',
+            userName: 'Ramesh Krishnan',
+            rating: 5.0,
+            message: 'Aman was super responsive and solved our web form issue within 3 hours. Great local talent in Indiranagar!',
+            date: 'Yesterday'
+          },
+          {
+            id: 'rev-u2',
+            storeId: 'store-user-001',
+            userName: 'Pooja Hegde',
+            rating: 4.8,
+            message: 'Very clear communication and delivered clean code on time. Highly recommended!',
+            date: '3 days ago'
+          },
+          {
+            id: 'rev-u3',
+            storeId: 'store-user-001',
+            userName: 'Kunal Kapoor',
+            rating: 4.9,
+            message: 'Met in Indiranagar to discuss requirements. Patient and knowledgeable with tech stacks.',
+            date: '1 week ago'
+          }
+        ],
+        avatarUrl: user.avatarUrl,
+        bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
+        isAvailable: true,
+        memberSince: 'March 2026'
+      };
+
+      this.stores.update(list => [demoStore, ...list.filter(s => s.id !== demoStore.id)]);
+      this.currentUser.update(u => ({
+        ...u,
+        hasStore: true,
+        store: demoStore
+      }));
+    }
   }
 
   // Update existing store details

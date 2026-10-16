@@ -15,6 +15,16 @@ export interface SocialLinks {
   youtube?: string;
 }
 
+export interface StoreReview {
+  id: string;
+  storeId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number; // 1.0 to 5.0 (min 1.0, max 5.0)
+  message: string;
+  date: string;
+}
+
 export interface StoreProfile {
   id: string;
   userId: string;
@@ -35,6 +45,7 @@ export interface StoreProfile {
   services: StoreServiceItem[];
   rating: number;
   reviewCount: number;
+  reviews?: StoreReview[];
   avatarUrl: string;
   bannerGradient: string;
   isAvailable: boolean;

@@ -29,6 +29,13 @@ import { StoreService } from '../../services/store.service';
             } @else {
               <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORE YET</span>
             }
+            <button 
+              type="button" 
+              (click)="storeService.toggleDemoStore()"
+              class="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
+            >
+              {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner' }}
+            </button>
           </div>
         </div>
 
@@ -355,6 +362,174 @@ import { StoreService } from '../../services/store.service';
                 </div>
               </div>
 
+              <!-- Review Section for Store Owner Only -->
+              <div class="pt-6 border-t border-slate-100">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <span>⭐ Store Customer Reviews & Ratings</span>
+                      </h4>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        Store Owner Portal Only
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                      Feedback and ratings from neighborhood clients who booked your gigs (Scale: 1.0 to 5.0)
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <button 
+                      type="button" 
+                      (click)="isAddingReview = !isAddingReview"
+                      class="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>{{ isAddingReview ? '✕ Close Form' : '+ Add Test Review' }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Toast / Success alert -->
+                @if (reviewSuccessMessage) {
+                  <div class="p-3 mb-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                    <span>✓</span>
+                    <span>{{ reviewSuccessMessage }}</span>
+                  </div>
+                }
+
+                <!-- Add Review Form (for Store Owner to simulate/record feedback) -->
+                @if (isAddingReview) {
+                  <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 mb-6">
+                    <h5 class="text-xs font-bold text-slate-800 mb-3 flex items-center justify-between">
+                      <span>Add Customer Feedback to Store</span>
+                      <span class="text-[10px] text-slate-400">Min 1.0 • Max 5.0</span>
+                    </h5>
+
+                    <div class="space-y-4">
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label class="block text-xs font-bold text-slate-700 mb-1">Review User Name *</label>
+                          <input 
+                            type="text" 
+                            [(ngModel)]="newReviewUserName" 
+                            placeholder="e.g. Ramesh Krishnan, Priya Rao"
+                            class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
+
+                        <div>
+                          <label class="block text-xs font-bold text-slate-700 mb-1">
+                            Rating Score: <span class="text-amber-600 font-extrabold">{{ newReviewRating | number:'1.1-1' }} ⭐</span>
+                            <span class="text-[10px] font-normal text-slate-400 ml-1">(Min 1.0, Max 5.0)</span>
+                          </label>
+                          <div class="flex items-center gap-1">
+                            @for (star of [1, 2, 3, 4, 5]; track star) {
+                              <button 
+                                type="button" 
+                                (click)="setNewRating(star)"
+                                class="p-1 rounded-lg hover:scale-125 transition text-base cursor-pointer"
+                              >
+                                {{ star <= newReviewRating ? '⭐' : '☆' }}
+                              </button>
+                            }
+                            <input 
+                              type="number" 
+                              min="1.0" 
+                              max="5.0" 
+                              step="0.1" 
+                              [(ngModel)]="newReviewRating" 
+                              (ngModelChange)="setNewRating($event)"
+                              class="w-16 ml-2 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center"
+                            />
+                            <span class="text-xs text-slate-400 font-semibold">/ 5.0</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Review Message *</label>
+                        <textarea 
+                          [(ngModel)]="newReviewMessage" 
+                          rows="2" 
+                          placeholder="Client feedback on service quality, punctuality, or project outcome..."
+                          class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                        ></textarea>
+                      </div>
+
+                      @if (reviewFormError) {
+                        <p class="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                          ⚠️ {{ reviewFormError }}
+                        </p>
+                      }
+
+                      <div class="flex justify-end gap-2">
+                        <button 
+                          type="button" 
+                          (click)="isAddingReview = false"
+                          class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="button" 
+                          (click)="submitStoreReview(store.id)"
+                          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                        >
+                          Save Review
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Customer Reviews List -->
+                <div class="space-y-3">
+                  @if (store.reviews && store.reviews.length > 0) {
+                    @for (rev of store.reviews; track rev.id) {
+                      <div class="p-4 rounded-2xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:border-indigo-200 transition-all shadow-2xs">
+                        <div class="flex items-start justify-between gap-3 mb-2">
+                          <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                              {{ rev.userName.slice(0, 2).toUpperCase() }}
+                            </div>
+                            <div>
+                              <div class="flex items-center gap-2">
+                                <h5 class="text-xs sm:text-sm font-bold text-slate-900">{{ rev.userName }}</h5>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  ✓ Verified Review
+                                </span>
+                              </div>
+                              <span class="text-[10px] text-slate-400 font-medium">{{ rev.date }}</span>
+                            </div>
+                          </div>
+
+                          <!-- Rating Score Badge (1.0 to 5.0) -->
+                          <div class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-black">
+                            <span>⭐</span>
+                            <span>{{ rev.rating | number:'1.1-1' }}</span>
+                            <span class="text-[10px] text-amber-600 font-normal">/ 5.0</span>
+                          </div>
+                        </div>
+
+                        <!-- Message -->
+                        <div class="pl-12 text-xs text-slate-700 leading-relaxed">
+                          "{{ rev.message }}"
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <div class="p-6 text-center rounded-2xl bg-slate-50 border border-slate-100">
+                      <span class="text-2xl mb-1 block">⭐</span>
+                      <h5 class="text-xs font-bold text-slate-800">No customer reviews yet</h5>
+                      <p class="text-[11px] text-slate-500 mt-1">
+                        When clients book your services and leave reviews (1.0 to 5.0 rating), they will appear here.
+                      </p>
+                    </div>
+                  }
+                </div>
+              </div>
+
             </div>
           }
 
@@ -376,6 +551,14 @@ export class ProfileComponent {
   editCity = this.storeService.currentUser().city;
   editBio = this.storeService.currentUser().bio;
 
+  // Review section for store owner
+  isAddingReview = false;
+  newReviewUserName = '';
+  newReviewRating = 5.0;
+  newReviewMessage = '';
+  reviewFormError: string | null = null;
+  reviewSuccessMessage: string | null = null;
+
   saveUserDetails(): void {
     this.storeService.updateUserProfile({
       name: this.editName,
@@ -388,4 +571,49 @@ export class ProfileComponent {
     });
     this.isEditingUser = false;
   }
+
+  setNewRating(val: number): void {
+    const num = Number(val);
+    if (isNaN(num)) {
+      this.newReviewRating = 5.0;
+      return;
+    }
+    // strictly enforce min 1.0 and max 5.0
+    this.newReviewRating = Math.max(1.0, Math.min(5.0, Math.round(num * 10) / 10));
+  }
+
+  submitStoreReview(storeId: string): void {
+    if (!this.newReviewUserName || !this.newReviewUserName.trim()) {
+      this.reviewFormError = 'Please provide the Review User Name.';
+      return;
+    }
+
+    if (this.newReviewRating < 1.0 || this.newReviewRating > 5.0) {
+      this.reviewFormError = 'Rating must be between 1.0 (min) and 5.0 (max).';
+      return;
+    }
+
+    if (!this.newReviewMessage || !this.newReviewMessage.trim()) {
+      this.reviewFormError = 'Please write a review message.';
+      return;
+    }
+
+    this.reviewFormError = null;
+    this.storeService.addReview(storeId, {
+      userName: this.newReviewUserName.trim(),
+      rating: this.newReviewRating,
+      message: this.newReviewMessage.trim()
+    });
+
+    this.reviewSuccessMessage = `Added ${this.newReviewRating.toFixed(1)}★ review from "${this.newReviewUserName.trim()}".`;
+    this.newReviewUserName = '';
+    this.newReviewRating = 5.0;
+    this.newReviewMessage = '';
+    this.isAddingReview = false;
+
+    setTimeout(() => {
+      this.reviewSuccessMessage = null;
+    }, 4000);
+  }
 }
+
