@@ -1,0 +1,23 @@
+<div class="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased font-sans">
+  <!-- Persistent Navbar -->
+  <app-navbar />
+
+  <!-- Main View Area -->
+  <main class="flex-1">
+    <router-outlet />
+  </main>
+
+  <!-- Modern Neighborhood Footer -->
+  <footer class="bg-white border-t border-slate-200/80 py-8 px-4 sm:px-6 lg:px-8 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">AP</span>
+        <span class="font-bold text-slate-800 text-sm">AasPass</span>
+        <span>• Hyperlocal Freelancing & Nearby Gigs</span>
+      </div>
+      <p class="text-center sm:text-right">
+        Empowering students, newcomers, and local freelancers with neighborhood trust.
+      </p>
+    </div>
+  </footer>
+</div>
