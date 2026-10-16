@@ -35,3 +35,9 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 * **Why Changed:** Resolved an issue where the results bar ("Found X local stores & freelancers near City") was poorly visible and clipped underneath the dark hero gradient.
 * **Files Created/Modified:**
   * `aaspass-client/src/app/pages/home/home.ts`
+
+### [2026-10-16 18:01:00 IST] - Updated Comprehensive Project README
+* **What Changed:** Replaced the empty `README.md` with complete documentation of the AasPass project, including the core vision, market differentiator, Option A unified account architecture, key features, technology stack, folder structure, and development roadmap.
+* **Why Changed:** Documents the project alignment and technical specifications agreed upon in discussion to serve as the master reference guide.
+* **Files Created/Modified:**
+  * `README.md`
