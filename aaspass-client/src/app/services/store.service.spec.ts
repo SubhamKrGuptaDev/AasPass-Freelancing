@@ -65,14 +65,22 @@ describe('StoreService Reviews & Ratings', () => {
     expect(highReview.rating).toBe(5.0);
   });
 
-  it('should toggle store owner demo mode on profile', () => {
+  it('should toggle store owner demo mode on profile with multiple demo stores', () => {
     expect(service.currentUser().hasStore).toBe(false);
+    expect(service.userStores().length).toBe(0);
+
     service.toggleDemoStore();
     expect(service.currentUser().hasStore).toBe(true);
+    expect(service.userStores().length).toBe(2);
+    expect(service.currentUser().stores?.length).toBe(2);
+    expect(service.userStores()[0].storeName).toBe('Aman Tech & Creative Studio');
+    expect(service.userStores()[1].storeName).toBe('Aman Lens & Aerial Films');
     expect(service.currentUser().store?.reviews?.length).toBeGreaterThan(0);
 
     service.toggleDemoStore();
     expect(service.currentUser().hasStore).toBe(false);
+    expect(service.userStores().length).toBe(0);
+    expect(service.currentUser().stores?.length).toBe(0);
   });
 
   it('should support multiple social media links with names and direct redirect URLs', () => {
@@ -126,6 +134,147 @@ describe('StoreService Reviews & Ratings', () => {
     expect(newStore.socialMediaLinks[0].url).toBe('https://instagram.com/subha_creatives');
     expect(newStore.socialMediaLinks[2].name).toBe('Behance Portfolio');
     expect(newStore.socialMediaLinks[2].url).toBe('https://behance.net/subha');
+  });
+
+  it('should include creationDateTime and lastUpdateDateTime in UserProfile and StoreProfile', () => {
+    const user = service.currentUser();
+    expect(user.creationDateTime).toBeTruthy();
+    expect(user.lastUpdateDateTime).toBeTruthy();
+    expect(new Date(user.creationDateTime).getTime()).not.toBeNaN();
+    expect(new Date(user.lastUpdateDateTime).getTime()).not.toBeNaN();
+
+    const store1 = service.stores()[0];
+    expect(store1.creationDateTime).toBeTruthy();
+    expect(store1.lastUpdateDateTime).toBeTruthy();
+    expect(new Date(store1.creationDateTime).getTime()).not.toBeNaN();
+    expect(new Date(store1.lastUpdateDateTime).getTime()).not.toBeNaN();
+
+    // Verify updateUserProfile updates lastUpdateDateTime
+    const beforeUpdate = user.lastUpdateDateTime;
+    service.updateUserProfile({ bio: 'Updated bio for testing' });
+    const afterUpdateUser = service.currentUser();
+    expect(afterUpdateUser.bio).toBe('Updated bio for testing');
+    expect(afterUpdateUser.lastUpdateDateTime).toBeTruthy();
+
+    // Verify createStore sets creationDateTime and lastUpdateDateTime
+    const newStore = service.createStore({
+      ownerName: user.name,
+      storeName: 'Timestamp Test Store',
+      tagline: 'Fast and reliable services',
+      category: 'Web & Tech',
+      skills: ['TypeScript'],
+      experienceYears: 1,
+      hourlyRate: 500,
+      startingPrice: 300,
+      area: 'Indiranagar',
+      city: 'Bengaluru',
+      distanceKm: 0.5,
+      serviceRadiusKm: 5,
+      socialMediaLinks: [],
+      description: 'Test description',
+      services: [],
+      avatarUrl: user.avatarUrl,
+      bannerGradient: 'from-blue-600 to-indigo-700',
+      isAvailable: true
+    });
+
+    expect(newStore.creationDateTime).toBeTruthy();
+    expect(newStore.lastUpdateDateTime).toBeTruthy();
+    expect(new Date(newStore.creationDateTime).getTime()).not.toBeNaN();
+  });
+
+  it('should allow 1 user to create, hold, and switch between multiple stores', () => {
+    expect(service.userStores().length).toBe(0);
+
+    // Create 1st store
+    const store1 = service.createStore({
+      ownerName: service.currentUser().name,
+      storeName: 'Aman First Tech Store',
+      tagline: 'Custom web solutions',
+      category: 'Web & Tech',
+      skills: ['Angular', 'TypeScript'],
+      experienceYears: 2,
+      hourlyRate: 600,
+      startingPrice: 500,
+      area: 'Indiranagar',
+      city: 'Bengaluru',
+      distanceKm: 0.2,
+      serviceRadiusKm: 5,
+      socialMediaLinks: [{ id: 'sm-1', name: 'GitHub', url: 'https://github.com/test' }],
+      description: 'Web development services',
+      services: [],
+      avatarUrl: service.currentUser().avatarUrl,
+      bannerGradient: 'from-blue-600 to-indigo-700',
+      isAvailable: true
+    });
+
+    expect(service.currentUser().hasStore).toBe(true);
+    expect(service.userStores().length).toBe(1);
+    expect(service.currentUser().stores?.length).toBe(1);
+
+    // Create 2nd store for the same user
+    const store2 = service.createStore({
+      ownerName: service.currentUser().name,
+      storeName: 'Aman Second Design Store',
+      tagline: 'Brand design and logos',
+      category: 'Graphics & Design',
+      skills: ['Figma', 'Illustrator'],
+      experienceYears: 3,
+      hourlyRate: 750,
+      startingPrice: 400,
+      area: 'Indiranagar',
+      city: 'Bengaluru',
+      distanceKm: 0.2,
+      serviceRadiusKm: 10,
+      socialMediaLinks: [{ id: 'sm-2', name: 'Behance', url: 'https://behance.net/test' }],
+      description: 'Design and branding studio',
+      services: [],
+      avatarUrl: service.currentUser().avatarUrl,
+      bannerGradient: 'from-purple-600 to-pink-500',
+      isAvailable: true
+    });
+
+    // 1 user now has 2 distinct stores!
+    expect(service.userStores().length).toBe(2);
+    expect(service.currentUser().stores?.length).toBe(2);
+    const storeIds = service.userStores().map(s => s.id);
+    expect(storeIds).toContain(store1.id);
+    expect(storeIds).toContain(store2.id);
+
+    // Update store 1 specifically
+    service.updateStore({ hourlyRate: 800 }, store1.id);
+    expect(service.getStoreById(store1.id)?.hourlyRate).toBe(800);
+    expect(service.getStoreById(store2.id)?.hourlyRate).toBe(750); // store 2 remains unchanged!
+
+    // Toggle availability of store 2 specifically
+    service.toggleStoreAvailability(store2.id);
+    expect(service.getStoreById(store2.id)?.isAvailable).toBe(false);
+    expect(service.getStoreById(store1.id)?.isAvailable).toBe(true); // store 1 remains active!
+
+    // Delete store 1
+    service.deleteStore(store1.id);
+    expect(service.userStores().length).toBe(1);
+    expect(service.getStoreById(store1.id)).toBeUndefined();
+    expect(service.getStoreById(store2.id)).toBeDefined();
+    expect(service.currentUser().hasStore).toBe(true);
+
+    // Delete store 2 (last remaining store)
+    service.deleteStore(store2.id);
+    expect(service.userStores().length).toBe(0);
+    expect(service.currentUser().hasStore).toBe(false);
+    expect(service.currentUser().store).toBeUndefined();
+  });
+
+  it('should resolve store-user-001 and store-user-002 directly via getStoreById', () => {
+    const demo1 = service.getStoreById('store-user-001');
+    expect(demo1).toBeDefined();
+    expect(demo1?.id).toBe('store-user-001');
+    expect(demo1?.storeName).toBe('Aman Tech & Creative Studio');
+
+    const demo2 = service.getStoreById('store-user-002');
+    expect(demo2).toBeDefined();
+    expect(demo2?.id).toBe('store-user-002');
+    expect(demo2?.storeName).toBe('Aman Lens & Aerial Films');
   });
 
 });

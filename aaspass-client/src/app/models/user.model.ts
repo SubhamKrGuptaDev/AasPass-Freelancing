@@ -14,5 +14,8 @@ export interface UserProfile {
   memberSince: string;
   hasStore: boolean;
   store?: StoreProfile;
+  stores?: StoreProfile[];
+  creationDateTime: string;
+  lastUpdateDateTime: string;
 }
 

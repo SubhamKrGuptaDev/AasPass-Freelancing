@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
 import { 
   StoreProfile, 
@@ -18,7 +18,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-slate-50/70 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-4xl mx-auto">
@@ -29,11 +29,16 @@ import {
             Option A • Unified Account
           </div>
           <h1 class="text-3xl font-black text-slate-900 tracking-tight">
-            Open Your Neighborhood Skill Store
+            {{ isEditing ? 'Edit Store: ' + (formData.storeName || 'My Skill Store') : (storeService.userStores().length > 0 ? 'Open Another Neighborhood Skill Store' : 'Open Your Neighborhood Skill Store') }}
           </h1>
           <p class="text-sm text-slate-500 max-w-xl mx-auto mt-2">
-            Turn your skills into passive or side income. Start receiving freelance inquiries from clients in your local area.
+            {{ isEditing ? 'Update your service packages, neighborhood operating radius, and social media links.' : 'Turn your skills into passive or side income. You can open and manage multiple stores under one unified account.' }}
           </p>
+          @if (!isEditing && storeService.userStores().length > 0) {
+            <div class="inline-flex items-center gap-2 mt-3 px-3.5 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold">
+              <span>🏪 You currently manage {{ storeService.userStores().length }} store(s). This will add Store #{{ storeService.userStores().length + 1 }}.</span>
+            </div>
+          }
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -383,8 +388,14 @@ import {
                 ></textarea>
               </div>
 
-              <!-- Submit Button -->
-              <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              <!-- Submit Button & Navigation -->
+              <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                <a 
+                  routerLink="/profile" 
+                  class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
+                >
+                  ← Back to Profile
+                </a>
                 <button 
                   type="submit" 
                   class="w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/30 transition transform active:scale-98 cursor-pointer"
@@ -485,6 +496,7 @@ import {
 export class CreateStoreComponent implements OnInit {
   storeService = inject(StoreService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   availableCategories = [
     'Video & Editing',
@@ -525,26 +537,74 @@ export class CreateStoreComponent implements OnInit {
   getSocialBadgeClass = getSocialBadgeClass;
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      const editId = params.get('editStoreId');
+      this.initForm(editId);
+    });
+  }
+
+  private initForm(editId: string | null): void {
     const user = this.storeService.currentUser();
-    if (user.hasStore && user.store) {
-      this.isEditing = true;
-      this.editingStoreId = user.store.id;
-      this.formData.storeName = user.store.storeName;
-      this.formData.tagline = user.store.tagline;
-      this.formData.category = user.store.category;
-      this.formData.experienceYears = user.store.experienceYears;
-      this.formData.hourlyRate = user.store.hourlyRate;
-      this.formData.startingPrice = user.store.startingPrice;
-      this.formData.area = user.store.area;
-      this.formData.city = user.store.city;
-      this.formData.serviceRadiusKm = user.store.serviceRadiusKm;
-      this.formData.description = user.store.description;
-      this.skillsInput = user.store.skills.join(', ');
-      
-      const normalized = normalizeSocialLinks(user.store.socialMediaLinks, user.store.socialLinks);
-      if (normalized && normalized.length > 0) {
-        this.socialMediaLinks = normalized.map(l => ({ ...l }));
+
+    if (editId) {
+      const storeToEdit = this.storeService.getStoreById(editId);
+      if (storeToEdit && (storeToEdit.userId === user.id || (user.stores || []).some(s => s.id === storeToEdit.id))) {
+        this.isEditing = true;
+        this.editingStoreId = storeToEdit.id;
+        this.formData.storeName = storeToEdit.storeName;
+        this.formData.tagline = storeToEdit.tagline;
+        this.formData.category = storeToEdit.category;
+        this.formData.experienceYears = storeToEdit.experienceYears;
+        this.formData.hourlyRate = storeToEdit.hourlyRate;
+        this.formData.startingPrice = storeToEdit.startingPrice;
+        this.formData.area = storeToEdit.area;
+        this.formData.city = storeToEdit.city;
+        this.formData.serviceRadiusKm = storeToEdit.serviceRadiusKm;
+        this.formData.description = storeToEdit.description;
+        this.skillsInput = storeToEdit.skills.join(', ');
+        
+        const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.socialLinks);
+        if (normalized && normalized.length > 0) {
+          this.socialMediaLinks = normalized.map(l => ({ ...l }));
+        } else {
+          this.socialMediaLinks = [];
+        }
+        return;
       }
+    }
+
+    // Creating a new store (either first store or an additional store!)
+    this.isEditing = false;
+    this.editingStoreId = '';
+    this.formData.area = user.area || 'Indiranagar';
+    this.formData.city = user.city || 'Bengaluru';
+
+    const currentOwnedCount = this.storeService.userStores().length;
+    if (currentOwnedCount > 0) {
+      // Customize starter text for additional store
+      this.formData.storeName = `${user.name.split(' ')[0]}'s Studio #${currentOwnedCount + 1}`;
+      this.formData.tagline = 'Professional freelance services tailored for local clients';
+      this.formData.category = 'Graphics & Design';
+      this.skillsInput = 'Branding, Figma, Visual Design, Poster Design';
+      this.formData.hourlyRate = 600;
+      this.formData.startingPrice = 450;
+      this.socialMediaLinks = [
+        { id: 'sm-init-1', name: 'Instagram', url: '' },
+        { id: 'sm-init-2', name: 'LinkedIn', url: '' }
+      ];
+    } else {
+      this.formData.storeName = 'QuickEdits Bangalore';
+      this.formData.tagline = 'Fast 24-hour turnaround Instagram reels and shorts for local creators';
+      this.formData.category = 'Video & Editing';
+      this.formData.experienceYears = 2;
+      this.formData.hourlyRate = 500;
+      this.formData.startingPrice = 350;
+      this.skillsInput = 'Short Reels, Adobe Premiere, Color Grading';
+      this.socialMediaLinks = [
+        { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
+        { id: 'sm-init-2', name: 'LinkedIn', url: 'https://linkedin.com/in/myprofile' },
+        { id: 'sm-init-3', name: 'Portfolio', url: 'https://myportfolio.site' }
+      ];
     }
   }
 
@@ -600,7 +660,7 @@ export class CreateStoreComponent implements OnInit {
         socialMediaLinks: validSocialLinks,
         socialLinks: legacySocialLinks,
         description: this.formData.description
-      });
+      }, this.editingStoreId);
       this.router.navigate(['/stores', this.editingStoreId]);
       return;
     }
@@ -608,10 +668,10 @@ export class CreateStoreComponent implements OnInit {
     const initialServices: StoreServiceItem[] = [
       {
         id: 's-initial-1',
-        name: 'Single 30-60s Reel / Short Edit',
+        name: 'Single Package / Gig Delivery',
         price: this.formData.startingPrice,
         duration: '24 hours',
-        description: 'Complete cut with dynamic subtitles, audio mixing, and color grade.'
+        description: 'Complete milestone delivery with revision and satisfaction guarantee.'
       },
       {
         id: 's-initial-2',

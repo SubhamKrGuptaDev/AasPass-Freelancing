@@ -19,8 +19,22 @@ export class StoreService {
     area: 'Indiranagar',
     bio: 'Tech enthusiast and student exploring freelance gigs and local networking.',
     memberSince: 'March 2026',
+    creationDateTime: '2026-03-01T10:00:00.000Z',
+    lastUpdateDateTime: '2026-03-01T10:00:00.000Z',
     hasStore: false,
-    store: undefined
+    store: undefined,
+    stores: []
+  });
+
+  // User's owned stores (Option A: 1 user can have multiple stores)
+  readonly userStores = computed(() => {
+    const currentUserId = this.currentUser().id;
+    const fromMaster = this.stores().filter(s => s.userId === currentUserId);
+    if (fromMaster.length > 0) return fromMaster;
+    const user = this.currentUser();
+    if (user.stores && user.stores.length > 0) return user.stores;
+    if (user.store) return [user.store];
+    return [];
   });
 
   // Master list of available nearby stores / freelancers
@@ -89,7 +103,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-pink-500 to-rose-600',
       isAvailable: true,
-      memberSince: 'Jan 2026'
+      memberSince: 'Jan 2026',
+      creationDateTime: '2026-01-10T08:30:00.000Z',
+      lastUpdateDateTime: '2026-03-12T14:20:00.000Z'
     },
     {
       id: 'store-2',
@@ -147,7 +163,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-blue-600 to-indigo-700',
       isAvailable: true,
-      memberSince: 'Feb 2026'
+      memberSince: 'Feb 2026',
+      creationDateTime: '2026-02-01T11:15:00.000Z',
+      lastUpdateDateTime: '2026-03-14T09:45:00.000Z'
     },
     {
       id: 'store-3',
@@ -202,7 +220,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-amber-500 to-orange-600',
       isAvailable: true,
-      memberSince: 'Nov 2025'
+      memberSince: 'Nov 2025',
+      creationDateTime: '2025-11-20T16:00:00.000Z',
+      lastUpdateDateTime: '2026-03-15T12:00:00.000Z'
     },
     {
       id: 'store-4',
@@ -255,7 +275,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-emerald-500 to-teal-700',
       isAvailable: true,
-      memberSince: 'Dec 2025'
+      memberSince: 'Dec 2025',
+      creationDateTime: '2025-12-05T13:45:00.000Z',
+      lastUpdateDateTime: '2026-03-10T17:30:00.000Z'
     },
     {
       id: 'store-5',
@@ -309,7 +331,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-purple-600 to-violet-800',
       isAvailable: true,
-      memberSince: 'Jan 2026'
+      memberSince: 'Jan 2026',
+      creationDateTime: '2026-01-18T10:20:00.000Z',
+      lastUpdateDateTime: '2026-03-11T15:10:00.000Z'
     },
     {
       id: 'store-6',
@@ -364,7 +388,9 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-cyan-600 to-blue-800',
       isAvailable: true,
-      memberSince: 'Oct 2025'
+      memberSince: 'Oct 2025',
+      creationDateTime: '2025-10-05T09:00:00.000Z',
+      lastUpdateDateTime: '2026-03-13T11:25:00.000Z'
     }
   ]);
 
@@ -425,15 +451,32 @@ export class StoreService {
     });
   });
 
-  // Get single store by ID
+  // Get single store by ID (with fallback to user profile stores and demo presets)
   getStoreById(id: string): StoreProfile | undefined {
-    return this.stores().find(s => s.id === id);
+    const fromMaster = this.stores().find(s => s.id === id);
+    if (fromMaster) return fromMaster;
+
+    const user = this.currentUser();
+    const fromUserStores = (user.stores || []).find(s => s.id === id);
+    if (fromUserStores) return fromUserStores;
+
+    if (user.store?.id === id) return user.store;
+
+    if (id === 'store-user-001') {
+      return this.buildDemoStore1();
+    }
+    if (id === 'store-user-002') {
+      return this.buildDemoStore2();
+    }
+
+    return undefined;
   }
 
-  // Create a new store (Option A: transforms regular user into a store owner)
-  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince'>): StoreProfile {
+  // Create a new store (Option A: transforms regular user into a store owner or adds an additional store)
+  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime'>>): StoreProfile {
     const user = this.currentUser();
-    const newStoreId = 'store-' + (this.stores().length + 1);
+    const newStoreId = 'store-' + (this.stores().length + 1) + '-' + Math.random().toString(36).substring(2, 6);
+    const nowIso = new Date().toISOString();
 
     const initialReview: StoreReview = {
       id: 'rev-welcome-' + Date.now(),
@@ -452,18 +495,26 @@ export class StoreService {
       rating: 5.0,
       reviewCount: 1,
       reviews: [initialReview],
-      memberSince: 'Just now'
+      memberSince: 'Just now',
+      creationDateTime: storeData.creationDateTime || nowIso,
+      lastUpdateDateTime: storeData.lastUpdateDateTime || nowIso
     };
 
     // Add to stores list
     this.stores.update(list => [newStore, ...list]);
 
-    // Update user profile to reflect that they now have a store!
-    this.currentUser.update(u => ({
-      ...u,
-      hasStore: true,
-      store: newStore
-    }));
+    // Update user profile with the new store and ensure multi-store list contains it
+    this.currentUser.update(u => {
+      const existingStores = u.stores || (u.store ? [u.store] : []);
+      const updatedStores = [newStore, ...existingStores.filter(s => s.id !== newStore.id)];
+      return {
+        ...u,
+        hasStore: true,
+        store: newStore,
+        stores: updatedStores,
+        lastUpdateDateTime: nowIso
+      };
+    });
 
     return newStore;
   }
@@ -500,131 +551,270 @@ export class StoreService {
 
     // If this store belongs to the current user, update currentUser as well
     const user = this.currentUser();
-    if (user.store && user.store.id === storeId) {
+    const userStoreIds = (user.stores || (user.store ? [user.store] : [])).map(s => s.id);
+    if (userStoreIds.includes(storeId)) {
       const updatedStore = this.getStoreById(storeId);
       if (updatedStore) {
-        this.currentUser.update(u => ({
-          ...u,
-          store: updatedStore
-        }));
+        this.currentUser.update(u => {
+          const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
+          return {
+            ...u,
+            store: u.store?.id === storeId ? updatedStore : u.store,
+            stores: updatedStores
+          };
+        });
       }
     }
 
     return newReview;
   }
 
-  // Helper to toggle demo store for easy previewing of the Store Owner Review section
+  // Helper to build first demo store
+  buildDemoStore1(user?: UserProfile): StoreProfile {
+    const u = user || this.currentUser();
+    return {
+      id: 'store-user-001',
+      userId: u.id,
+      ownerName: u.name,
+      storeName: 'Aman Tech & Creative Studio',
+      tagline: 'Modern Web Apps, Python Scripts & Tech Consulting',
+      category: 'Web & Tech',
+      skills: ['Angular', 'TypeScript', 'Python', 'Tailwind CSS', 'API Integration'],
+      experienceYears: 2,
+      hourlyRate: 650,
+      startingPrice: 500,
+      area: u.area,
+      city: u.city,
+      distanceKm: 0.1,
+      serviceRadiusKm: 8,
+      socialMediaLinks: [
+        { id: 'sm-u-1', name: 'GitHub', url: 'https://github.com/amansharma' },
+        { id: 'sm-u-2', name: 'LinkedIn', url: 'https://linkedin.com/in/amansharma' },
+        { id: 'sm-u-3', name: 'Portfolio', url: 'https://amansharma.dev' },
+        { id: 'sm-u-4', name: 'Instagram', url: 'https://instagram.com/aman_codes' }
+      ],
+      socialLinks: {
+        github: 'https://github.com/amansharma',
+        linkedin: 'https://linkedin.com/in/amansharma',
+        portfolio: 'https://amansharma.dev',
+        instagram: 'https://instagram.com/aman_codes'
+      },
+      description: 'Passionate developer offering quick frontend/backend solutions, web automations, and local tech support for startups and neighborhood businesses in Indiranagar.',
+      services: [
+        { id: 'usr-s1', name: 'Custom Landing Page / Web App Module', price: 2500, duration: '2 days', description: 'Fast, responsive website built with modern UI frameworks.' },
+        { id: 'usr-s2', name: '1-on-1 Coding Mentorship / Bug Fix', price: 650, duration: 'Hourly', description: 'Hands-on debugging and code walkthrough.' }
+      ],
+      rating: 4.9,
+      reviewCount: 3,
+      reviews: [
+        {
+          id: 'rev-u1',
+          storeId: 'store-user-001',
+          userName: 'Ramesh Krishnan',
+          rating: 5.0,
+          message: 'Aman was super responsive and solved our web form issue within 3 hours. Great local talent in Indiranagar!',
+          date: 'Yesterday'
+        },
+        {
+          id: 'rev-u2',
+          storeId: 'store-user-001',
+          userName: 'Pooja Hegde',
+          rating: 4.8,
+          message: 'Very clear communication and delivered clean code on time. Highly recommended!',
+          date: '3 days ago'
+        },
+        {
+          id: 'rev-u3',
+          storeId: 'store-user-001',
+          userName: 'Kunal Kapoor',
+          rating: 4.9,
+          message: 'Met in Indiranagar to discuss requirements. Patient and knowledgeable with tech stacks.',
+          date: '1 week ago'
+        }
+      ],
+      avatarUrl: u.avatarUrl,
+      bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
+      isAvailable: true,
+      memberSince: 'March 2026',
+      creationDateTime: '2026-03-01T10:00:00.000Z',
+      lastUpdateDateTime: '2026-03-15T18:30:00.000Z'
+    };
+  }
+
+  // Helper to build second demo store
+  buildDemoStore2(user?: UserProfile): StoreProfile {
+    const u = user || this.currentUser();
+    return {
+      id: 'store-user-002',
+      userId: u.id,
+      ownerName: u.name,
+      storeName: 'Aman Lens & Aerial Films',
+      tagline: 'Drone Shoots, Cafe Ambience & Event Videography',
+      category: 'Video & Editing',
+      skills: ['DJI Drone', 'Sony FX3', 'DaVinci Resolve', 'Cinematic Grading', '4K Reels'],
+      experienceYears: 3,
+      hourlyRate: 900,
+      startingPrice: 1200,
+      area: u.area,
+      city: u.city,
+      distanceKm: 0.1,
+      serviceRadiusKm: 15,
+      socialMediaLinks: [
+        { id: 'sm-u2-1', name: 'Instagram', url: 'https://instagram.com/aman_aerial' },
+        { id: 'sm-u2-2', name: 'YouTube', url: 'https://youtube.com/@amanaerialfilms' },
+        { id: 'sm-u2-3', name: 'Portfolio', url: 'https://amanaerial.film' }
+      ],
+      socialLinks: {
+        instagram: 'https://instagram.com/aman_aerial',
+        youtube: 'https://youtube.com/@amanaerialfilms',
+        portfolio: 'https://amanaerial.film'
+      },
+      description: 'Certified drone pilot and videographer creating cinematic commercial reels, property walkthroughs, and cafe promos across Bengaluru.',
+      services: [
+        { id: 'usr2-s1', name: '4K Commercial Drone Reel (60s)', price: 3000, duration: '24 hours', description: 'High-res aerial footage with license, sound design & 4K color grade.' },
+        { id: 'usr2-s2', name: 'Cafe / Restaurant Atmosphere Tour', price: 4500, duration: '2 days', description: 'Interior glide shots, patron ambience, and Swiggy/Zomato promotional clips.' }
+      ],
+      rating: 5.0,
+      reviewCount: 2,
+      reviews: [
+        {
+          id: 'rev-u2-1',
+          storeId: 'store-user-002',
+          userName: 'Deepa Srinivas',
+          rating: 5.0,
+          message: 'Incredible drone shots for our rooftop cafe launch in Indiranagar. The video hit 50k views on Instagram!',
+          date: '3 days ago'
+        },
+        {
+          id: 'rev-u2-2',
+          storeId: 'store-user-002',
+          userName: 'Vikram Seth',
+          rating: 5.0,
+          message: 'Very punctual and great cinematic eye. Delivered the finalized grade ahead of schedule.',
+          date: '1 week ago'
+        }
+      ],
+      avatarUrl: u.avatarUrl,
+      bannerGradient: 'from-amber-500 via-rose-600 to-indigo-700',
+      isAvailable: true,
+      memberSince: 'March 2026',
+      creationDateTime: '2026-03-05T14:00:00.000Z',
+      lastUpdateDateTime: '2026-03-16T11:00:00.000Z'
+    };
+  }
+
+  // Helper to toggle demo store for easy previewing of multiple stores and review section
   toggleDemoStore(): void {
     const user = this.currentUser();
     if (user.hasStore) {
+      const demoIds = ['store-user-001', 'store-user-002'];
+      this.stores.update(list => list.filter(s => !demoIds.includes(s.id)));
       this.currentUser.update(u => ({
         ...u,
         hasStore: false,
-        store: undefined
+        store: undefined,
+        stores: []
       }));
     } else {
-      const demoStore: StoreProfile = {
-        id: 'store-user-001',
-        userId: user.id,
-        ownerName: user.name,
-        storeName: 'Aman Tech & Creative Studio',
-        tagline: 'Modern Web Apps, Python Scripts & Tech Consulting',
-        category: 'Web & Tech',
-        skills: ['Angular', 'TypeScript', 'Python', 'Tailwind CSS', 'API Integration'],
-        experienceYears: 2,
-        hourlyRate: 650,
-        startingPrice: 500,
-        area: user.area,
-        city: user.city,
-        distanceKm: 0.1,
-        serviceRadiusKm: 8,
-        socialMediaLinks: [
-          { id: 'sm-u-1', name: 'GitHub', url: 'https://github.com/amansharma' },
-          { id: 'sm-u-2', name: 'LinkedIn', url: 'https://linkedin.com/in/amansharma' },
-          { id: 'sm-u-3', name: 'Portfolio', url: 'https://amansharma.dev' },
-          { id: 'sm-u-4', name: 'Instagram', url: 'https://instagram.com/aman_codes' }
-        ],
-        socialLinks: {
-          github: 'https://github.com/amansharma',
-          linkedin: 'https://linkedin.com/in/amansharma',
-          portfolio: 'https://amansharma.dev',
-          instagram: 'https://instagram.com/aman_codes'
-        },
-        description: 'Passionate developer offering quick frontend/backend solutions, web automations, and local tech support for startups and neighborhood businesses in Indiranagar.',
-        services: [
-          { id: 'usr-s1', name: 'Custom Landing Page / Web App Module', price: 2500, duration: '2 days', description: 'Fast, responsive website built with modern UI frameworks.' },
-          { id: 'usr-s2', name: '1-on-1 Coding Mentorship / Bug Fix', price: 650, duration: 'Hourly', description: 'Hands-on debugging and code walkthrough.' }
-        ],
-        rating: 4.9,
-        reviewCount: 3,
-        reviews: [
-          {
-            id: 'rev-u1',
-            storeId: 'store-user-001',
-            userName: 'Ramesh Krishnan',
-            rating: 5.0,
-            message: 'Aman was super responsive and solved our web form issue within 3 hours. Great local talent in Indiranagar!',
-            date: 'Yesterday'
-          },
-          {
-            id: 'rev-u2',
-            storeId: 'store-user-001',
-            userName: 'Pooja Hegde',
-            rating: 4.8,
-            message: 'Very clear communication and delivered clean code on time. Highly recommended!',
-            date: '3 days ago'
-          },
-          {
-            id: 'rev-u3',
-            storeId: 'store-user-001',
-            userName: 'Kunal Kapoor',
-            rating: 4.9,
-            message: 'Met in Indiranagar to discuss requirements. Patient and knowledgeable with tech stacks.',
-            date: '1 week ago'
-          }
-        ],
-        avatarUrl: user.avatarUrl,
-        bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
-        isAvailable: true,
-        memberSince: 'March 2026'
-      };
+      const demoStore1 = this.buildDemoStore1(user);
+      const demoStore2 = this.buildDemoStore2(user);
 
-      this.stores.update(list => [demoStore, ...list.filter(s => s.id !== demoStore.id)]);
+      this.stores.update(list => [demoStore1, demoStore2, ...list.filter(s => s.id !== demoStore1.id && s.id !== demoStore2.id)]);
       this.currentUser.update(u => ({
         ...u,
         hasStore: true,
-        store: demoStore
+        store: demoStore1,
+        stores: [demoStore1, demoStore2],
+        lastUpdateDateTime: new Date().toISOString()
       }));
     }
   }
 
-  // Update existing store details
-  updateStore(updated: Partial<StoreProfile>): void {
+  // Update existing store details (supports optional storeId to update specific store)
+  updateStore(updated: Partial<StoreProfile>, storeId?: string): void {
     const user = this.currentUser();
-    if (!user.store) return;
+    const targetStoreId = storeId || user.store?.id || (user.stores && user.stores.length > 0 ? user.stores[0].id : undefined);
+    if (!targetStoreId) return;
 
-    const merged = { ...user.store, ...updated };
-    this.stores.update(list => list.map(s => s.id === merged.id ? merged : s));
-    this.currentUser.update(u => ({
-      ...u,
-      store: merged
+    const nowIso = new Date().toISOString();
+
+    // Ensure store exists in master stores signal list
+    if (!this.stores().some(s => s.id === targetStoreId)) {
+      const fallbackStore = this.getStoreById(targetStoreId);
+      if (fallbackStore) {
+        this.stores.update(list => [fallbackStore, ...list]);
+      }
+    }
+
+    this.stores.update(list => list.map(s => {
+      if (s.id !== targetStoreId) return s;
+      return {
+        ...s,
+        ...updated,
+        socialMediaLinks: updated.socialMediaLinks 
+          ? normalizeSocialLinks(updated.socialMediaLinks, updated.socialLinks || s.socialLinks)
+          : (updated.socialLinks ? normalizeSocialLinks(s.socialMediaLinks, updated.socialLinks) : s.socialMediaLinks),
+        lastUpdateDateTime: nowIso
+      };
     }));
+
+    const updatedStore = this.getStoreById(targetStoreId);
+    if (!updatedStore) return;
+
+    this.currentUser.update(u => {
+      const currentStores = u.stores || (u.store ? [u.store] : []);
+      const existsInUser = currentStores.some(s => s.id === targetStoreId);
+      const updatedStores = existsInUser 
+        ? currentStores.map(s => s.id === targetStoreId ? updatedStore : s)
+        : [updatedStore, ...currentStores];
+      const isPrimary = u.store?.id === targetStoreId || !u.store;
+      return {
+        ...u,
+        hasStore: true,
+        store: isPrimary ? updatedStore : u.store,
+        stores: updatedStores,
+        lastUpdateDateTime: nowIso
+      };
+    });
+  }
+
+  // Delete an existing store owned by user
+  deleteStore(storeId: string): void {
+    const nowIso = new Date().toISOString();
+    this.stores.update(list => list.filter(s => s.id !== storeId));
+
+    this.currentUser.update(u => {
+      const currentStores = (u.stores || (u.store ? [u.store] : [])).filter(s => s.id !== storeId);
+      const hasAny = currentStores.length > 0;
+      return {
+        ...u,
+        hasStore: hasAny,
+        store: hasAny ? currentStores[0] : undefined,
+        stores: currentStores,
+        lastUpdateDateTime: nowIso
+      };
+    });
   }
 
   // Update basic user profile
   updateUserProfile(updated: Partial<UserProfile>): void {
     this.currentUser.update(u => ({
       ...u,
-      ...updated
+      ...updated,
+      lastUpdateDateTime: new Date().toISOString()
     }));
   }
 
-  // Toggle store active/available status
-  toggleStoreAvailability(): void {
+  // Toggle store active/available status for a specific store or default to active
+  toggleStoreAvailability(storeId?: string): void {
     const user = this.currentUser();
-    if (!user.store) return;
-    const newStatus = !user.store.isAvailable;
-    this.updateStore({ isAvailable: newStatus });
+    const targetStoreId = storeId || user.store?.id || (user.stores && user.stores.length > 0 ? user.stores[0].id : undefined);
+    if (!targetStoreId) return;
+
+    const targetStore = this.getStoreById(targetStoreId);
+    if (!targetStore) return;
+
+    this.updateStore({ isAvailable: !targetStore.isAvailable }, targetStoreId);
   }
 
   // Filter setters

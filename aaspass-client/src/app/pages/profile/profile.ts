@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -33,17 +33,19 @@ import {
           <!-- Quick Test Toggle: switch store on/off for easy testing -->
           <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
             <span class="text-xs font-semibold text-slate-600">Store Status:</span>
-            @if (storeService.currentUser().hasStore) {
-              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">STORE ACTIVE</span>
+            @if (storeService.userStores().length > 0) {
+              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                {{ storeService.userStores().length }} {{ storeService.userStores().length === 1 ? 'STORE' : 'STORES' }} ACTIVE
+              </span>
             } @else {
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORE YET</span>
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORES YET</span>
             }
             <button 
               type="button" 
               (click)="storeService.toggleDemoStore()"
               class="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
             >
-              {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner' }}
+              {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner (2 Demo Stores)' }}
             </button>
           </div>
         </div>
@@ -219,42 +221,37 @@ import {
 
         </div>
 
-        <!-- Section 2: Conditional Store Profile (Option A) -->
+        <!-- Section 2: Neighborhood Skill Stores (1 User Can Have Multiple Stores) -->
         <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
           
-          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full" [class.bg-emerald-500]="storeService.currentUser().hasStore" [class.bg-amber-400]="!storeService.currentUser().hasStore"></span>
-              <h2 class="text-base font-bold text-slate-900">2. Neighborhood Skill Store</h2>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full" [class.bg-emerald-500]="storeService.userStores().length > 0" [class.bg-amber-400]="storeService.userStores().length === 0"></span>
+              <h2 class="text-base font-bold text-slate-900">2. My Neighborhood Skill Stores</h2>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                {{ storeService.userStores().length }} {{ storeService.userStores().length === 1 ? 'Store' : 'Stores' }} Owned
+              </span>
             </div>
             
-            @if (storeService.currentUser().hasStore) {
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-slate-500">Store Active:</span>
-                <button 
-                  type="button" 
-                  (click)="storeService.toggleStoreAvailability()"
-                  class="px-3 py-1 rounded-full text-xs font-bold transition"
-                  [class.bg-emerald-100]="storeService.currentUser().store?.isAvailable"
-                  [class.text-emerald-800]="storeService.currentUser().store?.isAvailable"
-                  [class.bg-rose-100]="!storeService.currentUser().store?.isAvailable"
-                  [class.text-rose-800]="!storeService.currentUser().store?.isAvailable"
-                >
-                  {{ storeService.currentUser().store?.isAvailable ? '✓ Open For Gigs' : '⏸ Paused' }}
-                </button>
-              </div>
-            }
+            <div class="flex items-center gap-2">
+              <a 
+                routerLink="/create-store" 
+                class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition transform active:scale-95"
+              >
+                <span>+ Open Another Store</span>
+              </a>
+            </div>
           </div>
 
-          <!-- STATE A: User does NOT have a store yet -->
-          @if (!storeService.currentUser().hasStore) {
+          <!-- STATE A: User does NOT have any store yet -->
+          @if (storeService.userStores().length === 0) {
             <div class="text-center py-8 px-4 max-w-lg mx-auto">
               <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 text-3xl">
                 🏪
               </div>
               <h3 class="text-lg font-black text-slate-900 mb-2">You haven't opened a Skill Store yet</h3>
               <p class="text-xs text-slate-500 leading-relaxed mb-6">
-                Are you looking for side-income or new to this city? Create a neighborhood store to showcase your experience, hourly rates, social media links, and services.
+                Are you looking for side-income or new to this city? Create one or multiple neighborhood stores to showcase your experience, hourly rates, social media links, and services.
               </p>
               
               <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -268,18 +265,77 @@ import {
             </div>
           }
 
-          <!-- STATE B: User HAS a store (Show full store details: experience, social accounts, hourly charges, etc.) -->
-          @if (storeService.currentUser().hasStore && storeService.currentUser().store; as store) {
+          <!-- STATE B: User HAS 1 or more stores -->
+          @if (selectedStore(); as store) {
             <div class="space-y-6">
               
-              <!-- Store Headline Header -->
+              <!-- Store Switcher Tabs (when user owns 1 or more stores) -->
+              <div>
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="text-[11px] uppercase tracking-wider font-bold text-slate-400">
+                    Switch Active Store ({{ storeService.userStores().length }} total):
+                  </span>
+                  @if (storeService.userStores().length > 1) {
+                    <span class="text-[11px] text-indigo-600 font-semibold">
+                      Viewing: <strong class="text-slate-800">{{ store.storeName }}</strong>
+                    </span>
+                  }
+                </div>
+
+                <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                  @for (st of storeService.userStores(); track st.id; let idx = $index) {
+                    <button
+                      type="button"
+                      (click)="selectStore(st.id)"
+                      class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border cursor-pointer whitespace-nowrap"
+                      [class.bg-indigo-600]="store.id === st.id"
+                      [class.text-white]="store.id === st.id"
+                      [class.border-indigo-600]="store.id === st.id"
+                      [class.shadow-xs]="store.id === st.id"
+                      [class.bg-slate-50]="store.id !== st.id"
+                      [class.text-slate-700]="store.id !== st.id"
+                      [class.border-slate-200]="store.id !== st.id"
+                      [class.hover:bg-slate-100]="store.id !== st.id"
+                    >
+                      <span class="w-2 h-2 rounded-full" [class.bg-emerald-400]="st.isAvailable" [class.bg-rose-400]="!st.isAvailable"></span>
+                      <span>{{ st.storeName }}</span>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded-md font-semibold" [class.bg-white/20]="store.id === st.id" [class.text-white]="store.id === st.id" [class.bg-slate-200]="store.id !== st.id" [class.text-slate-700]="store.id !== st.id">
+                        {{ st.category }}
+                      </span>
+                      <span class="text-[11px]">⭐ {{ st.rating }}</span>
+                    </button>
+                  }
+
+                  <a 
+                    routerLink="/create-store"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-dashed border-indigo-300 transition cursor-pointer whitespace-nowrap"
+                    title="Add another store to your profile"
+                  >
+                    <span>+ Add Store</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Selected Store Headline Header -->
               <div class="p-5 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-pink-50/80 border border-indigo-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="text-xl font-black text-slate-900">{{ store.storeName }}</h3>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
                       {{ store.category }}
                     </span>
+                    <!-- Active / Paused Toggle Button for THIS store -->
+                    <button 
+                      type="button" 
+                      (click)="storeService.toggleStoreAvailability(store.id)"
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer"
+                      [class.bg-emerald-100]="store.isAvailable"
+                      [class.text-emerald-800]="store.isAvailable"
+                      [class.bg-rose-100]="!store.isAvailable"
+                      [class.text-rose-800]="!store.isAvailable"
+                    >
+                      {{ store.isAvailable ? '✓ Active For Gigs' : '⏸ Paused' }}
+                    </button>
                   </div>
                   <p class="text-xs font-semibold text-slate-700 mt-1">"{{ store.tagline }}"</p>
                   <p class="text-[11px] text-slate-500 mt-0.5">
@@ -287,7 +343,7 @@ import {
                   </p>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <a 
                     [routerLink]="['/stores', store.id]"
                     class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition"
@@ -295,15 +351,24 @@ import {
                     View Public Storefront →
                   </a>
                   <a 
-                    routerLink="/create-store"
+                    [routerLink]="['/create-store']"
+                    [queryParams]="{ editStoreId: store.id }"
                     class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition"
                   >
-                    Edit
+                    ✏️ Edit
                   </a>
+                  <button 
+                    type="button" 
+                    (click)="deleteStore(store.id)"
+                    class="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+                    title="Delete this store"
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
 
-              <!-- Key Store Metrics Grid: Experience, Hourly Rate, Starting Rate -->
+              <!-- Key Store Metrics Grid: Experience, Hourly Rate, Starting Rate, Rating -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Experience</span>
@@ -326,20 +391,23 @@ import {
                 </div>
               </div>
 
-              <!-- Linked Social Media & Portfolios (List of clickable links that directly redirect to social channels) -->
+              <!-- Linked Social Media & Portfolios for this specific store -->
               <div>
                 <div class="flex items-center justify-between mb-3">
                   <div class="flex items-center gap-2">
-                    <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500">Linked Social Media & Portfolios</h4>
+                    <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500">
+                      Linked Social Media & Portfolios ({{ store.storeName }})
+                    </h4>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
                       {{ getStoreSocialLinks(store).length }} Links Added
                     </span>
                   </div>
 
                   <a 
-                    routerLink="/create-store"
+                    [routerLink]="['/create-store']"
+                    [queryParams]="{ editStoreId: store.id }"
                     class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
-                    title="Add or update social media links"
+                    title="Add or update social media links for this store"
                   >
                     <span>+ Add / Manage Links</span>
                   </a>
@@ -371,7 +439,7 @@ import {
                           </a>
                         </div>
 
-                        <!-- Direct clickable Link URL (shows actual destination link, not just 'connected') -->
+                        <!-- Direct clickable Link URL -->
                         <div class="pt-1 border-t border-slate-200/60">
                           <a 
                             [href]="formatUrl(link.url)" 
@@ -393,10 +461,11 @@ import {
                 } @else {
                   <div class="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
                     <span class="text-2xl block mb-1">🔗</span>
-                    <p class="text-xs text-slate-600 font-semibold mb-1">No social media links linked yet</p>
+                    <p class="text-xs text-slate-600 font-semibold mb-1">No social media links linked for {{ store.storeName }} yet</p>
                     <p class="text-[11px] text-slate-400 mb-3">Add links to your Instagram, LinkedIn, GitHub, or portfolio so neighborhood clients can view your credibility directly.</p>
                     <a 
-                      routerLink="/create-store"
+                      [routerLink]="['/create-store']"
+                      [queryParams]="{ editStoreId: store.id }"
                       class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
                     >
                       + Add Social Media & Portfolio Links
@@ -405,9 +474,9 @@ import {
                 }
               </div>
 
-              <!-- Skills listed -->
+              <!-- Skills listed for this store -->
               <div>
-                <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-2">Offered Skills</h4>
+                <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-2">Offered Skills ({{ store.storeName }})</h4>
                 <div class="flex flex-wrap gap-1.5">
                   @for (skill of store.skills; track skill) {
                     <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold">
@@ -417,20 +486,20 @@ import {
                 </div>
               </div>
 
-              <!-- Review Section for Store Owner Only -->
+              <!-- Customer Reviews for this specific store -->
               <div class="pt-6 border-t border-slate-100">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
                   <div>
                     <div class="flex items-center gap-2">
                       <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                        <span>⭐ Store Customer Reviews & Ratings</span>
+                        <span>⭐ Reviews & Ratings for {{ store.storeName }}</span>
                       </h4>
                       <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                         Store Owner Portal Only
                       </span>
                     </div>
                     <p class="text-xs text-slate-500 mt-0.5">
-                      Feedback and ratings from neighborhood clients who booked your gigs (Scale: 1.0 to 5.0)
+                      Feedback and ratings from neighborhood clients for this store (Scale: 1.0 to 5.0)
                     </p>
                   </div>
 
@@ -457,7 +526,7 @@ import {
                 @if (isAddingReview) {
                   <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 mb-6">
                     <h5 class="text-xs font-bold text-slate-800 mb-3 flex items-center justify-between">
-                      <span>Add Customer Feedback to Store</span>
+                      <span>Add Customer Feedback to {{ store.storeName }}</span>
                       <span class="text-[10px] text-slate-400">Min 1.0 • Max 5.0</span>
                     </h5>
 
@@ -538,7 +607,7 @@ import {
                   </div>
                 }
 
-                <!-- Customer Reviews List -->
+                <!-- Customer Reviews List for this store -->
                 <div class="space-y-3">
                   @if (store.reviews && store.reviews.length > 0) {
                     @for (rev of store.reviews; track rev.id) {
@@ -576,13 +645,32 @@ import {
                   } @else {
                     <div class="p-6 text-center rounded-2xl bg-slate-50 border border-slate-100">
                       <span class="text-2xl mb-1 block">⭐</span>
-                      <h5 class="text-xs font-bold text-slate-800">No customer reviews yet</h5>
+                      <h5 class="text-xs font-bold text-slate-800">No customer reviews yet for {{ store.storeName }}</h5>
                       <p class="text-[11px] text-slate-500 mt-1">
                         When clients book your services and leave reviews (1.0 to 5.0 rating), they will appear here.
                       </p>
                     </div>
                   }
                 </div>
+              </div>
+
+              <!-- Multi-Store Info & CTA Banner -->
+              <div class="p-4 rounded-2xl bg-purple-50/70 border border-purple-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-purple-900">
+                <div class="flex items-start gap-2.5">
+                  <span class="text-lg">🏪</span>
+                  <div>
+                    <h5 class="font-bold text-purple-950">Multi-Store Feature Enabled</h5>
+                    <p class="text-purple-800 leading-relaxed mt-0.5">
+                      You can open and manage multiple specialized skill stores (e.g. Web Development, Video Editing, or Tutoring) under your single unified profile.
+                    </p>
+                  </div>
+                </div>
+                <a 
+                  routerLink="/create-store"
+                  class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-xs transition whitespace-nowrap self-end sm:self-auto"
+                >
+                  + Open Another Store
+                </a>
               </div>
 
             </div>
@@ -610,6 +698,38 @@ export class ProfileComponent {
   displayUrl = displaySocialUrl;
   getSocialIcon = getSocialIcon;
   getSocialBadgeClass = getSocialBadgeClass;
+
+  // Selected store state for multi-store switcher
+  selectedStoreId = signal<string>('');
+
+  selectedStore = computed(() => {
+    const list = this.storeService.userStores();
+    if (list.length === 0) return undefined;
+    const currentId = this.selectedStoreId();
+    const found = list.find(s => s.id === currentId);
+    return found || list[0];
+  });
+
+  selectStore(id: string): void {
+    this.selectedStoreId.set(id);
+    this.isAddingReview = false;
+    this.reviewFormError = null;
+    this.reviewSuccessMessage = null;
+  }
+
+  deleteStore(storeId: string): void {
+    const target = this.storeService.getStoreById(storeId);
+    const storeName = target?.storeName || 'this store';
+    if (confirm(`Are you sure you want to delete "${storeName}"? This action cannot be undone.`)) {
+      this.storeService.deleteStore(storeId);
+      const remaining = this.storeService.userStores();
+      if (remaining.length > 0) {
+        this.selectedStoreId.set(remaining[0].id);
+      } else {
+        this.selectedStoreId.set('');
+      }
+    }
+  }
 
   getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
     return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);

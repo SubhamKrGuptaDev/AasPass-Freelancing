@@ -123,4 +123,6 @@ export interface StoreProfile {
   bannerGradient: string;
   isAvailable: boolean;
   memberSince: string;
+  creationDateTime: string;
+  lastUpdateDateTime: string;
 }

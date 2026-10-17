@@ -1,4 +1,5 @@
 import { Component, inject, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -81,7 +82,8 @@ import {
                   @if (isOwner()) {
                     <div class="flex-shrink-0 self-start sm:self-center">
                       <a 
-                        routerLink="/create-store" 
+                        [routerLink]="['/create-store']"
+                        [queryParams]="{ editStoreId: s.id }"
                         class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition shadow-2xs whitespace-nowrap cursor-pointer"
                         title="Edit store details and social media links"
                       >
@@ -479,6 +481,7 @@ import {
 })
 export class StoreDetailComponent {
   private route = inject(ActivatedRoute);
+  private routeParamMap = toSignal(this.route.paramMap);
   storeService = inject(StoreService);
 
   notificationMessage: string | null = null;
@@ -499,13 +502,17 @@ export class StoreDetailComponent {
   reviewError: string | null = null;
 
   store = computed(() => {
-    const id = this.route.snapshot.paramMap.get('id');
+    const params = this.routeParamMap();
+    const id = params?.get('id') || this.route.snapshot.paramMap.get('id');
     return id ? this.storeService.getStoreById(id) : undefined;
   });
 
   isOwner = computed(() => {
     const s = this.store();
-    return s && s.userId === this.storeService.currentUser().id;
+    if (!s) return false;
+    const currentUserId = this.storeService.currentUser().id;
+    const userStores = this.storeService.userStores();
+    return s.userId === currentUserId || userStores.some(us => us.id === s.id) || this.storeService.currentUser().store?.id === s.id;
   });
 
   setRating(val: number): void {
