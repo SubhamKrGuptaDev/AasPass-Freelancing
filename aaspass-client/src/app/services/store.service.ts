@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { StoreProfile, StoreReview } from '../models/store.model';
+import { StoreProfile, StoreReview, normalizeSocialLinks } from '../models/store.model';
 import { UserProfile } from '../models/user.model';
 
 @Injectable({
@@ -40,10 +40,17 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 0.8,
       serviceRadiusKm: 6,
+      socialMediaLinks: [
+        { id: 'sm-1-1', name: 'Instagram', url: 'https://instagram.com/priya_edits' },
+        { id: 'sm-1-2', name: 'LinkedIn', url: 'https://linkedin.com/in/priyanair' },
+        { id: 'sm-1-3', name: 'Portfolio', url: 'https://priyacrafts.design' },
+        { id: 'sm-1-4', name: 'YouTube', url: 'https://youtube.com/@priyaedits' }
+      ],
       socialLinks: {
         instagram: 'https://instagram.com/priya_edits',
         linkedin: 'https://linkedin.com/in/priyanair',
-        portfolio: 'https://priyacrafts.design'
+        portfolio: 'https://priyacrafts.design',
+        youtube: 'https://youtube.com/@priyaedits'
       },
       description: 'College student & passionate video editor specializing in fast-paced viral reels for local cafes, fashion brands, and personal creators. Can meet in person in Indiranagar/Koramangala.',
       services: [
@@ -99,10 +106,17 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 2.1,
       serviceRadiusKm: 12,
+      socialMediaLinks: [
+        { id: 'sm-2-1', name: 'GitHub', url: 'https://github.com/rohandev' },
+        { id: 'sm-2-2', name: 'LinkedIn', url: 'https://linkedin.com/in/rohandeshmukh' },
+        { id: 'sm-2-3', name: 'Portfolio', url: 'https://rohansprint.dev' },
+        { id: 'sm-2-4', name: 'Twitter / X', url: 'https://x.com/rohandev' }
+      ],
       socialLinks: {
         github: 'https://github.com/rohandev',
         linkedin: 'https://linkedin.com/in/rohandeshmukh',
-        portfolio: 'https://rohansprint.dev'
+        portfolio: 'https://rohansprint.dev',
+        twitter: 'https://x.com/rohandev'
       },
       description: 'Full-stack software engineer offering weekend web development and digital transformation for neighborhood businesses. Direct one-on-one consultation over coffee.',
       services: [
@@ -150,6 +164,11 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 3.4,
       serviceRadiusKm: 15,
+      socialMediaLinks: [
+        { id: 'sm-3-1', name: 'Instagram', url: 'https://instagram.com/ananyas_lens' },
+        { id: 'sm-3-2', name: 'Portfolio', url: 'https://ananyasen.photos' },
+        { id: 'sm-3-3', name: 'Behance', url: 'https://behance.net/ananyasen' }
+      ],
       socialLinks: {
         instagram: 'https://instagram.com/ananyas_lens',
         portfolio: 'https://ananyasen.photos'
@@ -200,8 +219,13 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 1.6,
       serviceRadiusKm: 5,
+      socialMediaLinks: [
+        { id: 'sm-4-1', name: 'LinkedIn', url: 'https://linkedin.com/in/vikram-joshi-tutor' },
+        { id: 'sm-4-2', name: 'GitHub', url: 'https://github.com/vikramj-edu' }
+      ],
       socialLinks: {
-        linkedin: 'https://linkedin.com/in/vikram-joshi-tutor'
+        linkedin: 'https://linkedin.com/in/vikram-joshi-tutor',
+        github: 'https://github.com/vikramj-edu'
       },
       description: 'Final year engineering student offering home visits or online tutoring in mathematics, physics, and introductory programming.',
       services: [
@@ -248,6 +272,11 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 2.8,
       serviceRadiusKm: 10,
+      socialMediaLinks: [
+        { id: 'sm-5-1', name: 'Instagram', url: 'https://instagram.com/brandcanvas_neha' },
+        { id: 'sm-5-2', name: 'Behance', url: 'https://behance.net/neha_brandcanvas' },
+        { id: 'sm-5-3', name: 'Dribbble', url: 'https://dribbble.com/brandcanvas_neha' }
+      ],
       socialLinks: {
         instagram: 'https://instagram.com/brandcanvas_neha',
         portfolio: 'https://behance.net/neha_brandcanvas'
@@ -297,8 +326,15 @@ export class StoreService {
       city: 'Bengaluru',
       distanceKm: 3.9,
       serviceRadiusKm: 8,
+      socialMediaLinks: [
+        { id: 'sm-6-1', name: 'YouTube', url: 'https://youtube.com/@fixitgeeks' },
+        { id: 'sm-6-2', name: 'Twitter / X', url: 'https://x.com/fixitgeeks' },
+        { id: 'sm-6-3', name: 'LinkedIn', url: 'https://linkedin.com/in/karthik-rao-tech' }
+      ],
       socialLinks: {
-        youtube: 'https://youtube.com/@fixitgeeks'
+        youtube: 'https://youtube.com/@fixitgeeks',
+        twitter: 'https://x.com/fixitgeeks',
+        linkedin: 'https://linkedin.com/in/karthik-rao-tech'
       },
       description: 'Tech enthusiast offering on-site hardware diagnosis, gaming rig assembly, SSD/RAM upgrades, and mesh Wi-Fi optimization for work-from-home setups.',
       services: [
@@ -410,6 +446,7 @@ export class StoreService {
 
     const newStore: StoreProfile = {
       ...storeData,
+      socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeData.socialLinks),
       id: newStoreId,
       userId: user.id,
       rating: 5.0,
@@ -501,10 +538,17 @@ export class StoreService {
         city: user.city,
         distanceKm: 0.1,
         serviceRadiusKm: 8,
+        socialMediaLinks: [
+          { id: 'sm-u-1', name: 'GitHub', url: 'https://github.com/amansharma' },
+          { id: 'sm-u-2', name: 'LinkedIn', url: 'https://linkedin.com/in/amansharma' },
+          { id: 'sm-u-3', name: 'Portfolio', url: 'https://amansharma.dev' },
+          { id: 'sm-u-4', name: 'Instagram', url: 'https://instagram.com/aman_codes' }
+        ],
         socialLinks: {
           github: 'https://github.com/amansharma',
           linkedin: 'https://linkedin.com/in/amansharma',
-          portfolio: 'https://amansharma.dev'
+          portfolio: 'https://amansharma.dev',
+          instagram: 'https://instagram.com/aman_codes'
         },
         description: 'Passionate developer offering quick frontend/backend solutions, web automations, and local tech support for startups and neighborhood businesses in Indiranagar.',
         services: [

@@ -75,4 +75,57 @@ describe('StoreService Reviews & Ratings', () => {
     expect(service.currentUser().hasStore).toBe(false);
   });
 
+  it('should support multiple social media links with names and direct redirect URLs', () => {
+    const stores = service.stores();
+    const store1 = stores.find(s => s.id === 'store-1');
+    expect(store1?.socialMediaLinks).toBeDefined();
+    expect(store1?.socialMediaLinks.length).toBeGreaterThanOrEqual(3);
+
+    const instagramLink = store1?.socialMediaLinks.find(l => l.name === 'Instagram');
+    expect(instagramLink).toBeDefined();
+    expect(instagramLink?.url).toBe('https://instagram.com/priya_edits');
+
+    const youtubeLink = store1?.socialMediaLinks.find(l => l.name === 'YouTube');
+    expect(youtubeLink).toBeDefined();
+    expect(youtubeLink?.url).toBe('https://youtube.com/@priyaedits');
+  });
+
+  it('should create a store with multiple custom social media links', () => {
+    const customLinks = [
+      { id: 'sm-test-1', name: 'Instagram', url: 'https://instagram.com/subha_creatives' },
+      { id: 'sm-test-2', name: 'LinkedIn', url: 'https://linkedin.com/in/subha' },
+      { id: 'sm-test-3', name: 'Behance Portfolio', url: 'https://behance.net/subha' }
+    ];
+
+    const newStore = service.createStore({
+      ownerName: 'Subha Test',
+      storeName: 'Subha Visuals',
+      tagline: 'High end motion design & branding',
+      category: 'Video & Editing',
+      skills: ['Motion Design', 'After Effects'],
+      experienceYears: 4,
+      hourlyRate: 750,
+      startingPrice: 500,
+      area: 'Indiranagar',
+      city: 'Bengaluru',
+      distanceKm: 0.5,
+      serviceRadiusKm: 10,
+      socialMediaLinks: customLinks,
+      description: 'Freelance creator studio with full video editing stack.',
+      services: [
+        { id: 's-t1', name: 'Reel Edit', price: 500, duration: '24 hours', description: 'Reel edit' }
+      ],
+      avatarUrl: 'https://example.com/avatar.jpg',
+      bannerGradient: 'from-blue-600 to-indigo-700',
+      isAvailable: true
+    });
+
+    expect(newStore.id).toBeTruthy();
+    expect(newStore.socialMediaLinks.length).toBe(3);
+    expect(newStore.socialMediaLinks[0].name).toBe('Instagram');
+    expect(newStore.socialMediaLinks[0].url).toBe('https://instagram.com/subha_creatives');
+    expect(newStore.socialMediaLinks[2].name).toBe('Behance Portfolio');
+    expect(newStore.socialMediaLinks[2].url).toBe('https://behance.net/subha');
+  });
+
 });

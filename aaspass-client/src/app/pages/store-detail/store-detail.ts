@@ -3,7 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
-import { StoreProfile, StoreServiceItem } from '../../models/store.model';
+import { 
+  StoreProfile, 
+  StoreServiceItem, 
+  SocialMediaLink, 
+  formatSocialUrl, 
+  displaySocialUrl, 
+  getSocialIcon, 
+  getSocialBadgeClass, 
+  normalizeSocialLinks 
+} from '../../models/store.model';
 
 @Component({
   selector: 'app-store-detail',
@@ -38,45 +47,48 @@ import { StoreProfile, StoreServiceItem } from '../../models/store.model';
               
               <!-- Store Profile Card -->
               <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative">
-                
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                  <div class="flex items-center gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div class="flex items-center gap-4 min-w-0 flex-1">
                     <img 
                       [src]="s.avatarUrl" 
                       [alt]="s.ownerName" 
                       class="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md flex-shrink-0"
                     />
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-black text-slate-900">{{ s.storeName }}</h1>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight truncate">{{ s.storeName }}</h1>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 whitespace-nowrap flex-shrink-0">
                           VERIFIED
                         </span>
                       </div>
-                      <p class="text-sm font-medium text-slate-500">
+                      <p class="text-sm font-medium text-slate-500 mt-0.5 truncate">
                         Managed by <span class="text-slate-800 font-semibold">{{ s.ownerName }}</span> • {{ s.experienceYears }} years experience
                       </p>
-                      <div class="flex items-center gap-2 mt-1">
-                        <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                      <div class="flex flex-wrap items-center gap-2 mt-1">
+                        <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1 whitespace-nowrap">
                           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                           Available in {{ s.area }}, {{ s.city }}
                         </span>
-                        <span class="text-xs text-slate-400">•</span>
-                        <span class="text-xs font-medium text-slate-600">
+                        <span class="text-xs text-slate-400 hidden sm:inline">•</span>
+                        <span class="text-xs font-medium text-slate-600 whitespace-nowrap">
                           📍 {{ s.distanceKm }} km away (Serves up to {{ s.serviceRadiusKm }} km)
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Edit store shortcut if this is user's store -->
+                  <!-- Edit store shortcut if this is user's store (guaranteed single line and aligned) -->
                   @if (isOwner()) {
-                    <a 
-                      routerLink="/create-store" 
-                      class="px-4 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition"
-                    >
-                      ✏️ Edit My Store
-                    </a>
+                    <div class="flex-shrink-0 self-start sm:self-center">
+                      <a 
+                        routerLink="/create-store" 
+                        class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition shadow-2xs whitespace-nowrap cursor-pointer"
+                        title="Edit store details and social media links"
+                      >
+                        <span class="text-sm">✏️</span>
+                        <span class="whitespace-nowrap">Edit My Store</span>
+                      </a>
+                    </div>
                   }
                 </div>
 
@@ -397,42 +409,48 @@ import { StoreProfile, StoreServiceItem } from '../../models/store.model';
                   </button>
                 </div>
 
-                <!-- Social Media Accounts (As requested: Instagram, LinkedIn, GitHub, etc.) -->
-                <div class="pt-5 border-t border-slate-100">
-                  <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-3">Verified Socials & Portfolio</h4>
-                  <div class="flex flex-col gap-2">
-                    @if (s.socialLinks.instagram) {
-                      <a [href]="s.socialLinks.instagram" target="_blank" class="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-pink-600 transition p-2 rounded-xl bg-slate-50 hover:bg-pink-50">
-                        <span>📸 Instagram</span>
-                        <span class="text-[10px] text-slate-400 ml-auto">View Feed →</span>
-                      </a>
-                    }
-                    @if (s.socialLinks.linkedin) {
-                      <a [href]="s.socialLinks.linkedin" target="_blank" class="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-blue-600 transition p-2 rounded-xl bg-slate-50 hover:bg-blue-50">
-                        <span>💼 LinkedIn</span>
-                        <span class="text-[10px] text-slate-400 ml-auto">Connect →</span>
-                      </a>
-                    }
-                    @if (s.socialLinks.github) {
-                      <a [href]="s.socialLinks.github" target="_blank" class="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-slate-900 transition p-2 rounded-xl bg-slate-50 hover:bg-slate-100">
-                        <span>💻 GitHub</span>
-                        <span class="text-[10px] text-slate-400 ml-auto">Code →</span>
-                      </a>
-                    }
-                    @if (s.socialLinks.portfolio) {
-                      <a [href]="s.socialLinks.portfolio" target="_blank" class="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-indigo-600 transition p-2 rounded-xl bg-slate-50 hover:bg-indigo-50">
-                        <span>🌐 Portfolio Website</span>
-                        <span class="text-[10px] text-slate-400 ml-auto">Visit →</span>
-                      </a>
-                    }
-                    @if (s.socialLinks.youtube) {
-                      <a [href]="s.socialLinks.youtube" target="_blank" class="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-red-600 transition p-2 rounded-xl bg-slate-50 hover:bg-red-50">
-                        <span>🎥 YouTube Channel</span>
-                        <span class="text-[10px] text-slate-400 ml-auto">Watch →</span>
-                      </a>
-                    }
+                <!-- Verified Social Media & Portfolios (List of clickable links with direct redirect) -->
+                @if (getStoreSocialLinks(s).length > 0) {
+                  <div class="pt-5 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400">Verified Socials & Portfolios</h4>
+                      <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {{ getStoreSocialLinks(s).length }} Channels
+                      </span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      @for (link of getStoreSocialLinks(s); track link.id || link.name + link.url) {
+                        <a 
+                          [href]="formatUrl(link.url)" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 hover:bg-white hover:border-indigo-300 hover:shadow-2xs transition group"
+                          title="Directly redirect to {{ link.name }}"
+                        >
+                          <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span class="text-base flex-shrink-0">{{ getSocialIcon(link.name) }}</span>
+                            <div class="min-w-0">
+                              <span class="text-xs font-bold text-slate-900 block group-hover:text-indigo-600 transition-colors">
+                                {{ link.name }}
+                              </span>
+                              <span class="text-[11px] text-slate-400 truncate block">
+                                {{ displayUrl(link.url) }}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition shadow-2xs {{ getSocialBadgeClass(link.name) }}">
+                            <span>Redirect</span>
+                            <svg class="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                          </span>
+                        </a>
+                      }
+                    </div>
                   </div>
-                </div>
+                }
 
               </div>
 
@@ -464,6 +482,15 @@ export class StoreDetailComponent {
   storeService = inject(StoreService);
 
   notificationMessage: string | null = null;
+
+  formatUrl = formatSocialUrl;
+  displayUrl = displaySocialUrl;
+  getSocialIcon = getSocialIcon;
+  getSocialBadgeClass = getSocialBadgeClass;
+
+  getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
+    return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);
+  }
 
   // Review Form state
   reviewUserName: string = this.storeService.currentUser().name;

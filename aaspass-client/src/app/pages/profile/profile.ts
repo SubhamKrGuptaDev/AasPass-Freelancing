@@ -3,6 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
+import { 
+  StoreProfile, 
+  SocialMediaLink, 
+  formatSocialUrl, 
+  displaySocialUrl, 
+  getSocialIcon, 
+  getSocialBadgeClass, 
+  normalizeSocialLinks 
+} from '../../models/store.model';
 
 @Component({
   selector: 'app-profile',
@@ -317,37 +326,83 @@ import { StoreService } from '../../services/store.service';
                 </div>
               </div>
 
-              <!-- Social Media Accounts Linked -->
+              <!-- Linked Social Media & Portfolios (List of clickable links that directly redirect to social channels) -->
               <div>
-                <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400 mb-3">Linked Social Media & Portfolios</h4>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-700">📸 Instagram</span>
-                    @if (store.socialLinks.instagram) {
-                      <a [href]="store.socialLinks.instagram" target="_blank" class="text-xs font-bold text-pink-600 hover:underline">Connected →</a>
-                    } @else {
-                      <span class="text-[11px] text-slate-400 italic">Not set</span>
-                    }
+                <div class="flex items-center justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500">Linked Social Media & Portfolios</h4>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      {{ getStoreSocialLinks(store).length }} Links Added
+                    </span>
                   </div>
 
-                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-700">💼 LinkedIn</span>
-                    @if (store.socialLinks.linkedin) {
-                      <a [href]="store.socialLinks.linkedin" target="_blank" class="text-xs font-bold text-blue-600 hover:underline">Connected →</a>
-                    } @else {
-                      <span class="text-[11px] text-slate-400 italic">Not set</span>
-                    }
-                  </div>
-
-                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span class="text-xs font-semibold text-slate-700">🌐 Portfolio / GitHub</span>
-                    @if (store.socialLinks.portfolio || store.socialLinks.github) {
-                      <a [href]="store.socialLinks.portfolio || store.socialLinks.github" target="_blank" class="text-xs font-bold text-indigo-600 hover:underline">Connected →</a>
-                    } @else {
-                      <span class="text-[11px] text-slate-400 italic">Not set</span>
-                    }
-                  </div>
+                  <a 
+                    routerLink="/create-store"
+                    class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
+                    title="Add or update social media links"
+                  >
+                    <span>+ Add / Manage Links</span>
+                  </a>
                 </div>
+
+                @if (getStoreSocialLinks(store).length > 0) {
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    @for (link of getStoreSocialLinks(store); track link.id || link.name + link.url) {
+                      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-indigo-300 hover:bg-white hover:shadow-xs transition group flex flex-col justify-between gap-2.5">
+                        
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="flex items-center gap-2">
+                            <span class="text-base">{{ getSocialIcon(link.name) }}</span>
+                            <span class="text-xs font-bold text-slate-900">{{ link.name }}</span>
+                          </div>
+                          
+                          <!-- Direct redirect button / badge -->
+                          <a 
+                            [href]="formatUrl(link.url)" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-2xs {{ getSocialBadgeClass(link.name) }}"
+                            title="Directly redirect to {{ link.name }}"
+                          >
+                            <span>Redirect</span>
+                            <svg class="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                          </a>
+                        </div>
+
+                        <!-- Direct clickable Link URL (shows actual destination link, not just 'connected') -->
+                        <div class="pt-1 border-t border-slate-200/60">
+                          <a 
+                            [href]="formatUrl(link.url)" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            class="text-xs text-indigo-600 hover:text-indigo-800 font-medium truncate block flex items-center gap-1.5 hover:underline"
+                            title="{{ link.url }}"
+                          >
+                            <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                            <span class="truncate">{{ displayUrl(link.url) }}</span>
+                          </a>
+                        </div>
+
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                    <span class="text-2xl block mb-1">🔗</span>
+                    <p class="text-xs text-slate-600 font-semibold mb-1">No social media links linked yet</p>
+                    <p class="text-[11px] text-slate-400 mb-3">Add links to your Instagram, LinkedIn, GitHub, or portfolio so neighborhood clients can view your credibility directly.</p>
+                    <a 
+                      routerLink="/create-store"
+                      class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
+                    >
+                      + Add Social Media & Portfolio Links
+                    </a>
+                  </div>
+                }
               </div>
 
               <!-- Skills listed -->
@@ -550,6 +605,15 @@ export class ProfileComponent {
   editArea = this.storeService.currentUser().area;
   editCity = this.storeService.currentUser().city;
   editBio = this.storeService.currentUser().bio;
+
+  formatUrl = formatSocialUrl;
+  displayUrl = displaySocialUrl;
+  getSocialIcon = getSocialIcon;
+  getSocialBadgeClass = getSocialBadgeClass;
+
+  getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
+    return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);
+  }
 
   // Review section for store owner
   isAddingReview = false;
