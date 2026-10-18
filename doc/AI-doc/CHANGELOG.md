@@ -140,6 +140,30 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-client/src/app/services/store.service.spec.ts`
   * `doc/AI-doc/CHANGELOG.md`
 
-
-
-
+### [2026-10-18 21:30:00 IST] - Implemented Store-Level View Count & Owner Engagement Analytics
+* **What Changed:**
+  * Defined `EngagementViewType` (`'daily' | 'weekly' | 'monthly' | 'lifetime'`), `StoreEngagementStats` (`daily`, `weekly`, `monthly`, `lifetime`), `StoreViewRecord`, and `ENGAGEMENT_TYPE_OPTIONS` in [`store.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/store.model.ts).
+  * Added `views?: StoreEngagementStats` and `viewHistory?: StoreViewRecord[]` to `StoreProfile` with helper utilities `getStoreViews` and `getEngagementCount`.
+  * Added initial views data breakdown to all mock stores (`store-1` through `store-6`) and demo stores (`store-user-001`, `store-user-002`) in [`StoreService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.ts).
+  * Added `recordStoreView(storeId, viewerId?)`, `getStoreViews(storeId)`, and `getStoreEngagement(storeId, type)` methods in `StoreService`, ensuring real-time incrementing across daily, weekly, monthly, and lifetime timeframes, appending view history, and syncing to current user store signals.
+  * Initialized view counts (`daily: 1, weekly: 1, monthly: 1, lifetime: 1`) on newly created stores in `createStore`.
+  * Upgraded [`ProfileComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/profile/profile.ts):
+    * Expanded Key Store Metrics Grid to 5 columns including dynamic Store Views display.
+    * Added dedicated **Store Engagement & View Analytics** panel exclusively for Store Owners with interactive timeframe pill selector (`Daily`, `Weekly`, `Monthly`, `Lifetime`).
+    * Implemented detailed view metric card with live timeframe descriptions, 4-pill mini overview grid, and an interactive `+ Simulate Store View (+1)` testing action.
+    * Automatically updates when switching between multiple stores under a user profile.
+  * Upgraded [`StoreDetailComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/store-detail/store-detail.ts):
+    * Automatic view recording upon visiting store details via Angular `effect` and `untracked`.
+    * Added store view count badge (`👁️ X views`) in the storefront header for social proof.
+    * Added interactive Store Owner Engagement Dashboard widget when `isOwner()` is true, enabling the owner to toggle between `daily`, `weekly`, `monthly`, and `lifetime` view counts right on their storefront.
+  * Added view count badge indicator on store cards in [`HomeComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/home/home.ts) discovery list.
+  * Added comprehensive unit test suite in [`store.service.spec.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.spec.ts) validating store initialization, view recording increment, type-based retrieval, creation initialization, and store-level independence for multi-store owners.
+* **Why Changed:** Addressed requirement to implement store-level view count where store owners can inspect engagement metrics filtered by daily, weekly, monthly, and lifetime timeframes.
+* **Files Created/Modified:**
+  * `aaspass-client/src/app/models/store.model.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
+  * `aaspass-client/src/app/pages/profile/profile.ts`
+  * `aaspass-client/src/app/pages/store-detail/store-detail.ts`
+  * `aaspass-client/src/app/pages/home/home.ts`
+  * `aaspass-client/src/app/services/store.service.spec.ts`
+  * `doc/AI-doc/CHANGELOG.md`
