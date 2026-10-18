@@ -10,7 +10,11 @@ import {
   displaySocialUrl, 
   getSocialIcon, 
   getSocialBadgeClass, 
-  normalizeSocialLinks 
+  normalizeSocialLinks,
+  EngagementViewType,
+  ENGAGEMENT_TYPE_OPTIONS,
+  EngagementTypeOption,
+  getEngagementCount
 } from '../../models/store.model';
 
 @Component({
@@ -368,8 +372,8 @@ import {
                 </div>
               </div>
 
-              <!-- Key Store Metrics Grid: Experience, Hourly Rate, Starting Rate, Rating -->
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <!-- Key Store Metrics Grid: Experience, Hourly Rate, Starting Rate, Rating, Views -->
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Experience</span>
                   <span class="text-lg font-black text-slate-900">{{ store.experienceYears }} Years</span>
@@ -389,6 +393,154 @@ import {
                   <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Store Rating</span>
                   <span class="text-lg font-black text-amber-500">⭐ {{ store.rating }} <span class="text-xs font-normal text-slate-400">({{ store.reviewCount }})</span></span>
                 </div>
+
+                <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-center col-span-2 sm:col-span-1">
+                  <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">
+                    Views ({{ getEngagementShortLabel(selectedEngagementType()) }})
+                  </span>
+                  <span class="text-lg font-black text-indigo-900 flex items-center justify-center gap-1">
+                    <span>👁️</span>
+                    <span>{{ getStoreEngagement(store, selectedEngagementType()) | number }}</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Store Level View Count & Engagement Section (Daily, Weekly, Monthly, Lifetime) -->
+              <div class="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-white via-indigo-50/40 to-purple-50/30 border border-indigo-100/90 shadow-xs">
+                
+                <!-- Panel Header with Interactive Type Filter Tabs -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-indigo-100/70">
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xl">📈</span>
+                      <h4 class="text-sm sm:text-base font-black text-slate-900">
+                        Store Engagement & View Analytics
+                      </h4>
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        Store Owner Portal
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Viewer analytics for <strong>{{ store.storeName }}</strong> filtered by selected engagement timeframe
+                    </p>
+                  </div>
+
+                  <!-- Engagement Type Selector Buttons: Daily, Weekly, Monthly, Lifetime -->
+                  <div class="flex items-center gap-1 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/70 self-start sm:self-auto overflow-x-auto scrollbar-none">
+                    @for (opt of engagementOptions; track opt.type) {
+                      <button
+                        type="button"
+                        (click)="selectEngagementType(opt.type)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                        [class.bg-indigo-600]="selectedEngagementType() === opt.type"
+                        [class.text-white]="selectedEngagementType() === opt.type"
+                        [class.shadow-xs]="selectedEngagementType() === opt.type"
+                        [class.text-slate-600]="selectedEngagementType() !== opt.type"
+                        [class.hover:text-slate-900]="selectedEngagementType() !== opt.type"
+                      >
+                        <span>{{ opt.icon }}</span>
+                        <span>{{ opt.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Main View Metrics Display for Selected Type -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  
+                  <!-- Highlight Card showing the active selected timeframe count -->
+                  <div class="md:col-span-2 p-5 rounded-2xl bg-white border border-indigo-200/80 shadow-xs flex flex-col justify-between">
+                    <div>
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center gap-1.5">
+                          <span>{{ selectedEngagementOption().icon }}</span>
+                          <span class="uppercase tracking-wider text-[11px]">{{ selectedEngagementOption().label }} VIEW ENGAGEMENT</span>
+                        </span>
+                        <span class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          Live Store Level
+                        </span>
+                      </div>
+
+                      <div class="my-2">
+                        <div class="flex items-baseline gap-2">
+                          <span class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                            {{ getStoreEngagement(store, selectedEngagementType()) | number }}
+                          </span>
+                          <span class="text-sm sm:text-base font-bold text-indigo-600">
+                            {{ selectedEngagementOption().label }} Views
+                          </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                          {{ selectedEngagementOption().description }}. Neighborhood clients browse local gigs and discover {{ store.storeName }} in this window.
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Quick simulation button for testing real-time increment -->
+                    <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span class="text-[11px] text-slate-400">
+                        Test view counter:
+                      </span>
+                      <button
+                        type="button"
+                        (click)="simulateStoreView(store.id)"
+                        class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95"
+                        title="Simulate a neighborhood client visiting your store page"
+                      >
+                        <span>👁️</span>
+                        <span>+ Simulate Store View (+1)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 4-Type Mini Overview Cards / Fast Switchers -->
+                  <div class="grid grid-cols-2 gap-2.5">
+                    @for (opt of engagementOptions; track opt.type) {
+                      <button
+                        type="button"
+                        (click)="selectEngagementType(opt.type)"
+                        class="p-3 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between"
+                        [class.bg-indigo-600]="selectedEngagementType() === opt.type"
+                        [class.text-white]="selectedEngagementType() === opt.type"
+                        [class.border-indigo-600]="selectedEngagementType() === opt.type"
+                        [class.shadow-xs]="selectedEngagementType() === opt.type"
+                        [class.bg-white]="selectedEngagementType() !== opt.type"
+                        [class.text-slate-700]="selectedEngagementType() !== opt.type"
+                        [class.border-slate-200/80]="selectedEngagementType() !== opt.type"
+                        [class.hover:border-indigo-300]="selectedEngagementType() !== opt.type"
+                      >
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-[10px] uppercase font-bold" [class.text-indigo-200]="selectedEngagementType() === opt.type" [class.text-slate-400]="selectedEngagementType() !== opt.type">
+                            {{ opt.label }}
+                          </span>
+                          <span class="text-xs">{{ opt.icon }}</span>
+                        </div>
+                        <div>
+                          <span class="text-base sm:text-lg font-black block leading-none">
+                            {{ getStoreEngagement(store, opt.type) | number }}
+                          </span>
+                          <span class="text-[10px] font-medium block mt-0.5" [class.text-indigo-100]="selectedEngagementType() === opt.type" [class.text-slate-400]="selectedEngagementType() !== opt.type">
+                            {{ opt.shortLabel }}
+                          </span>
+                        </div>
+                      </button>
+                    }
+                  </div>
+
+                </div>
+
+                <!-- Live simulation toast alert -->
+                @if (viewSimulationToast) {
+                  <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span>✓</span>
+                      <span>{{ viewSimulationToast }}</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-600 font-bold">Live Counter Bumped</span>
+                  </div>
+                }
+
               </div>
 
               <!-- Linked Social Media & Portfolios for this specific store -->
@@ -797,6 +949,39 @@ export class ProfileComponent {
 
     setTimeout(() => {
       this.reviewSuccessMessage = null;
+    }, 4000);
+  }
+
+  // Engagement tracking state for store owner (Daily, Weekly, Monthly, Lifetime)
+  selectedEngagementType = signal<EngagementViewType>('daily');
+  engagementOptions = ENGAGEMENT_TYPE_OPTIONS;
+  viewSimulationToast: string | null = null;
+
+  selectedEngagementOption = computed<EngagementTypeOption>(() => {
+    const t = this.selectedEngagementType();
+    return this.engagementOptions.find(o => o.type === t) || this.engagementOptions[0];
+  });
+
+  selectEngagementType(type: EngagementViewType): void {
+    this.selectedEngagementType.set(type);
+  }
+
+  getStoreEngagement(store: StoreProfile, type: EngagementViewType): number {
+    return getEngagementCount(store, type);
+  }
+
+  getEngagementShortLabel(type: EngagementViewType): string {
+    const opt = this.engagementOptions.find(o => o.type === type);
+    return opt?.shortLabel || type;
+  }
+
+  simulateStoreView(storeId: string): void {
+    this.storeService.recordStoreView(storeId);
+    const store = this.storeService.getStoreById(storeId);
+    const storeName = store?.storeName || 'Store';
+    this.viewSimulationToast = `Recorded 1 new view for "${storeName}". Daily, weekly, monthly & lifetime updated!`;
+    setTimeout(() => {
+      this.viewSimulationToast = null;
     }, 4000);
   }
 }

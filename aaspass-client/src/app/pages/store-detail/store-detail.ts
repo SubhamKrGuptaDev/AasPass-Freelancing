@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal, effect, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +12,11 @@ import {
   displaySocialUrl, 
   getSocialIcon, 
   getSocialBadgeClass, 
-  normalizeSocialLinks 
+  normalizeSocialLinks,
+  EngagementViewType,
+  ENGAGEMENT_TYPE_OPTIONS,
+  EngagementTypeOption,
+  getEngagementCount
 } from '../../models/store.model';
 
 @Component({
@@ -73,6 +77,11 @@ import {
                         <span class="text-xs text-slate-400 hidden sm:inline">•</span>
                         <span class="text-xs font-medium text-slate-600 whitespace-nowrap">
                           📍 {{ s.distanceKm }} km away (Serves up to {{ s.serviceRadiusKm }} km)
+                        </span>
+                        <span class="text-xs text-slate-400 hidden sm:inline">•</span>
+                        <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md whitespace-nowrap flex items-center gap-1">
+                          <span>👁️</span>
+                          <span>{{ (s.views?.lifetime || 0) | number }} views</span>
                         </span>
                       </div>
                     </div>
@@ -198,15 +207,89 @@ import {
                   </div>
                 </div>
 
-                <!-- Review Form or Store Owner Notice -->
+                <!-- Review Form or Store Owner Notice & Engagement Analytics -->
                 @if (isOwner()) {
-                  <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 mb-6 flex items-start gap-3">
-                    <span class="text-xl">👑</span>
-                    <div>
-                      <h4 class="text-xs font-bold text-indigo-950">Store Owner Dashboard View</h4>
-                      <p class="text-xs text-indigo-800 leading-relaxed mt-0.5">
-                        You are the owner of this store. Customer ratings (min 1.0 to max 5.0) and messages left by clients appear below.
-                      </p>
+                  <div class="p-5 rounded-3xl bg-gradient-to-br from-indigo-50/90 via-purple-50/50 to-pink-50/40 border border-indigo-100 mb-6 space-y-4 shadow-xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-indigo-100/70">
+                      <div class="flex items-start gap-3">
+                        <span class="text-xl">👑</span>
+                        <div>
+                          <div class="flex items-center gap-2">
+                            <h4 class="text-xs font-bold text-indigo-950">Store Owner Dashboard View</h4>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">Owner Portal</span>
+                          </div>
+                          <p class="text-xs text-indigo-800 leading-relaxed mt-0.5">
+                            You are viewing your own storefront. Track your neighborhood engagement views across timeframes below.
+                          </p>
+                        </div>
+                      </div>
+
+                      <a 
+                        routerLink="/profile" 
+                        class="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 transition shadow-2xs self-start sm:self-auto flex items-center gap-1"
+                      >
+                        <span>⚙️ Manage in Profile →</span>
+                      </a>
+                    </div>
+
+                    <!-- Store Engagement View Analytics for Owner -->
+                    <div class="bg-white/95 backdrop-blur-xs rounded-2xl p-4 border border-indigo-100/80 shadow-2xs">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                        <div>
+                          <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">
+                            Store Views by Type
+                          </span>
+                          <span class="text-xs font-bold text-slate-800">
+                            Active Timeframe: <span class="text-indigo-600 capitalize font-extrabold">{{ selectedEngagementType() }}</span>
+                          </span>
+                        </div>
+
+                        <!-- Type Selector: Daily, Weekly, Monthly, Lifetime -->
+                        <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/60 overflow-x-auto scrollbar-none">
+                          @for (opt of engagementOptions; track opt.type) {
+                            <button
+                              type="button"
+                              (click)="selectEngagementType(opt.type)"
+                              class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                              [class.bg-indigo-600]="selectedEngagementType() === opt.type"
+                              [class.text-white]="selectedEngagementType() === opt.type"
+                              [class.shadow-2xs]="selectedEngagementType() === opt.type"
+                              [class.text-slate-600]="selectedEngagementType() !== opt.type"
+                              [class.hover:text-slate-900]="selectedEngagementType() !== opt.type"
+                            >
+                              <span>{{ opt.icon }}</span>
+                              <span>{{ opt.label }}</span>
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- 4-Metrics Quick Grid -->
+                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        @for (opt of engagementOptions; track opt.type) {
+                          <div 
+                            (click)="selectEngagementType(opt.type)"
+                            class="p-2.5 rounded-xl border transition cursor-pointer"
+                            [class.bg-indigo-50]="selectedEngagementType() === opt.type"
+                            [class.border-indigo-300]="selectedEngagementType() === opt.type"
+                            [class.ring-2]="selectedEngagementType() === opt.type"
+                            [class.ring-indigo-500/20]="selectedEngagementType() === opt.type"
+                            [class.bg-slate-50]="selectedEngagementType() !== opt.type"
+                            [class.border-slate-100]="selectedEngagementType() !== opt.type"
+                          >
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                              {{ opt.label }}
+                            </span>
+                            <span class="text-base font-black text-slate-900">
+                              {{ getStoreEngagement(s, opt.type) | number }}
+                            </span>
+                            <span class="text-[9px] text-slate-400 block">
+                              {{ opt.shortLabel }}
+                            </span>
+                          </div>
+                        }
+                      </div>
+
                     </div>
                   </div>
                 } @else {
@@ -514,6 +597,33 @@ export class StoreDetailComponent {
     const userStores = this.storeService.userStores();
     return s.userId === currentUserId || userStores.some(us => us.id === s.id) || this.storeService.currentUser().store?.id === s.id;
   });
+
+  // Engagement tracking state for store owner
+  selectedEngagementType = signal<EngagementViewType>('lifetime');
+  engagementOptions = ENGAGEMENT_TYPE_OPTIONS;
+
+  selectEngagementType(type: EngagementViewType): void {
+    this.selectedEngagementType.set(type);
+  }
+
+  getStoreEngagement(store: StoreProfile, type: EngagementViewType): number {
+    return getEngagementCount(store, type);
+  }
+
+  private lastRecordedStoreId: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const s = this.store();
+      const currentId = s?.id;
+      if (currentId && this.lastRecordedStoreId !== currentId) {
+        this.lastRecordedStoreId = currentId;
+        untracked(() => {
+          this.storeService.recordStoreView(currentId);
+        });
+      }
+    });
+  }
 
   setRating(val: number): void {
     const num = Number(val);

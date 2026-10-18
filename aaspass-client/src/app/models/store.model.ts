@@ -97,6 +97,49 @@ export interface StoreReview {
   date: string;
 }
 
+export type EngagementViewType = 'daily' | 'weekly' | 'monthly' | 'lifetime';
+
+export interface StoreEngagementStats {
+  daily: number;
+  weekly: number;
+  monthly: number;
+  lifetime: number;
+}
+
+export interface StoreViewRecord {
+  id: string;
+  storeId: string;
+  timestamp: string; // ISO 8601 string
+  viewerId?: string;
+}
+
+export interface EngagementTypeOption {
+  type: EngagementViewType;
+  label: string;
+  icon: string;
+  shortLabel: string;
+  description: string;
+}
+
+export const ENGAGEMENT_TYPE_OPTIONS: EngagementTypeOption[] = [
+  { type: 'daily', label: 'Daily', icon: '📅', shortLabel: 'Today', description: 'Store views and discovery within the last 24 hours' },
+  { type: 'weekly', label: 'Weekly', icon: '📆', shortLabel: 'This Week', description: 'Store views and discovery across the last 7 days' },
+  { type: 'monthly', label: 'Monthly', icon: '🗓️', shortLabel: 'This Month', description: 'Store views and discovery across the last 30 days' },
+  { type: 'lifetime', label: 'Lifetime', icon: '♾️', shortLabel: 'All Time', description: 'All-time cumulative store visits since opening' }
+];
+
+export function getStoreViews(store?: StoreProfile): StoreEngagementStats {
+  if (!store || !store.views) {
+    return { daily: 0, weekly: 0, monthly: 0, lifetime: 0 };
+  }
+  return store.views;
+}
+
+export function getEngagementCount(store?: StoreProfile, type: EngagementViewType = 'lifetime'): number {
+  const views = getStoreViews(store);
+  return views[type] ?? views.lifetime ?? 0;
+}
+
 export interface StoreProfile {
   id: string;
   userId: string;
@@ -119,6 +162,8 @@ export interface StoreProfile {
   rating: number;
   reviewCount: number;
   reviews?: StoreReview[];
+  views?: StoreEngagementStats;
+  viewHistory?: StoreViewRecord[];
   avatarUrl: string;
   bannerGradient: string;
   isAvailable: boolean;

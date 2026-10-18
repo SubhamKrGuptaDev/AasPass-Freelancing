@@ -277,4 +277,111 @@ describe('StoreService Reviews & Ratings', () => {
     expect(demo2?.storeName).toBe('Aman Lens & Aerial Films');
   });
 
+  describe('Store-Level View Count & Engagement (Daily, Weekly, Monthly, Lifetime)', () => {
+    it('should initialize all mock stores with views breakdown (daily, weekly, monthly, lifetime)', () => {
+      const stores = service.stores();
+      expect(stores.length).toBeGreaterThan(0);
+
+      for (const store of stores) {
+        expect(store.views).toBeDefined();
+        expect(store.views?.daily).toBeGreaterThanOrEqual(0);
+        expect(store.views?.weekly).toBeGreaterThanOrEqual(store.views?.daily || 0);
+        expect(store.views?.monthly).toBeGreaterThanOrEqual(store.views?.weekly || 0);
+        expect(store.views?.lifetime).toBeGreaterThanOrEqual(store.views?.monthly || 0);
+      }
+    });
+
+    it('should record store view and increment daily, weekly, monthly, and lifetime counts', () => {
+      const storeId = 'store-1';
+      const beforeViews = service.getStoreViews(storeId);
+      const initialDaily = beforeViews.daily;
+      const initialWeekly = beforeViews.weekly;
+      const initialMonthly = beforeViews.monthly;
+      const initialLifetime = beforeViews.lifetime;
+
+      service.recordStoreView(storeId, 'test-viewer-123');
+
+      const afterViews = service.getStoreViews(storeId);
+      expect(afterViews.daily).toBe(initialDaily + 1);
+      expect(afterViews.weekly).toBe(initialWeekly + 1);
+      expect(afterViews.monthly).toBe(initialMonthly + 1);
+      expect(afterViews.lifetime).toBe(initialLifetime + 1);
+
+      const store = service.getStoreById(storeId);
+      expect(store?.viewHistory).toBeDefined();
+      expect(store?.viewHistory?.length).toBeGreaterThan(0);
+      expect(store?.viewHistory?.[0].viewerId).toBe('test-viewer-123');
+      expect(store?.viewHistory?.[0].storeId).toBe(storeId);
+      expect(store?.viewHistory?.[0].timestamp).toBeTruthy();
+    });
+
+    it('should retrieve engagement view count accurately based on selected type', () => {
+      const storeId = 'store-2';
+      const views = service.getStoreViews(storeId);
+
+      expect(service.getStoreEngagement(storeId, 'daily')).toBe(views.daily);
+      expect(service.getStoreEngagement(storeId, 'weekly')).toBe(views.weekly);
+      expect(service.getStoreEngagement(storeId, 'monthly')).toBe(views.monthly);
+      expect(service.getStoreEngagement(storeId, 'lifetime')).toBe(views.lifetime);
+    });
+
+    it('should initialize view count and record when creating a new store', () => {
+      const newStore = service.createStore({
+        ownerName: 'Test Owner',
+        storeName: 'Test Engagement Store',
+        tagline: 'Store for analytics test',
+        category: 'Web & Tech',
+        skills: ['Angular'],
+        experienceYears: 1,
+        hourlyRate: 500,
+        startingPrice: 300,
+        area: 'Indiranagar',
+        city: 'Bengaluru',
+        distanceKm: 0.5,
+        serviceRadiusKm: 5,
+        socialMediaLinks: [],
+        description: 'Testing store view counts',
+        services: [],
+        avatarUrl: 'https://example.com/avatar.jpg',
+        bannerGradient: 'from-blue-600 to-indigo-700',
+        isAvailable: true
+      });
+
+      expect(newStore.views).toBeDefined();
+      expect(newStore.views?.daily).toBe(1);
+      expect(newStore.views?.weekly).toBe(1);
+      expect(newStore.views?.monthly).toBe(1);
+      expect(newStore.views?.lifetime).toBe(1);
+      expect(newStore.viewHistory?.length).toBe(1);
+    });
+
+    it('should track view counts independently at store level for multi-store owners', () => {
+      service.toggleDemoStore();
+      const userStores = service.userStores();
+      expect(userStores.length).toBe(2);
+
+      const storeAId = userStores[0].id;
+      const storeBId = userStores[1].id;
+
+      const storeABefore = service.getStoreViews(storeAId);
+      const storeBBefore = service.getStoreViews(storeBId);
+
+      // Record view specifically on Store A
+      service.recordStoreView(storeAId);
+
+      const storeAAfter = service.getStoreViews(storeAId);
+      const storeBAfter = service.getStoreViews(storeBId);
+
+      // Store A incremented
+      expect(storeAAfter.daily).toBe(storeABefore.daily + 1);
+      expect(storeAAfter.lifetime).toBe(storeABefore.lifetime + 1);
+
+      // Store B remained unchanged!
+      expect(storeBAfter.daily).toBe(storeBBefore.daily);
+      expect(storeBAfter.weekly).toBe(storeBBefore.weekly);
+      expect(storeBAfter.monthly).toBe(storeBBefore.monthly);
+      expect(storeBAfter.lifetime).toBe(storeBBefore.lifetime);
+    });
+  });
+
 });

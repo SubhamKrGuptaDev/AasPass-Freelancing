@@ -1,5 +1,14 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { StoreProfile, StoreReview, normalizeSocialLinks } from '../models/store.model';
+import { 
+  StoreProfile, 
+  StoreReview, 
+  normalizeSocialLinks,
+  EngagementViewType,
+  StoreEngagementStats,
+  StoreViewRecord,
+  getStoreViews,
+  getEngagementCount
+} from '../models/store.model';
 import { UserProfile } from '../models/user.model';
 
 @Injectable({
@@ -103,6 +112,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-pink-500 to-rose-600',
       isAvailable: true,
+      views: { daily: 42, weekly: 285, monthly: 1140, lifetime: 3820 },
       memberSince: 'Jan 2026',
       creationDateTime: '2026-01-10T08:30:00.000Z',
       lastUpdateDateTime: '2026-03-12T14:20:00.000Z'
@@ -163,6 +173,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-blue-600 to-indigo-700',
       isAvailable: true,
+      views: { daily: 28, weekly: 194, monthly: 810, lifetime: 2450 },
       memberSince: 'Feb 2026',
       creationDateTime: '2026-02-01T11:15:00.000Z',
       lastUpdateDateTime: '2026-03-14T09:45:00.000Z'
@@ -220,6 +231,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-amber-500 to-orange-600',
       isAvailable: true,
+      views: { daily: 35, weekly: 240, monthly: 980, lifetime: 2900 },
       memberSince: 'Nov 2025',
       creationDateTime: '2025-11-20T16:00:00.000Z',
       lastUpdateDateTime: '2026-03-15T12:00:00.000Z'
@@ -275,6 +287,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-emerald-500 to-teal-700',
       isAvailable: true,
+      views: { daily: 19, weekly: 130, monthly: 540, lifetime: 1680 },
       memberSince: 'Dec 2025',
       creationDateTime: '2025-12-05T13:45:00.000Z',
       lastUpdateDateTime: '2026-03-10T17:30:00.000Z'
@@ -331,6 +344,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-purple-600 to-violet-800',
       isAvailable: true,
+      views: { daily: 51, weekly: 345, monthly: 1420, lifetime: 4120 },
       memberSince: 'Jan 2026',
       creationDateTime: '2026-01-18T10:20:00.000Z',
       lastUpdateDateTime: '2026-03-11T15:10:00.000Z'
@@ -388,6 +402,7 @@ export class StoreService {
       avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=160&q=80',
       bannerGradient: 'from-cyan-600 to-blue-800',
       isAvailable: true,
+      views: { daily: 33, weekly: 215, monthly: 890, lifetime: 2600 },
       memberSince: 'Oct 2025',
       creationDateTime: '2025-10-05T09:00:00.000Z',
       lastUpdateDateTime: '2026-03-13T11:25:00.000Z'
@@ -487,6 +502,19 @@ export class StoreService {
       date: 'Just now'
     };
 
+    const initialViews: StoreEngagementStats = storeData.views || {
+      daily: 1,
+      weekly: 1,
+      monthly: 1,
+      lifetime: 1
+    };
+    const initialViewRecord: StoreViewRecord = {
+      id: 'view-init-' + Date.now(),
+      storeId: newStoreId,
+      timestamp: nowIso,
+      viewerId: user.id
+    };
+
     const newStore: StoreProfile = {
       ...storeData,
       socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeData.socialLinks),
@@ -495,6 +523,8 @@ export class StoreService {
       rating: 5.0,
       reviewCount: 1,
       reviews: [initialReview],
+      views: initialViews,
+      viewHistory: storeData.viewHistory || [initialViewRecord],
       memberSince: 'Just now',
       creationDateTime: storeData.creationDateTime || nowIso,
       lastUpdateDateTime: storeData.lastUpdateDateTime || nowIso
@@ -569,6 +599,73 @@ export class StoreService {
     return newReview;
   }
 
+  // Record view count at store level (increments daily, weekly, monthly, lifetime counters)
+  recordStoreView(storeId: string, viewerId?: string): void {
+    const nowIso = new Date().toISOString();
+    const newRecord: StoreViewRecord = {
+      id: 'view-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      storeId,
+      timestamp: nowIso,
+      viewerId: viewerId || 'guest'
+    };
+
+    // Ensure store exists in master stores signal list
+    if (!this.stores().some(s => s.id === storeId)) {
+      const fallbackStore = this.getStoreById(storeId);
+      if (fallbackStore) {
+        this.stores.update(list => [fallbackStore, ...list]);
+      }
+    }
+
+    this.stores.update(list => list.map(store => {
+      if (store.id !== storeId) return store;
+      const currentViews = getStoreViews(store);
+      const updatedViews: StoreEngagementStats = {
+        daily: (currentViews.daily || 0) + 1,
+        weekly: (currentViews.weekly || 0) + 1,
+        monthly: (currentViews.monthly || 0) + 1,
+        lifetime: (currentViews.lifetime || 0) + 1
+      };
+      const history = store.viewHistory ? [newRecord, ...store.viewHistory] : [newRecord];
+
+      return {
+        ...store,
+        views: updatedViews,
+        viewHistory: history,
+        lastUpdateDateTime: nowIso
+      };
+    }));
+
+    // If this store belongs to the current user, update currentUser as well
+    const user = this.currentUser();
+    const userStoreIds = (user.stores || (user.store ? [user.store] : [])).map(s => s.id);
+    if (userStoreIds.includes(storeId)) {
+      const updatedStore = this.getStoreById(storeId);
+      if (updatedStore) {
+        this.currentUser.update(u => {
+          const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
+          return {
+            ...u,
+            store: u.store?.id === storeId ? updatedStore : u.store,
+            stores: updatedStores
+          };
+        });
+      }
+    }
+  }
+
+  // Get view metrics for a specific store
+  getStoreViews(storeId: string): StoreEngagementStats {
+    const store = this.getStoreById(storeId);
+    return getStoreViews(store);
+  }
+
+  // Get specific engagement count by type: 'daily' | 'weekly' | 'monthly' | 'lifetime'
+  getStoreEngagement(storeId: string, type: EngagementViewType): number {
+    const store = this.getStoreById(storeId);
+    return getEngagementCount(store, type);
+  }
+
   // Helper to build first demo store
   buildDemoStore1(user?: UserProfile): StoreProfile {
     const u = user || this.currentUser();
@@ -635,6 +732,7 @@ export class StoreService {
       avatarUrl: u.avatarUrl,
       bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
       isAvailable: true,
+      views: { daily: 18, weekly: 124, monthly: 480, lifetime: 1540 },
       memberSince: 'March 2026',
       creationDateTime: '2026-03-01T10:00:00.000Z',
       lastUpdateDateTime: '2026-03-15T18:30:00.000Z'
@@ -697,6 +795,7 @@ export class StoreService {
       avatarUrl: u.avatarUrl,
       bannerGradient: 'from-amber-500 via-rose-600 to-indigo-700',
       isAvailable: true,
+      views: { daily: 12, weekly: 86, monthly: 320, lifetime: 890 },
       memberSince: 'March 2026',
       creationDateTime: '2026-03-05T14:00:00.000Z',
       lastUpdateDateTime: '2026-03-16T11:00:00.000Z'

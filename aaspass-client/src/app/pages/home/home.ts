@@ -169,9 +169,15 @@ import { StoreProfile } from '../../models/store.model';
                       <span>{{ store.distanceKm }} km away • {{ store.area }}</span>
                     </span>
 
-                    <span class="text-xs font-bold text-amber-500 flex items-center gap-1">
-                      ⭐ {{ store.rating }} <span class="text-slate-400 font-normal">({{ store.reviewCount }})</span>
-                    </span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-amber-500 flex items-center gap-1">
+                        ⭐ {{ store.rating }} <span class="text-slate-400 font-normal">({{ store.reviewCount }})</span>
+                      </span>
+                      <span class="text-[11px] font-semibold text-slate-600 flex items-center gap-0.5 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100" title="Store view count">
+                        <span>👁️</span>
+                        <span>{{ store.views?.lifetime || 0 }}</span>
+                      </span>
+                    </div>
                   </div>
 
                   <!-- Store & Owner Details -->
