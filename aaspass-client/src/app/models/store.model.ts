@@ -6,7 +6,7 @@ export interface StoreServiceItem {
   description?: string;
 }
 
-export interface SocialLinks {
+export interface UserSocialLinks {
   instagram?: string;
   linkedin?: string;
   github?: string;
@@ -14,6 +14,9 @@ export interface SocialLinks {
   twitter?: string;
   youtube?: string;
 }
+
+// Backward-compatible alias
+export type SocialLinks = UserSocialLinks;
 
 export interface SocialMediaLink {
   id: string;
@@ -70,19 +73,19 @@ export function getSocialBadgeClass(name: string): string {
 
 export function normalizeSocialLinks(
   socialMediaLinks?: SocialMediaLink[],
-  socialLinks?: SocialLinks
+  userSocialLinks?: UserSocialLinks
 ): SocialMediaLink[] {
   if (socialMediaLinks && socialMediaLinks.length > 0) {
     return socialMediaLinks;
   }
   const result: SocialMediaLink[] = [];
-  if (socialLinks) {
-    if (socialLinks.instagram) result.push({ id: 'sm-ig', name: 'Instagram', url: socialLinks.instagram });
-    if (socialLinks.linkedin) result.push({ id: 'sm-li', name: 'LinkedIn', url: socialLinks.linkedin });
-    if (socialLinks.github) result.push({ id: 'sm-gh', name: 'GitHub', url: socialLinks.github });
-    if (socialLinks.portfolio) result.push({ id: 'sm-pf', name: 'Portfolio', url: socialLinks.portfolio });
-    if (socialLinks.youtube) result.push({ id: 'sm-yt', name: 'YouTube', url: socialLinks.youtube });
-    if (socialLinks.twitter) result.push({ id: 'sm-tw', name: 'Twitter / X', url: socialLinks.twitter });
+  if (userSocialLinks) {
+    if (userSocialLinks.instagram) result.push({ id: 'sm-ig', name: 'Instagram', url: userSocialLinks.instagram });
+    if (userSocialLinks.linkedin) result.push({ id: 'sm-li', name: 'LinkedIn', url: userSocialLinks.linkedin });
+    if (userSocialLinks.github) result.push({ id: 'sm-gh', name: 'GitHub', url: userSocialLinks.github });
+    if (userSocialLinks.portfolio) result.push({ id: 'sm-pf', name: 'Portfolio', url: userSocialLinks.portfolio });
+    if (userSocialLinks.youtube) result.push({ id: 'sm-yt', name: 'YouTube', url: userSocialLinks.youtube });
+    if (userSocialLinks.twitter) result.push({ id: 'sm-tw', name: 'Twitter / X', url: userSocialLinks.twitter });
   }
   return result;
 }
@@ -155,7 +158,7 @@ export interface StoreProfile {
   city: string;
   distanceKm: number;
   serviceRadiusKm: number;
-  socialLinks?: SocialLinks;
+  userSocialLinks?: UserSocialLinks;
   socialMediaLinks: SocialMediaLink[];
   description: string;
   services: StoreServiceItem[];

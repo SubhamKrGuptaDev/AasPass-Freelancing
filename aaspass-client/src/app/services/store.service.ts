@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { 
-  StoreProfile, 
-  StoreReview, 
+import {
+  StoreProfile,
+  StoreReview,
   normalizeSocialLinks,
   EngagementViewType,
   StoreEngagementStats,
@@ -86,7 +86,7 @@ export class StoreService {
         { id: 'sm-1-3', name: 'Portfolio', url: 'https://priyacrafts.design' },
         { id: 'sm-1-4', name: 'YouTube', url: 'https://youtube.com/@priyaedits' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         instagram: 'https://instagram.com/priya_edits',
         linkedin: 'https://linkedin.com/in/priyanair',
         portfolio: 'https://priyacrafts.design',
@@ -155,7 +155,7 @@ export class StoreService {
         { id: 'sm-2-3', name: 'Portfolio', url: 'https://rohansprint.dev' },
         { id: 'sm-2-4', name: 'Twitter / X', url: 'https://x.com/rohandev' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         github: 'https://github.com/rohandev',
         linkedin: 'https://linkedin.com/in/rohandeshmukh',
         portfolio: 'https://rohansprint.dev',
@@ -215,7 +215,7 @@ export class StoreService {
         { id: 'sm-3-2', name: 'Portfolio', url: 'https://ananyasen.photos' },
         { id: 'sm-3-3', name: 'Behance', url: 'https://behance.net/ananyasen' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         instagram: 'https://instagram.com/ananyas_lens',
         portfolio: 'https://ananyasen.photos'
       },
@@ -272,7 +272,7 @@ export class StoreService {
         { id: 'sm-4-1', name: 'LinkedIn', url: 'https://linkedin.com/in/vikram-joshi-tutor' },
         { id: 'sm-4-2', name: 'GitHub', url: 'https://github.com/vikramj-edu' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         linkedin: 'https://linkedin.com/in/vikram-joshi-tutor',
         github: 'https://github.com/vikramj-edu'
       },
@@ -329,7 +329,7 @@ export class StoreService {
         { id: 'sm-5-2', name: 'Behance', url: 'https://behance.net/neha_brandcanvas' },
         { id: 'sm-5-3', name: 'Dribbble', url: 'https://dribbble.com/brandcanvas_neha' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         instagram: 'https://instagram.com/brandcanvas_neha',
         portfolio: 'https://behance.net/neha_brandcanvas'
       },
@@ -386,7 +386,7 @@ export class StoreService {
         { id: 'sm-6-2', name: 'Twitter / X', url: 'https://x.com/fixitgeeks' },
         { id: 'sm-6-3', name: 'LinkedIn', url: 'https://linkedin.com/in/karthik-rao-tech' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         youtube: 'https://youtube.com/@fixitgeeks',
         twitter: 'https://x.com/fixitgeeks',
         linkedin: 'https://linkedin.com/in/karthik-rao-tech'
@@ -534,7 +534,7 @@ export class StoreService {
 
     const newStore: StoreProfile = {
       ...storeData,
-      socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeData.socialLinks),
+      socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeData.userSocialLinks),
       id: newStoreId,
       userId: user.id,
       rating: 5.0,
@@ -707,7 +707,7 @@ export class StoreService {
         { id: 'sm-u-3', name: 'Portfolio', url: 'https://amansharma.dev' },
         { id: 'sm-u-4', name: 'Instagram', url: 'https://instagram.com/aman_codes' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         github: 'https://github.com/amansharma',
         linkedin: 'https://linkedin.com/in/amansharma',
         portfolio: 'https://amansharma.dev',
@@ -779,7 +779,7 @@ export class StoreService {
         { id: 'sm-u2-2', name: 'YouTube', url: 'https://youtube.com/@amanaerialfilms' },
         { id: 'sm-u2-3', name: 'Portfolio', url: 'https://amanaerial.film' }
       ],
-      socialLinks: {
+      userSocialLinks: {
         instagram: 'https://instagram.com/aman_aerial',
         youtube: 'https://youtube.com/@amanaerialfilms',
         portfolio: 'https://amanaerial.film'
@@ -867,9 +867,9 @@ export class StoreService {
       return {
         ...s,
         ...updated,
-        socialMediaLinks: updated.socialMediaLinks 
-          ? normalizeSocialLinks(updated.socialMediaLinks, updated.socialLinks || s.socialLinks)
-          : (updated.socialLinks ? normalizeSocialLinks(s.socialMediaLinks, updated.socialLinks) : s.socialMediaLinks),
+        socialMediaLinks: updated.socialMediaLinks
+          ? normalizeSocialLinks(updated.socialMediaLinks, updated.userSocialLinks || s.userSocialLinks)
+          : (updated.userSocialLinks ? normalizeSocialLinks(s.socialMediaLinks, updated.userSocialLinks) : s.socialMediaLinks),
         lastUpdateDateTime: nowIso
       };
     }));
@@ -880,7 +880,7 @@ export class StoreService {
     this.currentUser.update(u => {
       const currentStores = u.stores || (u.store ? [u.store] : []);
       const existsInUser = currentStores.some(s => s.id === targetStoreId);
-      const updatedStores = existsInUser 
+      const updatedStores = existsInUser
         ? currentStores.map(s => s.id === targetStoreId ? updatedStore : s)
         : [updatedStore, ...currentStores];
       const isPrimary = u.store?.id === targetStoreId || !u.store;

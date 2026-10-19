@@ -600,7 +600,7 @@ export class StoreDetailComponent {
   getSocialBadgeClass = getSocialBadgeClass;
 
   getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
-    return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);
+    return normalizeSocialLinks(store.socialMediaLinks, store.userSocialLinks);
   }
 
   getCurrentUrl(): string {

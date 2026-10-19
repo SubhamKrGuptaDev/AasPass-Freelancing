@@ -7,7 +7,7 @@ import {
   StoreProfile, 
   StoreServiceItem, 
   SocialMediaLink, 
-  SocialLinks, 
+  UserSocialLinks,
   formatSocialUrl, 
   displaySocialUrl, 
   getSocialIcon, 
@@ -563,7 +563,7 @@ export class CreateStoreComponent implements OnInit {
         this.formData.description = storeToEdit.description;
         this.skillsInput = storeToEdit.skills.join(', ');
         
-        const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.socialLinks);
+        const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.userSocialLinks);
         if (normalized && normalized.length > 0) {
           this.socialMediaLinks = normalized.map(l => ({ ...l }));
         } else {
@@ -634,15 +634,15 @@ export class CreateStoreComponent implements OnInit {
       }))
       .filter(l => l.name.length > 0 && l.url.length > 0);
 
-    const legacySocialLinks: SocialLinks = {};
+    const userSocialLinks: UserSocialLinks = {};
     for (const link of validSocialLinks) {
       const n = link.name.toLowerCase();
-      if (n.includes('instagram')) legacySocialLinks.instagram = formatSocialUrl(link.url);
-      else if (n.includes('linkedin')) legacySocialLinks.linkedin = formatSocialUrl(link.url);
-      else if (n.includes('github')) legacySocialLinks.github = formatSocialUrl(link.url);
-      else if (n.includes('portfolio') || n.includes('website')) legacySocialLinks.portfolio = formatSocialUrl(link.url);
-      else if (n.includes('youtube')) legacySocialLinks.youtube = formatSocialUrl(link.url);
-      else if (n.includes('twitter') || n.includes('x.com')) legacySocialLinks.twitter = formatSocialUrl(link.url);
+      if (n.includes('instagram')) userSocialLinks.instagram = formatSocialUrl(link.url);
+      else if (n.includes('linkedin')) userSocialLinks.linkedin = formatSocialUrl(link.url);
+      else if (n.includes('github')) userSocialLinks.github = formatSocialUrl(link.url);
+      else if (n.includes('portfolio') || n.includes('website')) userSocialLinks.portfolio = formatSocialUrl(link.url);
+      else if (n.includes('youtube')) userSocialLinks.youtube = formatSocialUrl(link.url);
+      else if (n.includes('twitter') || n.includes('x.com')) userSocialLinks.twitter = formatSocialUrl(link.url);
     }
 
     if (this.isEditing && this.editingStoreId) {
@@ -658,7 +658,7 @@ export class CreateStoreComponent implements OnInit {
         city: this.formData.city,
         serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
         socialMediaLinks: validSocialLinks,
-        socialLinks: legacySocialLinks,
+        userSocialLinks: userSocialLinks,
         description: this.formData.description
       }, this.editingStoreId);
       this.router.navigate(['/stores', this.editingStoreId]);
@@ -696,7 +696,7 @@ export class CreateStoreComponent implements OnInit {
       distanceKm: 0.5,
       serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,
-      socialLinks: legacySocialLinks,
+      userSocialLinks: userSocialLinks,
       description: this.formData.description,
       services: initialServices,
       avatarUrl: this.storeService.currentUser().avatarUrl,

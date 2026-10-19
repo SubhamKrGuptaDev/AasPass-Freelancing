@@ -55,16 +55,6 @@ import {
               </button>
             </div>
 
-            <!-- Sign Out Button -->
-            <button 
-              type="button"
-              (click)="authService.logout()"
-              class="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              title="Sign out of your account"
-            >
-              <span>🚪</span>
-              <span>Sign Out</span>
-            </button>
           </div>
         </div>
 
@@ -900,7 +890,7 @@ export class ProfileComponent {
   }
 
   getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
-    return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);
+    return normalizeSocialLinks(store.socialMediaLinks, store.userSocialLinks);
   }
 
   // Review section for store owner

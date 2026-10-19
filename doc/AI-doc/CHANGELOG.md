@@ -197,3 +197,74 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-client/src/app/pages/store-detail/store-detail.ts`
   * `aaspass-client/src/app/pages/profile/profile.ts`
   * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-19 10:10:00 IST] - Implemented JPA Base Superclasses & Domain Entities for Backend
+* **What Changed:**
+  * **Superclass 1 (`BaseIdEntity`):** Designed `@MappedSuperclass` `BaseIdEntity` declaring auto-increment `id` with getter-only access (`getId()`) and strictly NO setter, preventing ID mutation across all entities.
+  * **Superclass 2 (`BaseAuditEntity`):** Designed `@MappedSuperclass` `BaseAuditEntity` extending `BaseIdEntity`. Declares `creationDateTime` and `lastUpdatedDateTime` with automatic timestamp lifecycle callbacks (`@PrePersist`, `@PreUpdate`) and getters/setters.
+  * **Domain Entities (Mirroring Client-Side Models):**
+    * `User` (table `users`): Maps `UserProfile` & `UserAccount` with identity/KYC fields (`aadharNumber`, `panNumber`), password encryption placeholder, bio, area, city, and `@OneToMany` multi-store association.
+    * `Store` (table `stores`): Maps `StoreProfile` with category, headline, element collection `skills`, pricing, proximity radius, owner name, ratings, embeddable `StoreEngagementStats` views, embeddable `SocialLinks`, and bidirectional associations.
+    * `StoreServiceItem` (table `store_services`): Individual service packages with pricing, duration, and details.
+    * `SocialMediaLink` (table `store_social_links`): Dynamic multi-channel social & portfolio links with platform name and URL.
+    * `StoreReview` (table `store_reviews`): Client ratings [1.0 - 5.0] and feedback.
+    * `StoreViewRecord` (table `store_view_records`): Timestamped view history logs for analytics.
+    * `StoreEngagementStats` (Embeddable): Daily, weekly, monthly, and lifetime view counters.
+    * `SocialLinks` (Embeddable): Legacy static social handles.
+  * **Unit Test Suite:** Created `EntityDesignTest` verifying absence of `setId` methods, timestamp lifecycle triggers, relationship integrity, and builder ergonomics. All tests pass with Hibernate DDL validation.
+* **Why Changed:** Started backend persistence implementation in Spring Boot / JPA per requirements: two-tier superclass hierarchy (read-only ID and auditing timestamps) and client-aligned domain entities.
+* **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/base/BaseIdEntity.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/base/BaseAuditEntity.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/StoreServiceItem.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/SocialMediaLink.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/StoreReview.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/StoreViewRecord.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/StoreEngagementStats.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/SocialLinks.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/entity/EntityDesignTest.java`
+  * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-19 10:30:00 IST] - Implemented Address Entity with One-to-Many User Mapping
+* **What Changed:**
+  * **Address Entity ([`Address`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/Address.java)):** Created new JPA entity mapped to table `addresses`. Extends `BaseAuditEntity` (inheriting read-only `id`, `creationDateTime`, and `lastUpdatedDateTime`). Contains fields: `addressType` (Home, Work, Other), `addressLine` (Flat/House/Street), `area` (Neighborhood), `city`, `state`, `pincode`, `landmark`, `latitude`, `longitude` (for hyperlocal proximity queries), and `isDefault`.
+  * **User Mapping ([`User`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/User.java)):** Added `@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true) private List<Address> addresses = new ArrayList<>()` to support multiple addresses per user profile, with bidirectional synchronization helpers `addAddress` and `removeAddress`.
+  * **Unit & DDL Testing:** Updated [`EntityDesignTest.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/test/java/com/aaspass/entity/EntityDesignTest.java) to verify immutable ID, timestamp auditing, multiple address additions, default flag behavior, and address deletion. Verified MySQL Hibernate DDL table creation and foreign key constraint (`addresses -> users`).
+* **Why Changed:** Addressed user requirement: "One user can have multiple address so I need seperate address table to map with user".
+* **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Address.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/entity/EntityDesignTest.java`
+  * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-19 10:48:00 IST] - Renamed SocialLinks to UserSocialLinks & Embedded into User / Store Owner
+* **What Changed:**
+  * **Backend Refactoring ([`UserSocialLinks.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/UserSocialLinks.java)):** Renamed and refactored `SocialLinks` embeddable to `UserSocialLinks` (`instagram`, `linkedin`, `github`, `portfolio`, `twitter`, `youtube`), deleted obsolete `SocialLinks.java`.
+  * **Store Owner User Mapping ([`User.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/User.java)):** Embedded `UserSocialLinks userSocialLinks` into the `User` entity so users adding their store owner details can record their personal social media accounts. Added convenience alias methods `getSocialLinks()` and `setSocialLinks()`.
+  * **Store Entity Update ([`Store.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java)):** Updated `Store` to embed `UserSocialLinks userSocialLinks` with backward-compatible `getSocialLinks()` / `setSocialLinks()` accessors.
+  * **Frontend Models:**
+    * In [`store.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/store.model.ts), exported `interface UserSocialLinks` alongside `export type SocialLinks = UserSocialLinks`, and added `userSocialLinks?: UserSocialLinks` to `StoreProfile`.
+    * In [`user.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/user.model.ts), added `userSocialLinks?: UserSocialLinks` to `UserProfile`.
+    * In [`create-store.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/create-store/create-store.ts), updated imports for `UserSocialLinks`.
+  * **Tests & Verification:** Both frontend (30 unit tests) and backend (Spring Boot context + `EntityDesignTest` with MySQL DDL table alteration) passed with `BUILD SUCCESS`.
+* **Why Changed:** Addressed user request: "please change SocialLinks to UserSocialLinks in every where, it's like a Store Owner User Details that time User can add there Social media links".
+* **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/UserSocialLinks.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java`
+  * `aaspass-client/src/app/models/store.model.ts`
+  * `aaspass-client/src/app/models/user.model.ts`
+  * `aaspass-client/src/app/pages/create-store/create-store.ts`
+  * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-19 10:55:00 IST] - Removed Test Cases & Retained Pure JPA Entities
+* **What Changed:**
+  * Removed all temporary test cases and deleted `EntityDesignTest.java` and `aaspass-service-backend/src/test/java/com/aaspass/entity/` directory per user request.
+  * Ensured the repository only contains the pure JPA entity layer (`User`, `Address`, `Store`, `StoreServiceItem`, `SocialMediaLink`, `StoreReview`, `StoreViewRecord`, `StoreEngagementStats`, `UserSocialLinks`, and superclasses `BaseIdEntity`, `BaseAuditEntity`).
+* **Why Changed:** Addressed user instruction: "don't need to add test cases remove testing changes".
+* **Files Created/Modified:**
+  * `doc/AI-doc/CHANGELOG.md`
+
+
