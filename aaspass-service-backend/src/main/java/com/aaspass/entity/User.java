@@ -75,7 +75,7 @@ public class User extends BaseAuditEntity {
     private Boolean hasStore = false;
 
     @Embedded
-    private UserSocialLinks userSocialLinks;
+    private UserSocialMediaLinks userSocialMediaLinks;
 
     @JsonIgnore
     @Builder.Default
@@ -86,5 +86,14 @@ public class User extends BaseAuditEntity {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Address> addresses = new ArrayList<>();
+
+    // Backward-compatible alias accessors
+    public UserSocialMediaLinks getUserSocialLinks() {
+        return this.userSocialMediaLinks;
+    }
+
+    public void setUserSocialLinks(UserSocialMediaLinks links) {
+        this.userSocialMediaLinks = links;
+    }
 
 }

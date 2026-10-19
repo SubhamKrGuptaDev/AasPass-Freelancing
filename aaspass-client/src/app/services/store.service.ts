@@ -2,7 +2,11 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import {
   StoreProfile,
   StoreReview,
+  StoreSocialMediaLinks,
+  UserSocialMediaLinks,
   normalizeSocialLinks,
+  toStoreSocialMediaLinks,
+  toUserSocialMediaLinks,
   EngagementViewType,
   StoreEngagementStats,
   StoreViewRecord,
@@ -33,6 +37,21 @@ export class StoreService {
     memberSince: 'March 2026',
     creationDateTime: '2026-03-01T10:00:00.000Z',
     lastUpdateDateTime: '2026-03-01T10:00:00.000Z',
+    socialMediaLinks: [
+      { id: 'usr-sm-1', name: 'LinkedIn', url: 'https://linkedin.com/in/amansharma' },
+      { id: 'usr-sm-2', name: 'GitHub', url: 'https://github.com/amansharma-dev' },
+      { id: 'usr-sm-3', name: 'Instagram', url: 'https://instagram.com/aman_creative' }
+    ],
+    userSocialMediaLinks: {
+      linkedin: 'https://linkedin.com/in/amansharma',
+      github: 'https://github.com/amansharma-dev',
+      instagram: 'https://instagram.com/aman_creative'
+    },
+    userSocialLinks: {
+      linkedin: 'https://linkedin.com/in/amansharma',
+      github: 'https://github.com/amansharma-dev',
+      instagram: 'https://instagram.com/aman_creative'
+    },
     hasStore: false,
     store: undefined,
     stores: []
@@ -532,9 +551,12 @@ export class StoreService {
       viewerId: user.id
     };
 
+    const storeSocialLinks = storeData.storeSocialMediaLinks || (storeData.socialMediaLinks ? toStoreSocialMediaLinks(storeData.socialMediaLinks) : storeData.userSocialLinks);
     const newStore: StoreProfile = {
       ...storeData,
-      socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeData.userSocialLinks),
+      storeSocialMediaLinks: storeSocialLinks,
+      userSocialLinks: storeSocialLinks,
+      socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeSocialLinks),
       id: newStoreId,
       userId: user.id,
       rating: 5.0,
@@ -864,12 +886,15 @@ export class StoreService {
 
     this.stores.update(list => list.map(s => {
       if (s.id !== targetStoreId) return s;
+      const mergedLinks = updated.storeSocialMediaLinks || updated.userSocialLinks || (updated.socialMediaLinks ? toStoreSocialMediaLinks(updated.socialMediaLinks) : s.storeSocialMediaLinks || s.userSocialLinks);
       return {
         ...s,
         ...updated,
+        storeSocialMediaLinks: mergedLinks,
+        userSocialLinks: mergedLinks,
         socialMediaLinks: updated.socialMediaLinks
-          ? normalizeSocialLinks(updated.socialMediaLinks, updated.userSocialLinks || s.userSocialLinks)
-          : (updated.userSocialLinks ? normalizeSocialLinks(s.socialMediaLinks, updated.userSocialLinks) : s.socialMediaLinks),
+          ? normalizeSocialLinks(updated.socialMediaLinks, mergedLinks)
+          : (mergedLinks ? normalizeSocialLinks(s.socialMediaLinks, mergedLinks) : s.socialMediaLinks),
         lastUpdateDateTime: nowIso
       };
     }));
@@ -912,11 +937,19 @@ export class StoreService {
     });
   }
 
-  // Update basic user profile
+  // Update basic user profile with UserSocialMediaLinks
   updateUserProfile(updated: Partial<UserProfile>): void {
+    const userSocialMediaLinks = updated.userSocialMediaLinks || (updated.socialMediaLinks ? toUserSocialMediaLinks(updated.socialMediaLinks) : undefined);
+    const normalizedUserSocial = updated.socialMediaLinks
+      ? normalizeSocialLinks(updated.socialMediaLinks, userSocialMediaLinks)
+      : undefined;
+
     this.currentUser.update(u => ({
       ...u,
       ...updated,
+      socialMediaLinks: normalizedUserSocial ?? updated.socialMediaLinks ?? u.socialMediaLinks,
+      userSocialMediaLinks: userSocialMediaLinks ?? updated.userSocialMediaLinks ?? u.userSocialMediaLinks,
+      userSocialLinks: userSocialMediaLinks ?? updated.userSocialLinks ?? u.userSocialLinks,
       lastUpdateDateTime: new Date().toISOString()
     }));
     if (this.authService.isLoggedIn()) {

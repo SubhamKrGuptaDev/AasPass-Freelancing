@@ -1,4 +1,4 @@
-import { StoreProfile, UserSocialLinks } from './store.model';
+import { StoreProfile, UserSocialMediaLinks, SocialMediaLink } from './store.model';
 
 export interface UserProfile {
   id: string;
@@ -15,7 +15,9 @@ export interface UserProfile {
   hasStore: boolean;
   store?: StoreProfile;
   stores?: StoreProfile[];
-  userSocialLinks?: UserSocialLinks;
+  userSocialMediaLinks?: UserSocialMediaLinks;
+  socialMediaLinks?: SocialMediaLink[];
+  userSocialLinks?: UserSocialMediaLinks;
   creationDateTime: string;
   lastUpdateDateTime: string;
 }

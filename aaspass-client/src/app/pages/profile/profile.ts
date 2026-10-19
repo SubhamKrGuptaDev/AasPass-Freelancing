@@ -4,9 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
 import { AuthService } from '../../services/auth.service';
+import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
   SocialMediaLink, 
+  StoreSocialMediaLinks,
+  UserSocialMediaLinks,
+  toUserSocialMediaLinks,
   formatSocialUrl, 
   displaySocialUrl, 
   getSocialIcon, 
@@ -21,7 +25,7 @@ import {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, SocialMediaLinksComponent],
   template: `
     <div class="min-h-screen bg-slate-50/70 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-4xl mx-auto space-y-8">
@@ -70,7 +74,7 @@ import {
             
             <button 
               type="button" 
-              (click)="isEditingUser = !isEditingUser"
+              (click)="toggleEditUser()"
               class="text-xs font-bold text-indigo-600 hover:text-indigo-800"
             >
               {{ isEditingUser ? 'Cancel Editing' : '✏️ Edit Details' }}
@@ -148,6 +152,62 @@ import {
                     <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Bio / Description</span>
                     <p class="text-xs text-slate-700 leading-relaxed">{{ storeService.currentUser().bio }}</p>
                   </div>
+
+                  <!-- Personal Social Media Channels (UserSocialMediaLinks) -->
+                  <div class="sm:col-span-2 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="flex items-center justify-between mb-2.5">
+                      <div class="flex items-center gap-2">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block">
+                          Personal Social Media & Portfolios (Connect with Me)
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {{ getUserSocialLinks().length }} Added
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        (click)="startEditUser()"
+                        class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
+                      >
+                        + Manage Links
+                      </button>
+                    </div>
+
+                    @if (getUserSocialLinks().length > 0) {
+                      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        @for (link of getUserSocialLinks(); track link.id || link.name + link.url) {
+                          <div class="p-2.5 rounded-xl bg-white border border-slate-200/80 hover:border-indigo-300 transition flex items-center justify-between gap-2 shadow-2xs group">
+                            <div class="flex items-center gap-2 min-w-0 pr-1">
+                              <span class="text-base flex-shrink-0">{{ getSocialIcon(link.name) }}</span>
+                              <div class="min-w-0">
+                                <span class="text-xs font-bold text-slate-900 block truncate group-hover:text-indigo-600 transition-colors">
+                                  {{ link.name }}
+                                </span>
+                                <span class="text-[11px] text-slate-400 block truncate">
+                                  {{ displayUrl(link.url) }}
+                                </span>
+                              </div>
+                            </div>
+
+                            <a 
+                              [href]="formatUrl(link.url)" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition flex-shrink-0 {{ getSocialBadgeClass(link.name) }}"
+                              title="Directly redirect to {{ link.name }}"
+                            >
+                              <span>Redirect</span>
+                              <svg class="w-2.5 h-2.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                              </svg>
+                            </a>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-xs text-slate-400 italic">No personal social links added yet. Click "Edit Details" or "Manage Links" above to add your LinkedIn, GitHub, Instagram, or Portfolio.</p>
+                    }
+                  </div>
                 </div>
               } @else {
                 <!-- Edit Form -->
@@ -213,11 +273,29 @@ import {
                       class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                     ></textarea>
                   </div>
-                  <div class="flex justify-end gap-2">
+
+                  <!-- Reusable Common Social Media Links Component for User -->
+                  <div class="pt-4 border-t border-slate-100">
+                    <app-social-media-links
+                      title="Personal Social Media Links"
+                      subtitle="Add your personal social media profiles so nearby customers, clients, and collaborators can connect with you directly."
+                      idPrefix="user_link"
+                      [(links)]="editUserSocialLinks"
+                    />
+                  </div>
+
+                  <div class="flex justify-end gap-2 pt-2">
+                    <button 
+                      type="button" 
+                      (click)="isEditingUser = false"
+                      class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
                     <button 
                       type="button" 
                       (click)="saveUserDetails()"
-                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition"
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-xs"
                     >
                       Save Changes
                     </button>
@@ -548,15 +626,15 @@ import {
 
               </div>
 
-              <!-- Linked Social Media & Portfolios for this specific store -->
+              <!-- Linked Store Social Media & Portfolios for this specific store -->
               <div>
                 <div class="flex items-center justify-between mb-3">
                   <div class="flex items-center gap-2">
                     <h4 class="text-xs uppercase tracking-wider font-bold text-slate-500">
-                      Linked Social Media & Portfolios ({{ store.storeName }})
+                      Linked Store Social Media & Portfolios ({{ store.storeName }})
                     </h4>
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                      {{ getStoreSocialLinks(store).length }} Links Added
+                      {{ getStoreSocialLinks(store).length }} Store Links Added
                     </span>
                   </div>
 
@@ -564,9 +642,9 @@ import {
                     [routerLink]="['/create-store']"
                     [queryParams]="{ editStoreId: store.id }"
                     class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
-                    title="Add or update social media links for this store"
+                    title="Add or update store social media links for this store"
                   >
-                    <span>+ Add / Manage Links</span>
+                    <span>+ Add / Manage Store Links</span>
                   </a>
                 </div>
 
@@ -618,14 +696,14 @@ import {
                 } @else {
                   <div class="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center">
                     <span class="text-2xl block mb-1">🔗</span>
-                    <p class="text-xs text-slate-600 font-semibold mb-1">No social media links linked for {{ store.storeName }} yet</p>
-                    <p class="text-[11px] text-slate-400 mb-3">Add links to your Instagram, LinkedIn, GitHub, or portfolio so neighborhood clients can view your credibility directly.</p>
+                    <p class="text-xs text-slate-600 font-semibold mb-1">No store social media links linked for {{ store.storeName }} yet</p>
+                    <p class="text-[11px] text-slate-400 mb-3">Add links to your store's Instagram, LinkedIn, GitHub, or portfolio showcase so neighborhood clients can view your store credibility directly.</p>
                     <a 
                       [routerLink]="['/create-store']"
                       [queryParams]="{ editStoreId: store.id }"
                       class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
                     >
-                      + Add Social Media & Portfolio Links
+                      + Add Store Social Media Links
                     </a>
                   </div>
                 }
@@ -852,10 +930,42 @@ export class ProfileComponent {
   editCity = this.storeService.currentUser().city;
   editBio = this.storeService.currentUser().bio;
 
+  editUserSocialLinks: SocialMediaLink[] = [];
+
   formatUrl = formatSocialUrl;
   displayUrl = displaySocialUrl;
   getSocialIcon = getSocialIcon;
   getSocialBadgeClass = getSocialBadgeClass;
+
+  startEditUser(): void {
+    const user = this.storeService.currentUser();
+    this.editName = user.name;
+    this.editPhone = user.phone;
+    this.editAadhar = user.aadharNumber || '';
+    this.editPan = user.panNumber || '';
+    this.editArea = user.area;
+    this.editCity = user.city;
+    this.editBio = user.bio;
+    this.editUserSocialLinks = this.getUserSocialLinks().map(l => ({ ...l }));
+    this.isEditingUser = true;
+  }
+
+  toggleEditUser(): void {
+    if (this.isEditingUser) {
+      this.isEditingUser = false;
+    } else {
+      this.startEditUser();
+    }
+  }
+
+  getUserSocialLinks(): SocialMediaLink[] {
+    const u = this.storeService.currentUser();
+    return normalizeSocialLinks(u.socialMediaLinks, u.userSocialMediaLinks || u.userSocialLinks);
+  }
+
+  getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
+    return normalizeSocialLinks(store.socialMediaLinks, store.storeSocialMediaLinks || store.userSocialLinks);
+  }
 
   // Selected store state for multi-store switcher
   selectedStoreId = signal<string>('');
@@ -889,10 +999,6 @@ export class ProfileComponent {
     }
   }
 
-  getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
-    return normalizeSocialLinks(store.socialMediaLinks, store.userSocialLinks);
-  }
-
   // Review section for store owner
   isAddingReview = false;
   newReviewUserName = '';
@@ -902,6 +1008,16 @@ export class ProfileComponent {
   reviewSuccessMessage: string | null = null;
 
   saveUserDetails(): void {
+    const validSocial = this.editUserSocialLinks
+      .map(l => ({
+        id: l.id || ('usr-sm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
+        name: l.name.trim(),
+        url: l.url.trim()
+      }))
+      .filter(l => l.name.length > 0 && l.url.length > 0);
+
+    const userSocialMediaLinks = toUserSocialMediaLinks(validSocial);
+
     this.storeService.updateUserProfile({
       name: this.editName,
       phone: this.editPhone,
@@ -909,7 +1025,10 @@ export class ProfileComponent {
       panNumber: this.editPan ? this.editPan.toUpperCase() : '',
       area: this.editArea,
       city: this.editCity,
-      bio: this.editBio
+      bio: this.editBio,
+      socialMediaLinks: validSocial,
+      userSocialMediaLinks: userSocialMediaLinks,
+      userSocialLinks: userSocialMediaLinks
     });
     this.isEditingUser = false;
   }

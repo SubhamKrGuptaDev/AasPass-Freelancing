@@ -111,7 +111,7 @@ public class Store extends BaseAuditEntity {
     private StoreEngagementStats views = new StoreEngagementStats();
 
     @Embedded
-    private UserSocialLinks userSocialLinks;
+    private StoreSocialMediaLinks storeSocialMediaLinks;
 
     @Builder.Default
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)

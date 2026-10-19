@@ -3,11 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
+import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
   StoreServiceItem, 
   SocialMediaLink, 
+  StoreSocialMediaLinks,
   UserSocialLinks,
+  toStoreSocialMediaLinks,
   formatSocialUrl, 
   displaySocialUrl, 
   getSocialIcon, 
@@ -18,7 +21,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, SocialMediaLinksComponent],
   template: `
     <div class="min-h-screen bg-slate-50/70 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-4xl mx-auto">
@@ -199,181 +202,15 @@ import {
                 </div>
               </div>
 
-              <!-- Section 3: Multiple Social Media Links & Portfolios -->
+              <!-- Section 3: Store Social Media Links & Online Portfolios (Common Component) -->
               <div>
-                <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-4">
-                  <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">3</span>
-                    <span>Social Media & Online Portfolios</span>
-                  </h3>
-                  <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                    {{ socialMediaLinks.length }} links added
-                  </span>
-                </div>
-
-                <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-                  Add multiple social media and portfolio links with their platform names. When clients view your store or profile, they can click directly to redirect to your social channels.
-                </p>
-
-                <!-- Quick Preset Chips -->
-                <div class="mb-4">
-                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Quick Add Platform:</span>
-                  <div class="flex flex-wrap gap-1.5">
-                    <button 
-                      type="button" 
-                      (click)="addLink('Instagram')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200 transition cursor-pointer"
-                    >
-                      + 📸 Instagram
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('LinkedIn')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 transition cursor-pointer"
-                    >
-                      + 💼 LinkedIn
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('GitHub')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-300 transition cursor-pointer"
-                    >
-                      + 💻 GitHub
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('YouTube')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition cursor-pointer"
-                    >
-                      + 🎥 YouTube
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('Portfolio')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
-                    >
-                      + 🌐 Portfolio
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('Twitter / X')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-white hover:bg-black border border-slate-800 transition cursor-pointer"
-                    >
-                      + 𝕏 Twitter / X
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('Behance')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
-                    >
-                      + 🎨 Behance
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="addLink('Dribbble')"
-                      class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
-                    >
-                      + 🏀 Dribbble
-                    </button>
-                  </div>
-                </div>
-
-                <datalist id="socialPlatformsList">
-                  <option value="Instagram"></option>
-                  <option value="LinkedIn"></option>
-                  <option value="GitHub"></option>
-                  <option value="YouTube"></option>
-                  <option value="Portfolio Website"></option>
-                  <option value="Twitter / X"></option>
-                  <option value="Behance"></option>
-                  <option value="Dribbble"></option>
-                  <option value="Facebook"></option>
-                  <option value="Discord"></option>
-                  <option value="Medium / Blog"></option>
-                  <option value="Spotify / Podcast"></option>
-                </datalist>
-
-                <!-- List of Dynamic Social Media Links -->
-                <div class="space-y-3 mb-4">
-                  @for (link of socialMediaLinks; track link.id || $index; let i = $index) {
-                    <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                          <span>{{ getSocialIcon(link.name) }}</span>
-                          <span>{{ link.name || 'Platform #' + (i + 1) }}</span>
-                        </span>
-                        
-                        <div class="flex items-center gap-2">
-                          @if (link.url) {
-                            <a 
-                              [href]="formatUrl(link.url)" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
-                              title="Test direct redirect in new tab"
-                            >
-                              <span>Direct Redirect ↗</span>
-                            </a>
-                          }
-                          <button 
-                            type="button" 
-                            (click)="removeLink(i)"
-                            class="text-xs font-semibold text-rose-500 hover:text-rose-700 p-1 rounded-md hover:bg-rose-50 transition cursor-pointer"
-                            title="Remove this link"
-                          >
-                            ✕ Remove
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        <div class="sm:col-span-5">
-                          <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Social Media Name *
-                          </label>
-                          <input 
-                            type="text" 
-                            [(ngModel)]="link.name" 
-                            [name]="'linkName_' + i"
-                            list="socialPlatformsList"
-                            required
-                            placeholder="e.g. Instagram, LinkedIn, Behance"
-                            class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
-                        </div>
-
-                        <div class="sm:col-span-7">
-                          <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                            Link URL (Redirects Viewer) *
-                          </label>
-                          <input 
-                            type="text" 
-                            [(ngModel)]="link.url" 
-                            [name]="'linkUrl_' + i"
-                            required
-                            placeholder="https://instagram.com/yourhandle or profile url"
-                            class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  }
-
-                  @if (socialMediaLinks.length === 0) {
-                    <div class="p-4 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-400">
-                      No social media links added yet. Click "+ Add Another Social Link" or choose a preset above.
-                    </div>
-                  }
-                </div>
-
-                <!-- Add Button -->
-                <button 
-                  type="button" 
-                  (click)="addLink()"
-                  class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>+ Add Another Social Link</span>
-                </button>
+                <app-social-media-links
+                  [badgeNumber]="3"
+                  title="Store Social Media & Online Portfolios"
+                  subtitle="Add multiple social media and portfolio links specifically for this store. When clients view your store or profile, they can click directly to redirect to your store showcase."
+                  idPrefix="store_link"
+                  [(links)]="socialMediaLinks"
+                />
               </div>
 
               <!-- Section 4: Detailed Description -->
@@ -563,7 +400,7 @@ export class CreateStoreComponent implements OnInit {
         this.formData.description = storeToEdit.description;
         this.skillsInput = storeToEdit.skills.join(', ');
         
-        const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.userSocialLinks);
+        const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.storeSocialMediaLinks || storeToEdit.userSocialLinks);
         if (normalized && normalized.length > 0) {
           this.socialMediaLinks = normalized.map(l => ({ ...l }));
         } else {
@@ -634,16 +471,7 @@ export class CreateStoreComponent implements OnInit {
       }))
       .filter(l => l.name.length > 0 && l.url.length > 0);
 
-    const userSocialLinks: UserSocialLinks = {};
-    for (const link of validSocialLinks) {
-      const n = link.name.toLowerCase();
-      if (n.includes('instagram')) userSocialLinks.instagram = formatSocialUrl(link.url);
-      else if (n.includes('linkedin')) userSocialLinks.linkedin = formatSocialUrl(link.url);
-      else if (n.includes('github')) userSocialLinks.github = formatSocialUrl(link.url);
-      else if (n.includes('portfolio') || n.includes('website')) userSocialLinks.portfolio = formatSocialUrl(link.url);
-      else if (n.includes('youtube')) userSocialLinks.youtube = formatSocialUrl(link.url);
-      else if (n.includes('twitter') || n.includes('x.com')) userSocialLinks.twitter = formatSocialUrl(link.url);
-    }
+    const storeSocialMediaLinks: StoreSocialMediaLinks = toStoreSocialMediaLinks(validSocialLinks);
 
     if (this.isEditing && this.editingStoreId) {
       this.storeService.updateStore({
@@ -658,7 +486,8 @@ export class CreateStoreComponent implements OnInit {
         city: this.formData.city,
         serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
         socialMediaLinks: validSocialLinks,
-        userSocialLinks: userSocialLinks,
+        storeSocialMediaLinks: storeSocialMediaLinks,
+        userSocialLinks: storeSocialMediaLinks,
         description: this.formData.description
       }, this.editingStoreId);
       this.router.navigate(['/stores', this.editingStoreId]);
@@ -696,7 +525,8 @@ export class CreateStoreComponent implements OnInit {
       distanceKm: 0.5,
       serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,
-      userSocialLinks: userSocialLinks,
+      storeSocialMediaLinks: storeSocialMediaLinks,
+      userSocialLinks: storeSocialMediaLinks,
       description: this.formData.description,
       services: initialServices,
       avatarUrl: this.storeService.currentUser().avatarUrl,

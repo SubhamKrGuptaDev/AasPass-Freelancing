@@ -517,10 +517,11 @@ import {
                 </div>
 
                 <!-- Verified Social Media & Portfolios (List of clickable links with direct redirect) -->
+                <!-- Verified Store Social Media Links -->
                 @if (getStoreSocialLinks(s).length > 0) {
                   <div class="pt-5 border-t border-slate-100">
                     <div class="flex items-center justify-between mb-3">
-                      <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400">Verified Socials & Portfolios</h4>
+                      <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400">Verified Store Channels</h4>
                       <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                         {{ getStoreSocialLinks(s).length }} Channels
                       </span>
@@ -552,6 +553,49 @@ import {
                             <svg class="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                             </svg>
+                          </span>
+                        </a>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Connect with Store Owner Personal Social Links -->
+                @if (getOwnerUserSocialLinks(s).length > 0) {
+                  <div class="pt-5 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-xs">👤</span>
+                        <h4 class="text-xs uppercase tracking-wider font-bold text-slate-400">Connect with Owner</h4>
+                      </div>
+                      <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                        {{ s.ownerName }}
+                      </span>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      @for (link of getOwnerUserSocialLinks(s); track link.id || link.name + link.url) {
+                        <a 
+                          [href]="formatUrl(link.url)" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="flex items-center justify-between p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/40 hover:bg-white hover:border-indigo-300 hover:shadow-2xs transition group"
+                          title="Connect personally with {{ s.ownerName }} on {{ link.name }}"
+                        >
+                          <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span class="text-base flex-shrink-0">{{ getSocialIcon(link.name) }}</span>
+                            <div class="min-w-0">
+                              <span class="text-xs font-bold text-slate-900 block group-hover:text-indigo-600 transition-colors">
+                                {{ link.name }}
+                              </span>
+                              <span class="text-[11px] text-slate-400 truncate block">
+                                {{ displayUrl(link.url) }}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 transition shadow-2xs {{ getSocialBadgeClass(link.name) }}">
+                            <span>Connect ↗</span>
                           </span>
                         </a>
                       }
@@ -600,7 +644,15 @@ export class StoreDetailComponent {
   getSocialBadgeClass = getSocialBadgeClass;
 
   getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
-    return normalizeSocialLinks(store.socialMediaLinks, store.userSocialLinks);
+    return normalizeSocialLinks(store.socialMediaLinks, store.storeSocialMediaLinks || store.userSocialLinks);
+  }
+
+  getOwnerUserSocialLinks(store: StoreProfile): SocialMediaLink[] {
+    const currentUser = this.storeService.currentUser();
+    if (store.userId === currentUser.id) {
+      return normalizeSocialLinks(currentUser.socialMediaLinks, currentUser.userSocialMediaLinks || currentUser.userSocialLinks);
+    }
+    return [];
   }
 
   getCurrentUrl(): string {

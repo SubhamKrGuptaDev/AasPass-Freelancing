@@ -6,7 +6,7 @@ export interface StoreServiceItem {
   description?: string;
 }
 
-export interface UserSocialLinks {
+export interface StoreSocialMediaLinks {
   instagram?: string;
   linkedin?: string;
   github?: string;
@@ -15,8 +15,18 @@ export interface UserSocialLinks {
   youtube?: string;
 }
 
-// Backward-compatible alias
-export type SocialLinks = UserSocialLinks;
+export interface UserSocialMediaLinks {
+  instagram?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  twitter?: string;
+  youtube?: string;
+}
+
+// Backward-compatible aliases
+export type UserSocialLinks = UserSocialMediaLinks;
+export type SocialLinks = StoreSocialMediaLinks;
 
 export interface SocialMediaLink {
   id: string;
@@ -73,19 +83,51 @@ export function getSocialBadgeClass(name: string): string {
 
 export function normalizeSocialLinks(
   socialMediaLinks?: SocialMediaLink[],
-  userSocialLinks?: UserSocialLinks
+  embeddableLinks?: StoreSocialMediaLinks | UserSocialMediaLinks
 ): SocialMediaLink[] {
   if (socialMediaLinks && socialMediaLinks.length > 0) {
     return socialMediaLinks;
   }
   const result: SocialMediaLink[] = [];
-  if (userSocialLinks) {
-    if (userSocialLinks.instagram) result.push({ id: 'sm-ig', name: 'Instagram', url: userSocialLinks.instagram });
-    if (userSocialLinks.linkedin) result.push({ id: 'sm-li', name: 'LinkedIn', url: userSocialLinks.linkedin });
-    if (userSocialLinks.github) result.push({ id: 'sm-gh', name: 'GitHub', url: userSocialLinks.github });
-    if (userSocialLinks.portfolio) result.push({ id: 'sm-pf', name: 'Portfolio', url: userSocialLinks.portfolio });
-    if (userSocialLinks.youtube) result.push({ id: 'sm-yt', name: 'YouTube', url: userSocialLinks.youtube });
-    if (userSocialLinks.twitter) result.push({ id: 'sm-tw', name: 'Twitter / X', url: userSocialLinks.twitter });
+  if (embeddableLinks) {
+    if (embeddableLinks.instagram) result.push({ id: 'sm-ig', name: 'Instagram', url: embeddableLinks.instagram });
+    if (embeddableLinks.linkedin) result.push({ id: 'sm-li', name: 'LinkedIn', url: embeddableLinks.linkedin });
+    if (embeddableLinks.github) result.push({ id: 'sm-gh', name: 'GitHub', url: embeddableLinks.github });
+    if (embeddableLinks.portfolio) result.push({ id: 'sm-pf', name: 'Portfolio', url: embeddableLinks.portfolio });
+    if (embeddableLinks.youtube) result.push({ id: 'sm-yt', name: 'YouTube', url: embeddableLinks.youtube });
+    if (embeddableLinks.twitter) result.push({ id: 'sm-tw', name: 'Twitter / X', url: embeddableLinks.twitter });
+  }
+  return result;
+}
+
+export function toStoreSocialMediaLinks(links: SocialMediaLink[]): StoreSocialMediaLinks {
+  const result: StoreSocialMediaLinks = {};
+  for (const link of links) {
+    if (!link.url) continue;
+    const n = (link.name || '').toLowerCase();
+    const formatted = formatSocialUrl(link.url);
+    if (n.includes('instagram')) result.instagram = formatted;
+    else if (n.includes('linkedin')) result.linkedin = formatted;
+    else if (n.includes('github')) result.github = formatted;
+    else if (n.includes('portfolio') || n.includes('website')) result.portfolio = formatted;
+    else if (n.includes('youtube')) result.youtube = formatted;
+    else if (n.includes('twitter') || n.includes('x.com')) result.twitter = formatted;
+  }
+  return result;
+}
+
+export function toUserSocialMediaLinks(links: SocialMediaLink[]): UserSocialMediaLinks {
+  const result: UserSocialMediaLinks = {};
+  for (const link of links) {
+    if (!link.url) continue;
+    const n = (link.name || '').toLowerCase();
+    const formatted = formatSocialUrl(link.url);
+    if (n.includes('instagram')) result.instagram = formatted;
+    else if (n.includes('linkedin')) result.linkedin = formatted;
+    else if (n.includes('github')) result.github = formatted;
+    else if (n.includes('portfolio') || n.includes('website')) result.portfolio = formatted;
+    else if (n.includes('youtube')) result.youtube = formatted;
+    else if (n.includes('twitter') || n.includes('x.com')) result.twitter = formatted;
   }
   return result;
 }
@@ -158,7 +200,8 @@ export interface StoreProfile {
   city: string;
   distanceKm: number;
   serviceRadiusKm: number;
-  userSocialLinks?: UserSocialLinks;
+  storeSocialMediaLinks?: StoreSocialMediaLinks;
+  userSocialLinks?: StoreSocialMediaLinks;
   socialMediaLinks: SocialMediaLink[];
   description: string;
   services: StoreServiceItem[];

@@ -259,12 +259,44 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-client/src/app/pages/create-store/create-store.ts`
   * `doc/AI-doc/CHANGELOG.md`
 
-### [2026-10-19 10:55:00 IST] - Removed Test Cases & Retained Pure JPA Entities
+### [2026-10-19 12:45:00 IST] - Segregated StoreSocialMediaLinks vs UserSocialMediaLinks & Created Common Component
 * **What Changed:**
-  * Removed all temporary test cases and deleted `EntityDesignTest.java` and `aaspass-service-backend/src/test/java/com/aaspass/entity/` directory per user request.
-  * Ensured the repository only contains the pure JPA entity layer (`User`, `Address`, `Store`, `StoreServiceItem`, `SocialMediaLink`, `StoreReview`, `StoreViewRecord`, `StoreEngagementStats`, `UserSocialLinks`, and superclasses `BaseIdEntity`, `BaseAuditEntity`).
-* **Why Changed:** Addressed user instruction: "don't need to add test cases remove testing changes".
+  * **Backend Entity Architecture:**
+    * Created [`StoreSocialMediaLinks.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/StoreSocialMediaLinks.java) embeddable with columns `store_social_instagram`, `store_social_linkedin`, `store_social_github`, `store_social_portfolio`, `store_social_twitter`, `store_social_youtube`.
+    * Updated [`Store.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java) to embed `StoreSocialMediaLinks storeSocialMediaLinks` with backward-compatible `getUserSocialLinks()` / `setUserSocialLinks()` alias methods.
+    * Created [`UserSocialMediaLinks.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/UserSocialMediaLinks.java) embeddable with columns `user_social_instagram`, `user_social_linkedin`, `user_social_github`, `user_social_portfolio`, `user_social_twitter`, `user_social_youtube`.
+    * Updated [`User.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/User.java) to embed `UserSocialMediaLinks userSocialMediaLinks` with alias methods. Deleted obsolete `UserSocialLinks.java`.
+  * **Frontend Common Component:**
+    * Created standalone [`SocialMediaLinksComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/social-media-links/social-media-links.ts) (`<app-social-media-links>`).
+    * Configurable via `@Input()` properties: `title`, `subtitle`, `badgeNumber`, `showPresets`, `idPrefix`, and two-way binding `[(links)]`.
+    * Built-in quick preset chips (`+ Instagram`, `+ LinkedIn`, `+ GitHub`, `+ YouTube`, `+ Portfolio`, `+ Twitter / X`, `+ Behance`, `+ Dribbble`), platform name datalist, direct redirect test buttons, remove buttons, and reactive link synchronization.
+  * **Store Integration:**
+    * In [`create-store.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/create-store/create-store.ts), replaced duplicated HTML with `<app-social-media-links>` configured with title *"Store Social Media & Online Portfolios"*.
+    * Computes `StoreSocialMediaLinks` via `toStoreSocialMediaLinks` and saves both store dynamic and embeddable links.
+  * **User Profile Integration:**
+    * In [`profile.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/profile/profile.ts), added personal user social media display in Section 1 ("1. Basic Personal Details") with platform icons, clean URL handles, and direct redirect badges.
+    * Integrated `<app-social-media-links>` in the edit form with title *"Personal Social Media Links"* and subtitle *"Add your personal social media profiles so nearby customers, clients, and collaborators can connect with you directly."*.
+    * Added `startEditUser()`, `toggleEditUser()`, and updated `saveUserDetails()` to persist `userSocialMediaLinks` and personal `socialMediaLinks`.
+    * Clarified Section 2 as *"Linked Store Social Media & Portfolios"*.
+  * **Storefront Customer Connection:**
+    * In [`store-detail.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/store-detail/store-detail.ts), added a dedicated *"Connect with Owner"* sidebar section alongside *"Verified Store Channels"*, displaying the store owner's personal social media channels so clients can connect directly with the freelancer.
+  * **Models & Services:**
+    * In [`store.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/store.model.ts), defined `StoreSocialMediaLinks`, `UserSocialMediaLinks`, `toStoreSocialMediaLinks()`, and `toUserSocialMediaLinks()`.
+    * In [`user.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/user.model.ts), updated `UserProfile` with `userSocialMediaLinks` and `socialMediaLinks`.
+    * In [`store.service.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.ts), updated `currentUser`, `createStore`, `updateStore`, and `updateUserProfile`.
+* **Why Changed:** Addressed user request to differentiate between `StoreSocialMediaLinks` (for the store) and `UserSocialMediaLinks` (for the personal user account / store owner), build a common reusable component for both, update backend entity columns, and allow clients to connect with store owners directly.
 * **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/StoreSocialMediaLinks.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/UserSocialMediaLinks.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-client/src/app/components/social-media-links/social-media-links.ts`
+  * `aaspass-client/src/app/models/store.model.ts`
+  * `aaspass-client/src/app/models/user.model.ts`
+  * `aaspass-client/src/app/pages/create-store/create-store.ts`
+  * `aaspass-client/src/app/pages/profile/profile.ts`
+  * `aaspass-client/src/app/pages/store-detail/store-detail.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
   * `doc/AI-doc/CHANGELOG.md`
 
 
