@@ -2,8 +2,9 @@ import { Component, inject, computed, signal, effect, untracked } from '@angular
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
+import { AuthService } from '../../services/auth.service';
 import { 
   StoreProfile, 
   StoreServiceItem, 
@@ -292,6 +293,27 @@ import {
 
                     </div>
                   </div>
+                } @else if (!authService.isLoggedIn()) {
+                  <!-- Guest: Prompt to Log In to Submit Review -->
+                  <div class="p-6 rounded-3xl bg-indigo-50/70 border border-indigo-100 text-center mb-6 shadow-2xs">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-2 text-base font-bold shadow-xs">
+                      🔒
+                    </div>
+                    <h4 class="text-sm font-bold text-slate-900 mb-1">
+                      Log In to Review {{ s.ownerName }}'s Store
+                    </h4>
+                    <p class="text-xs text-slate-600 mb-4 max-w-sm mx-auto">
+                      Have you worked with {{ s.ownerName }}? Sign in to share your neighborhood gig experience and rating.
+                    </p>
+                    <button 
+                      type="button"
+                      (click)="authService.openLoginModal(getCurrentUrl())"
+                      class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition cursor-pointer shadow-xs"
+                    >
+                      <span>Log In to Leave a Review</span>
+                      <span>→</span>
+                    </button>
+                  </div>
                 } @else {
                   <!-- Client Review Submission Form -->
                   <div class="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 mb-6">
@@ -570,12 +592,19 @@ export class StoreDetailComponent {
   notificationMessage: string | null = null;
 
   formatUrl = formatSocialUrl;
+  authService = inject(AuthService);
+  router = inject(Router);
+
   displayUrl = displaySocialUrl;
   getSocialIcon = getSocialIcon;
   getSocialBadgeClass = getSocialBadgeClass;
 
   getStoreSocialLinks(store: StoreProfile): SocialMediaLink[] {
     return normalizeSocialLinks(store.socialMediaLinks, store.socialLinks);
+  }
+
+  getCurrentUrl(): string {
+    return this.router.url;
   }
 
   // Review Form state
@@ -591,12 +620,14 @@ export class StoreDetailComponent {
   });
 
   isOwner = computed(() => {
+    if (!this.authService.isLoggedIn()) return false;
     const s = this.store();
     if (!s) return false;
     const currentUserId = this.storeService.currentUser().id;
     const userStores = this.storeService.userStores();
     return s.userId === currentUserId || userStores.some(us => us.id === s.id) || this.storeService.currentUser().store?.id === s.id;
   });
+
 
   // Engagement tracking state for store owner
   selectedEngagementType = signal<EngagementViewType>('lifetime');

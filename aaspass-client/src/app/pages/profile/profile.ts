@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
+import { AuthService } from '../../services/auth.service';
 import { 
   StoreProfile, 
   SocialMediaLink, 
@@ -34,25 +35,39 @@ import {
             </p>
           </div>
 
-          <!-- Quick Test Toggle: switch store on/off for easy testing -->
-          <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-            <span class="text-xs font-semibold text-slate-600">Store Status:</span>
-            @if (storeService.userStores().length > 0) {
-              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                {{ storeService.userStores().length }} {{ storeService.userStores().length === 1 ? 'STORE' : 'STORES' }} ACTIVE
-              </span>
-            } @else {
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORES YET</span>
-            }
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Quick Test Toggle: switch store on/off for easy testing -->
+            <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+              <span class="text-xs font-semibold text-slate-600">Store Status:</span>
+              @if (storeService.userStores().length > 0) {
+                <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                  {{ storeService.userStores().length }} {{ storeService.userStores().length === 1 ? 'STORE' : 'STORES' }} ACTIVE
+                </span>
+              } @else {
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORES YET</span>
+              }
+              <button 
+                type="button" 
+                (click)="storeService.toggleDemoStore()"
+                class="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
+              >
+                {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner (2 Demo Stores)' }}
+              </button>
+            </div>
+
+            <!-- Sign Out Button -->
             <button 
-              type="button" 
-              (click)="storeService.toggleDemoStore()"
-              class="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
+              type="button"
+              (click)="authService.logout()"
+              class="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              title="Sign out of your account"
             >
-              {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner (2 Demo Stores)' }}
+              <span>🚪</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
+
 
         <!-- Section 1: Basic User Details (Always Present) -->
         <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs">
@@ -836,6 +851,7 @@ import {
 })
 export class ProfileComponent {
   storeService = inject(StoreService);
+  authService = inject(AuthService);
 
   isEditingUser = false;
   editName = this.storeService.currentUser().name;

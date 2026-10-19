@@ -1,0 +1,381 @@
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+
+@Component({
+  selector: 'app-auth-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink],
+  template: `
+    <div class="min-h-screen bg-slate-50/70 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      <!-- Background Ambient Glow -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+        <div class="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-indigo-500 blur-3xl"></div>
+        <div class="absolute bottom-10 right-0 w-80 h-80 rounded-full bg-pink-500 blur-3xl"></div>
+      </div>
+
+      <div class="sm:mx-auto sm:w-full sm:max-w-md relative z-10 text-center px-4">
+        <!-- Brand Link -->
+        <a routerLink="/" class="inline-flex items-center gap-2 mb-6 group">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-violet-600 to-pink-500 flex items-center justify-center text-white font-black text-2xl shadow-lg group-hover:scale-105 transition-transform">
+            AP
+          </div>
+          <div class="text-left">
+            <span class="text-2xl font-black tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors block">
+              AasPass
+            </span>
+            <span class="text-[10px] uppercase tracking-wider font-bold text-indigo-600 block -mt-1">
+              Hyperlocal Freelancing
+            </span>
+          </div>
+        </a>
+
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          {{ isLoginMode() ? 'Sign in to your account' : 'Join your local community' }}
+        </h2>
+        <p class="mt-2 text-xs sm:text-sm text-slate-500">
+          {{ isLoginMode() 
+            ? 'Connect with local clients and nearby neighborhood talent' 
+            : 'Start hiring or list your skill storefront in minutes' }}
+        </p>
+      </div>
+
+      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
+        <div class="bg-white py-8 px-6 shadow-xl border border-slate-200/80 rounded-3xl sm:px-10">
+          
+          <!-- Mode Tabs: Log In vs Sign Up -->
+          <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl mb-6">
+            <button 
+              type="button"
+              (click)="setMode('login')"
+              class="py-2.5 text-xs font-bold rounded-xl transition cursor-pointer"
+              [class.bg-white]="isLoginMode()"
+              [class.text-indigo-600]="isLoginMode()"
+              [class.shadow-2xs]="isLoginMode()"
+              [class.text-slate-600]="!isLoginMode()"
+            >
+              Log In
+            </button>
+            <button 
+              type="button"
+              (click)="setMode('signup')"
+              class="py-2.5 text-xs font-bold rounded-xl transition cursor-pointer"
+              [class.bg-white]="!isLoginMode()"
+              [class.text-indigo-600]="!isLoginMode()"
+              [class.shadow-2xs]="!isLoginMode()"
+              [class.text-slate-600]="isLoginMode()"
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <!-- Error Alert -->
+          @if (authService.authError()) {
+            <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold mb-5 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{{ authService.authError() }}</span>
+            </div>
+          }
+
+          <!-- Success Alert -->
+          @if (authService.authSuccessMessage()) {
+            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-5 flex items-center gap-2">
+              <span>✓</span>
+              <span>{{ authService.authSuccessMessage() }}</span>
+            </div>
+          }
+
+          <!-- LOGIN FORM -->
+          @if (isLoginMode()) {
+            <form (submit)="onLoginSubmit($event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Username or Email
+                </label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                  </div>
+                  <input 
+                    type="text"
+                    [(ngModel)]="loginInput"
+                    name="loginInput"
+                    required
+                    placeholder="e.g. aman or aman.sharma@example.com"
+                    class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Password
+                </label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                  </div>
+                  <input 
+                    [type]="showPassword() ? 'text' : 'password'"
+                    [(ngModel)]="loginPassword"
+                    name="loginPassword"
+                    required
+                    placeholder="Enter your password"
+                    class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                  <button 
+                    type="button" 
+                    (click)="togglePasswordVisibility()"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Toggle password view"
+                  >
+                    <span>{{ showPassword() ? '🙈' : '👁️' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                class="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-2"
+              >
+                Sign In
+              </button>
+            </form>
+
+            <!-- Quick Demo Accounts -->
+            <div class="mt-6 pt-5 border-t border-slate-100">
+              <span class="text-[10px] uppercase font-bold text-slate-400 block mb-2.5">
+                ⚡ Quick 1-Click Demo Logins:
+              </span>
+              <div class="space-y-2">
+                @for (demo of authService.demoAccounts; track demo.id) {
+                  <button 
+                    type="button"
+                    (click)="quickLogin(demo.id)"
+                    class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-200 transition text-left cursor-pointer group"
+                  >
+                    <div class="flex items-center gap-2.5">
+                      <img [src]="demo.avatarUrl" alt="" class="w-7 h-7 rounded-full object-cover" />
+                      <div>
+                        <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 block">
+                          {{ demo.name }}
+                        </span>
+                        <span class="text-[10px] text-slate-400 block -mt-0.5">
+                          {{ demo.role }}
+                        </span>
+                      </div>
+                    </div>
+                    <span class="text-xs font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                      Log In →
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- SIGNUP FORM -->
+          @if (!isLoginMode()) {
+            <form (submit)="onSignupSubmit($event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Full Name *
+                </label>
+                <input 
+                  type="text"
+                  [(ngModel)]="signupName"
+                  name="signupName"
+                  required
+                  placeholder="e.g. Ananya Roy"
+                  class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Username or Email *
+                </label>
+                <input 
+                  type="text"
+                  [(ngModel)]="signupUsername"
+                  name="signupUsername"
+                  required
+                  placeholder="e.g. ananya or ananya@example.com"
+                  class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">
+                    City
+                  </label>
+                  <select 
+                    [(ngModel)]="signupCity" 
+                    name="signupCity"
+                    class="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
+                  >
+                    <option value="Bengaluru">Bengaluru</option>
+                    <option value="Delhi NCR">Delhi NCR</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Pune">Pune</option>
+                    <option value="Hyderabad">Hyderabad</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">
+                    Neighborhood Area
+                  </label>
+                  <input 
+                    type="text"
+                    [(ngModel)]="signupArea"
+                    name="signupArea"
+                    placeholder="e.g. Koramangala"
+                    class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Password * (Min 6 chars)
+                </label>
+                <div class="relative">
+                  <input 
+                    [type]="showPassword() ? 'text' : 'password'"
+                    [(ngModel)]="signupPassword"
+                    name="signupPassword"
+                    required
+                    placeholder="Create a strong password"
+                    class="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                  />
+                  <button 
+                    type="button" 
+                    (click)="togglePasswordVisibility()"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Toggle password view"
+                  >
+                    <span>{{ showPassword() ? '🙈' : '👁️' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  Confirm Password *
+                </label>
+                <input 
+                  type="password"
+                  [(ngModel)]="signupConfirmPassword"
+                  name="signupConfirmPassword"
+                  required
+                  placeholder="Re-enter your password"
+                  class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                class="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-3"
+              >
+                Create Account & Sign In
+              </button>
+            </form>
+          }
+
+        </div>
+
+        <!-- Back to Home Link -->
+        <div class="text-center mt-6">
+          <a routerLink="/" class="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition inline-flex items-center gap-1">
+            <span>← Back to Explore Gigs</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `
+})
+export class AuthPageComponent implements OnInit {
+  authService = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  mode = signal<'login' | 'signup'>('login');
+  isLoginMode = computed(() => this.mode() === 'login');
+
+  loginInput = 'aman';
+  loginPassword = 'password123';
+  showPassword = signal<boolean>(false);
+
+  signupName = '';
+  signupUsername = '';
+  signupCity = 'Bengaluru';
+  signupArea = 'Indiranagar';
+  signupPassword = '';
+  signupConfirmPassword = '';
+
+  ngOnInit(): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/profile']);
+      return;
+    }
+
+    const path = this.route.snapshot.routeConfig?.path;
+    if (path === 'signup') {
+      this.mode.set('signup');
+    } else {
+      this.mode.set('login');
+    }
+  }
+
+  setMode(mode: 'login' | 'signup'): void {
+    this.mode.set(mode);
+    this.authService.authError.set(null);
+    this.authService.authSuccessMessage.set(null);
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update(v => !v);
+  }
+
+  quickLogin(userId: string): void {
+    const success = this.authService.quickLogin(userId);
+    if (success) {
+      this.router.navigate(['/profile']);
+    }
+  }
+
+  onLoginSubmit(event: Event): void {
+    event.preventDefault();
+    const res = this.authService.login(this.loginInput, this.loginPassword);
+    if (res.success) {
+      this.router.navigate(['/profile']);
+    }
+  }
+
+  onSignupSubmit(event: Event): void {
+    event.preventDefault();
+    if (this.signupPassword !== this.signupConfirmPassword) {
+      this.authService.authError.set('Passwords do not match. Please re-enter your password.');
+      return;
+    }
+
+    const res = this.authService.signup({
+      name: this.signupName,
+      usernameOrEmail: this.signupUsername,
+      password: this.signupPassword,
+      city: this.signupCity,
+      area: this.signupArea
+    });
+
+    if (res.success) {
+      this.router.navigate(['/profile']);
+    }
+  }
+}

@@ -167,3 +167,33 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-client/src/app/pages/home/home.ts`
   * `aaspass-client/src/app/services/store.service.spec.ts`
   * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-19 09:10:00 IST] - Implemented Username/Password Authentication, Login & Signup Modal Popup, and Protected Route Guards
+* **What Changed:**
+  * **Auth Data Models:** Extended [`user.model.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/models/user.model.ts) with `UserAccount`, `AuthCredentials`, `SignupRequest`, and `AuthResult` interfaces.
+  * **Reactive Authentication Service:** Created [`AuthService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/auth.service.ts) using Angular signals (`currentUser`, `isLoggedIn`, `isModalOpen`, `modalMode`, `returnUrl`, `authError`, `authSuccessMessage`). Handles username/email and password credential verification, account registration (sign up), demo account 1-click quick logins (`Aman Sharma`, `Priya Nair`, `Rohan Gupta`), session persistence in `localStorage`, and modal popup controls.
+  * **Interactive Login & Signup Modal / Popup:** Implemented [`AuthModalComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/auth-modal/auth-modal.ts) globally rendered in `app.html`. Supports seamless switching between **Log In** and **Sign Up** tabs, password show/hide eye toggle, dynamic context banner indicating why login was required (e.g. for `/create-store` or `/profile`), and quick demo account buttons.
+  * **Dedicated Auth Page Component:** Implemented [`AuthPageComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/auth/auth-page.ts) mapped to `/login` and `/signup` routes for direct URL navigation.
+  * **Route Protection via Angular Guard:** Implemented [`authGuard`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/guards/auth.guard.ts). Ensures **Home page (`/`)** and **Store URLs (`/stores/:id`)** require NO authentication. When an unauthenticated user accesses protected URLs (`/profile`, `/create-store`), `authGuard` intercepts, triggers the login popup modal with `returnUrl`, and auto-redirects them to their destination upon login/signup.
+  * **Navbar Upgrades:** Upgraded [`NavbarComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/navbar/navbar.ts) to display guest actions ("List Services", "Log In", "Sign Up") when unauthenticated, and user profile pill with dropdown menu ("My Profile", "Open Skill Store", "Sign Out") when logged in.
+  * **Store & Profile Integration:** 
+    * Updated [`StoreDetailComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/store-detail/store-detail.ts) to display a friendly "Log In to Leave a Review" card for guests, and restrict owner portal to verified owners.
+    * Updated [`ProfileComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/profile/profile.ts) with an explicit "Sign Out" button in the header.
+    * Synchronized [`StoreService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.ts) state with active `AuthService` session.
+  * **Comprehensive Unit Testing:** Created [`auth.service.spec.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/auth.service.spec.ts) with 14 unit test cases verifying authentication, credential checks, validation errors, duplicate usernames, signup flow, session restoration, demo quick-login, and route guard behavior. All 30 tests in the project pass cleanly.
+* **Why Changed:** Addressed user request for username and password login page implementation, keeping Home page and Store URLs public without requiring authentication, popping up login when protected URLs are requested, and including a signup option.
+* **Files Created/Modified:**
+  * `aaspass-client/src/app/models/user.model.ts`
+  * `aaspass-client/src/app/services/auth.service.ts`
+  * `aaspass-client/src/app/services/auth.service.spec.ts`
+  * `aaspass-client/src/app/guards/auth.guard.ts`
+  * `aaspass-client/src/app/components/auth-modal/auth-modal.ts`
+  * `aaspass-client/src/app/pages/auth/auth-page.ts`
+  * `aaspass-client/src/app/app.routes.ts`
+  * `aaspass-client/src/app/app.ts`
+  * `aaspass-client/src/app/app.html`
+  * `aaspass-client/src/app/components/navbar/navbar.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
+  * `aaspass-client/src/app/pages/store-detail/store-detail.ts`
+  * `aaspass-client/src/app/pages/profile/profile.ts`
+  * `doc/AI-doc/CHANGELOG.md`

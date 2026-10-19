@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { 
   StoreProfile, 
   StoreReview, 
@@ -10,11 +10,14 @@ import {
   getEngagementCount
 } from '../models/store.model';
 import { UserProfile } from '../models/user.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StoreService {
+  readonly authService = inject(AuthService);
+
   // Current user (Option A: Unified Account)
   readonly currentUser = signal<UserProfile>({
     id: 'user-001',
@@ -45,6 +48,20 @@ export class StoreService {
     if (user.store) return [user.store];
     return [];
   });
+
+  constructor() {
+    const activeAuthUser = this.authService.currentUser();
+    if (activeAuthUser) {
+      this.currentUser.set(activeAuthUser);
+    }
+
+    effect(() => {
+      const authUser = this.authService.currentUser();
+      if (authUser) {
+        this.currentUser.set(authUser);
+      }
+    });
+  }
 
   // Master list of available nearby stores / freelancers
   readonly stores = signal<StoreProfile[]>([
@@ -902,6 +919,9 @@ export class StoreService {
       ...updated,
       lastUpdateDateTime: new Date().toISOString()
     }));
+    if (this.authService.isLoggedIn()) {
+      this.authService.updateUserProfile(updated);
+    }
   }
 
   // Toggle store active/available status for a specific store or default to active
