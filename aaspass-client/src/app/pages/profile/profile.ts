@@ -21,6 +21,7 @@ import {
   EngagementTypeOption,
   getEngagementCount
 } from '../../models/store.model';
+import { getRandomAvatarUrl } from '../../models/user.model';
 
 @Component({
   selector: 'app-profile',
@@ -40,7 +41,7 @@ import {
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <!-- Quick Test Toggle: switch store on/off for easy testing -->
+            <!-- Store Status indicator -->
             <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
               <span class="text-xs font-semibold text-slate-600">Store Status:</span>
               @if (storeService.userStores().length > 0) {
@@ -50,13 +51,6 @@ import {
               } @else {
                 <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold">NO STORES YET</span>
               }
-              <button 
-                type="button" 
-                (click)="storeService.toggleDemoStore()"
-                class="ml-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition cursor-pointer"
-              >
-                {{ storeService.currentUser().hasStore ? 'Switch to Regular User' : '⚡ Preview as Store Owner (2 Demo Stores)' }}
-              </button>
             </div>
 
           </div>
@@ -86,6 +80,7 @@ import {
             <div class="flex flex-col items-center gap-2">
               <img 
                 [src]="storeService.currentUser().avatarUrl" 
+                (error)="handleAvatarError($event)"
                 alt="Avatar" 
                 class="w-24 h-24 rounded-2xl object-cover ring-4 ring-slate-100 shadow-md"
               />
@@ -272,6 +267,35 @@ import {
                       rows="2" 
                       class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                     ></textarea>
+                  </div>
+
+                  <!-- Profile Avatar Section -->
+                  <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs font-bold text-slate-700">Profile Avatar Image</label>
+                      <button 
+                        type="button" 
+                        (click)="randomizeAvatar()" 
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 text-indigo-600 text-[11px] font-bold rounded-lg border border-slate-200 transition cursor-pointer shadow-2xs"
+                        title="Generate a random avatar"
+                      >
+                        🎲 Random Avatar
+                      </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <img 
+                        [src]="editAvatarUrl || getRandomAvatarUrl(editName)" 
+                        alt="Avatar Preview" 
+                        class="w-12 h-12 rounded-xl object-cover ring-2 ring-indigo-200 bg-white shrink-0 shadow-2xs"
+                      />
+                      <input 
+                        type="text" 
+                        [(ngModel)]="editAvatarUrl" 
+                        placeholder="Avatar image URL (leave blank for auto-generated random avatar)"
+                        class="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <p class="text-[10px] text-slate-400">If left empty, a unique random avatar is automatically created when saving your User Details.</p>
                   </div>
 
                   <!-- Reusable Common Social Media Links Component for User -->
@@ -929,6 +953,7 @@ export class ProfileComponent {
   editArea = this.storeService.currentUser().area;
   editCity = this.storeService.currentUser().city;
   editBio = this.storeService.currentUser().bio;
+  editAvatarUrl = this.storeService.currentUser().avatarUrl || '';
 
   editUserSocialLinks: SocialMediaLink[] = [];
 
@@ -936,6 +961,19 @@ export class ProfileComponent {
   displayUrl = displaySocialUrl;
   getSocialIcon = getSocialIcon;
   getSocialBadgeClass = getSocialBadgeClass;
+  getRandomAvatarUrl = getRandomAvatarUrl;
+
+  randomizeAvatar(): void {
+    const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
+    this.editAvatarUrl = getRandomAvatarUrl(randomSeed);
+  }
+
+  handleAvatarError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img) {
+      img.src = getRandomAvatarUrl(this.storeService.currentUser().name);
+    }
+  }
 
   startEditUser(): void {
     const user = this.storeService.currentUser();
@@ -946,6 +984,7 @@ export class ProfileComponent {
     this.editArea = user.area;
     this.editCity = user.city;
     this.editBio = user.bio;
+    this.editAvatarUrl = user.avatarUrl || getRandomAvatarUrl(user.name);
     this.editUserSocialLinks = this.getUserSocialLinks().map(l => ({ ...l }));
     this.isEditingUser = true;
   }
@@ -1018,6 +1057,13 @@ export class ProfileComponent {
 
     const userSocialMediaLinks = toUserSocialMediaLinks(validSocial);
 
+    // If user does not have an image, add random avatar when saving UserDetails
+    const finalAvatar = (this.editAvatarUrl && this.editAvatarUrl.trim())
+      ? this.editAvatarUrl.trim()
+      : (this.storeService.currentUser().avatarUrl && this.storeService.currentUser().avatarUrl.trim()
+          ? this.storeService.currentUser().avatarUrl.trim()
+          : getRandomAvatarUrl(this.editName || 'user'));
+
     this.storeService.updateUserProfile({
       name: this.editName,
       phone: this.editPhone,
@@ -1026,6 +1072,7 @@ export class ProfileComponent {
       area: this.editArea,
       city: this.editCity,
       bio: this.editBio,
+      avatarUrl: finalAvatar,
       socialMediaLinks: validSocial,
       userSocialMediaLinks: userSocialMediaLinks,
       userSocialLinks: userSocialMediaLinks

@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 public class StoreAndUserControllerTest {
 
     @Autowired
@@ -105,6 +107,21 @@ public class StoreAndUserControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.bio", containsString("Updated bio")))
                 .andExpect(jsonPath("$.data.panNumber", is("NEWPN1234M")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/users/{id} - Blank avatar should assign random avatar")
+    public void testUpdateUserAvatarFallback() throws Exception {
+        UserUpdateRequest request = UserUpdateRequest.builder()
+                .avatarUrl("") // empty string should trigger random avatar generation
+                .build();
+
+        mockMvc.perform(put("/api/users/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.avatarUrl", containsString("dicebear.com")));
     }
 
     @Test

@@ -53,14 +53,19 @@ public class StoreReviewService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
 
-        // Enforce strict bounding between 1.0 and 5.0
-        double clampedRating = Math.max(1.0, Math.min(5.0, request.getRating()));
+        // Enforce strict bounding between 1.0 and 5.0 with safe null default for rating
+        double rawRating = request.getRating() != null ? request.getRating() : 5.0;
+        double clampedRating = Math.max(1.0, Math.min(5.0, rawRating));
 
         String reviewDate = LocalDate.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
 
+        String reviewerName = request.getUserName() != null && !request.getUserName().trim().isEmpty()
+                ? request.getUserName().trim()
+                : "Anonymous";
+
         StoreReview review = StoreReview.builder()
                 .store(store)
-                .userName(request.getUserName().trim())
+                .userName(reviewerName)
                 .userAvatar(request.getUserAvatar() != null ? request.getUserAvatar() :
                         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80")
                 .rating(clampedRating)

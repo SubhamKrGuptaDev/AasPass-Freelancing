@@ -293,7 +293,7 @@ export class NavbarComponent {
   activeStoreId = computed(() => {
     const user = this.storeService.currentUser();
     const stores = this.storeService.userStores();
-    return user.store?.id || (stores.length > 0 ? stores[0].id : 'store-user-001');
+    return user.store?.id || (stores.length > 0 ? stores[0].id : '');
   });
 
   activeStoreName = computed(() => {

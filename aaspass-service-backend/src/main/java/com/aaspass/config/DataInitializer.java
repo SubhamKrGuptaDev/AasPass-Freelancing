@@ -9,9 +9,9 @@ import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.aaspass.entity.User;
 import com.aaspass.entity.UserSocialMediaLinks;
+import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,21 +24,27 @@ import java.util.Arrays;
  * enabling immediate out-of-the-box login testing.
  */
 @Component
+@Slf4j
 public class DataInitializer implements CommandLineRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
-
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
 
-    public DataInitializer(UserRepository userRepository) {
+    public DataInitializer(UserRepository userRepository, StoreRepository storeRepository) {
         this.userRepository = userRepository;
+        this.storeRepository = storeRepository;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
-        if (userRepository.count() > 0) {
-            log.info("[DATA INIT] Database already contains {} users. Skipping demo seeding.", userRepository.count());
+        long userCount = userRepository.count();
+        long storeCount = storeRepository.count();
+
+        // Check if data is already present in DB to prevent creating duplicate records
+        if (userCount > 0 || storeCount > 0) {
+            log.info("[DATA INIT] Existing data detected in database ({} users, {} stores). Skipping dummy data creation to avoid duplicate records.",
+                    userCount, storeCount);
             return;
         }
 
@@ -79,7 +85,9 @@ public class DataInitializer implements CommandLineRunner {
                 .isDefault(true)
                 .build());
 
-        userRepository.save(aman);
+        if (!userRepository.existsByUsername(aman.getUsername()) && !userRepository.existsByEmail(aman.getEmail())) {
+            userRepository.save(aman);
+        }
 
         // 2. Priya Nair (PixelCraft Studios - Reels Editor)
         User priya = User.builder()
@@ -164,7 +172,9 @@ public class DataInitializer implements CommandLineRunner {
                 .build());
 
         priya.addStore(priyaStore);
-        userRepository.save(priya);
+        if (!userRepository.existsByUsername(priya.getUsername()) && !userRepository.existsByEmail(priya.getEmail())) {
+            userRepository.save(priya);
+        }
 
         // 3. Rohan Gupta (CodeSpark Lab - Full Stack Dev)
         User rohan = User.builder()
@@ -186,6 +196,16 @@ public class DataInitializer implements CommandLineRunner {
                         .linkedin("https://linkedin.com/in/rohangupta-dev")
                         .build())
                 .build();
+
+        rohan.addAddress(Address.builder()
+                .addressType("WORK")
+                .addressLine("80 Feet Rd, 4th Block")
+                .area("Koramangala")
+                .city("Bengaluru")
+                .state("Karnataka")
+                .pincode("560034")
+                .isDefault(true)
+                .build());
 
         Store rohanStore = Store.builder()
                 .ownerName("Rohan Gupta")
@@ -230,8 +250,10 @@ public class DataInitializer implements CommandLineRunner {
                 .build());
 
         rohan.addStore(rohanStore);
-        userRepository.save(rohan);
+        if (!userRepository.existsByUsername(rohan.getUsername()) && !userRepository.existsByEmail(rohan.getEmail())) {
+            userRepository.save(rohan);
+        }
 
-        log.info("[DATA INIT] Successfully seeded 3 demo user accounts ('aman', 'priya', 'rohan') with storefronts, packages, and addresses!");
+        log.info("[DATA INIT] Successfully seeded demo accounts ('aman', 'priya', 'rohan') with storefronts, packages, and addresses!");
     }
 }

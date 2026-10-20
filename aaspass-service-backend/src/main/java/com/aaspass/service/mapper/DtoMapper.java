@@ -12,6 +12,7 @@ import com.aaspass.entity.Store;
 import com.aaspass.entity.StoreReview;
 import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.User;
+import com.aaspass.util.AvatarGenerator;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +51,7 @@ public final class DtoMapper {
                 .phone(user.getPhone())
                 .aadharNumber(user.getAadharNumber())
                 .panNumber(user.getPanNumber())
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
                 .city(user.getCity())
                 .area(user.getArea())
                 .bio(user.getBio())

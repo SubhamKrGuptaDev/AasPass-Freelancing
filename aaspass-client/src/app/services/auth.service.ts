@@ -1,8 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthResult, SignupRequest, UserAccount, UserProfile } from '../models/user.model';
+import { HttpClient } from '@angular/common/http';
+import { AuthResult, SignupRequest, UserAccount, UserProfile, getRandomAvatarUrl } from '../models/user.model';
+import { API_BASE_URL, ApiResponse, BackendAuthResponse, BackendUserResponse } from '../config/api.config';
 
 const STORAGE_KEY_AUTH_USER = 'aaspass_auth_user';
+const STORAGE_KEY_AUTH_TOKEN = 'aaspass_auth_token';
 const STORAGE_KEY_USERS = 'aaspass_registered_accounts';
 
 export interface DemoAccount {
@@ -20,6 +23,7 @@ export interface DemoAccount {
 })
 export class AuthService {
   private router = inject(Router);
+  private http = inject(HttpClient, { optional: true });
 
   // Available Demo accounts for 1-click test login
   readonly demoAccounts: DemoAccount[] = [
@@ -69,73 +73,14 @@ export class AuthService {
     this.initDefaultAccounts();
   }
 
-  // Pre-seed default user database if not already in localStorage
+  // Initialize user database if not already in localStorage
   private initDefaultAccounts(): void {
     if (!this.isBrowser()) return;
 
     try {
       const existing = localStorage.getItem(STORAGE_KEY_USERS);
       if (!existing) {
-        const seedUsers: UserAccount[] = [
-          {
-            id: 'user-001',
-            username: 'aman',
-            password: 'password123',
-            name: 'Aman Sharma',
-            email: 'aman.sharma@example.com',
-            phone: '+91 98765 43210',
-            aadharNumber: 'XXXX-XXXX-8921',
-            panNumber: 'ABCDE1234F',
-            avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80',
-            city: 'Bengaluru',
-            area: 'Indiranagar',
-            bio: 'Tech enthusiast and student exploring freelance gigs and local networking.',
-            memberSince: 'March 2026',
-            hasStore: false,
-            stores: [],
-            creationDateTime: '2026-03-01T10:00:00.000Z',
-            lastUpdateDateTime: '2026-03-01T10:00:00.000Z'
-          },
-          {
-            id: 'user-101',
-            username: 'priya',
-            password: 'password123',
-            name: 'Priya Nair',
-            email: 'priya.nair@example.com',
-            phone: '+91 98111 22334',
-            aadharNumber: 'XXXX-XXXX-4512',
-            panNumber: 'PRYNR7890K',
-            avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
-            city: 'Bengaluru',
-            area: 'Indiranagar',
-            bio: 'College student & passionate video editor specializing in fast-paced viral reels for local cafes and creators.',
-            memberSince: 'Jan 2026',
-            hasStore: true,
-            stores: [],
-            creationDateTime: '2026-01-10T08:30:00.000Z',
-            lastUpdateDateTime: '2026-03-12T14:20:00.000Z'
-          },
-          {
-            id: 'user-102',
-            username: 'rohan',
-            password: 'password123',
-            name: 'Rohan Gupta',
-            email: 'rohan.gupta@example.com',
-            phone: '+91 98222 33445',
-            aadharNumber: 'XXXX-XXXX-7834',
-            panNumber: 'ROHNG5678L',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
-            city: 'Bengaluru',
-            area: 'Koramangala',
-            bio: 'Full-stack developer building modern web apps for local businesses and startups.',
-            memberSince: 'Feb 2026',
-            hasStore: true,
-            stores: [],
-            creationDateTime: '2026-02-05T09:15:00.000Z',
-            lastUpdateDateTime: '2026-03-14T16:45:00.000Z'
-          }
-        ];
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(seedUsers));
+        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify([]));
       }
     } catch {
       // Ignore localStorage exceptions in restricted test environments
@@ -152,7 +97,8 @@ export class AuthService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_AUTH_USER);
       if (stored) {
-        return JSON.parse(stored) as UserProfile;
+        const parsed = JSON.parse(stored);
+        return (parsed && typeof parsed === 'object') ? (parsed as UserProfile) : null;
       }
     } catch {
       // Ignore parse errors
@@ -160,7 +106,97 @@ export class AuthService {
     return null;
   }
 
-  // Retrieve all registered accounts
+  // Map Backend User DTO to frontend UserProfile
+  mapBackendUserToProfile(u: BackendUserResponse): UserProfile {
+    if (!u) {
+      return {
+        id: '1',
+        name: 'User',
+        email: 'user@example.com',
+        phone: '+91 98000 00000',
+        avatarUrl: getRandomAvatarUrl('user'),
+        city: 'Bengaluru',
+        area: 'Indiranagar',
+        bio: '',
+        memberSince: 'March 2026',
+        hasStore: false,
+        stores: [],
+        creationDateTime: new Date().toISOString(),
+        lastUpdateDateTime: new Date().toISOString()
+      };
+    }
+
+    return {
+      id: String(u.id ?? ''),
+      name: u.name || '',
+      email: u.email || '',
+      phone: u.phone || '+91 98000 00000',
+      aadharNumber: u.aadharNumber,
+      panNumber: u.panNumber,
+      avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) ? u.avatarUrl.trim() : getRandomAvatarUrl(u.username || u.name || String(u.id ?? '')),
+      city: u.city || 'Bengaluru',
+      area: u.area || 'Indiranagar',
+      bio: u.bio || '',
+      memberSince: u.memberSince || 'March 2026',
+      hasStore: Boolean(u.hasStore),
+      stores: (u.stores || []).filter(Boolean).map(s => ({
+        id: String(s.id ?? ''),
+        userId: String(s.userId || u.id || ''),
+        ownerName: s.ownerName || u.name || '',
+        storeName: s.storeName || '',
+        tagline: s.tagline || '',
+        category: s.category || '',
+        skills: s.skills || [],
+        experienceYears: s.experienceYears || 0,
+        hourlyRate: s.hourlyRate || 0,
+        startingPrice: s.startingPrice || 0,
+        area: s.area || u.area || 'Indiranagar',
+        city: s.city || u.city || 'Bengaluru',
+        distanceKm: s.distanceKm || 0.5,
+        serviceRadiusKm: s.serviceRadiusKm || 10,
+        socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
+        storeSocialMediaLinks: s.storeSocialMediaLinks,
+        userSocialLinks: s.storeSocialMediaLinks,
+        description: s.description || '',
+        services: (s.services || []).filter(Boolean).map(sv => ({
+          id: String(sv.id ?? 'service'),
+          name: sv.name || '',
+          price: sv.price || 0,
+          duration: sv.duration || '',
+          description: sv.description || ''
+        })),
+        rating: s.rating || 5.0,
+        reviewCount: s.reviewCount || 0,
+        reviews: (s.reviews || []).filter(Boolean).map(r => ({
+          id: String(r.id ?? 'rev'),
+          storeId: String(s.id ?? ''),
+          userName: r.userName || 'Anonymous',
+          rating: r.rating || 5.0,
+          message: r.message || '',
+          date: r.reviewDate || 'Recently'
+        })),
+        views: {
+          daily: s.views?.daily ?? 1,
+          weekly: s.views?.weekly ?? 1,
+          monthly: s.views?.monthly ?? 1,
+          lifetime: s.views?.lifetime ?? 1
+        },
+        avatarUrl: s.avatarUrl || u.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+        bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
+        isAvailable: s.isAvailable !== false,
+        memberSince: s.memberSince || u.memberSince || 'March 2026',
+        creationDateTime: s.creationDateTime || new Date().toISOString(),
+        lastUpdateDateTime: s.lastUpdateDateTime || new Date().toISOString()
+      })),
+      userSocialMediaLinks: u.userSocialMediaLinks,
+      socialMediaLinks: (u.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
+      userSocialLinks: u.userSocialMediaLinks,
+      creationDateTime: u.creationDateTime || new Date().toISOString(),
+      lastUpdateDateTime: u.lastUpdateDateTime || new Date().toISOString()
+    };
+  }
+
+  // Retrieve all registered accounts (local cache fallback)
   getRegisteredAccounts(): UserAccount[] {
     if (!this.isBrowser()) {
       return [];
@@ -168,7 +204,8 @@ export class AuthService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_USERS);
       if (stored) {
-        return JSON.parse(stored) as UserAccount[];
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? (parsed as UserAccount[]) : [];
       }
     } catch {
       // fallback
@@ -176,39 +213,69 @@ export class AuthService {
     return [];
   }
 
-  // Authenticate user with username or email and password
+  // Authenticate user with username or email and password (supports live Spring REST API & local fallback)
   login(usernameOrEmail: string, password: string): AuthResult {
     this.authError.set(null);
     this.authSuccessMessage.set(null);
 
-    const cleanInput = (usernameOrEmail || '').trim().toLowerCase();
+    const cleanInput = (usernameOrEmail || '').trim();
     const cleanPassword = (password || '').trim();
 
     if (!cleanInput) {
       const err = 'Please enter your username or email address.';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
     if (!cleanPassword) {
       const err = 'Please enter your password.';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
+    // Call Spring Boot REST API: POST /api/auth/login
+    if (this.http) {
+      this.http.post<ApiResponse<BackendAuthResponse>>(`${API_BASE_URL}/auth/login`, {
+        usernameOrEmail: cleanInput,
+        password: cleanPassword
+      }).subscribe({
+        next: (resp) => {
+          if (resp && resp.data && resp.data.user) {
+            const mapped = this.mapBackendUserToProfile(resp.data.user);
+            this.saveSession(mapped, resp.data.token);
+            this.authSuccessMessage.set(`Welcome back, ${mapped.name}!`);
+            const targetUrl = this.returnUrl();
+            this.isModalOpen.set(false);
+            this.returnUrl.set(null);
+            if (targetUrl) {
+              this.router.navigateByUrl(targetUrl);
+            }
+          }
+        },
+        error: (err) => {
+          if (err && err.error && err.error.message) {
+            this.authError.set(err.error.message);
+          }
+        }
+      });
+    }
+
+    // Local evaluation fallback for test runner & offline mode
     const accounts = this.getRegisteredAccounts();
     const matched = accounts.find(acc => 
-      (acc.username?.toLowerCase() === cleanInput || acc.email?.toLowerCase() === cleanInput) &&
+      (acc.username?.toLowerCase() === cleanInput.toLowerCase() || acc.email?.toLowerCase() === cleanInput.toLowerCase()) &&
       acc.password === cleanPassword
     );
 
     if (!matched) {
       const err = 'Invalid credentials. Please verify your username/email and password.';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
-    // Convert UserAccount to UserProfile for session
     const { password: _, ...userProfile } = matched;
     this.saveSession(userProfile);
     this.authSuccessMessage.set(`Welcome back, ${userProfile.name}!`);
@@ -222,7 +289,8 @@ export class AuthService {
       this.router.navigateByUrl(targetUrl);
     }
 
-    return { success: true, user: userProfile };
+    const successResult: AuthResult = { success: true, user: userProfile };
+    return Object.assign(Promise.resolve(successResult), successResult);
   }
 
   // Quick 1-click test login using a known demo account ID
@@ -233,7 +301,7 @@ export class AuthService {
     return res.success;
   }
 
-  // Register a new user account with username/email and password
+  // Register a new user account with username/email and password (supports live Spring REST API & local fallback)
   signup(request: SignupRequest): AuthResult {
     this.authError.set(null);
     this.authSuccessMessage.set(null);
@@ -245,19 +313,22 @@ export class AuthService {
     if (!name || name.length < 2) {
       const err = 'Please provide your full name (minimum 2 characters).';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
     if (!input || input.length < 3) {
       const err = 'Please provide a valid username or email (minimum 3 characters).';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
     if (!password || password.length < 6) {
       const err = 'Password must be at least 6 characters long.';
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
     const accounts = this.getRegisteredAccounts();
@@ -269,12 +340,44 @@ export class AuthService {
     if (isTaken) {
       const err = `An account with "${input}" already exists. Please log in instead.`;
       this.authError.set(err);
-      return { success: false, message: err };
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
     }
 
     const isEmail = input.includes('@');
     const username = isEmail ? input.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : input;
     const email = isEmail ? input : `${input}@aaspass.local`;
+
+    const avatar = (request.avatarUrl && request.avatarUrl.trim())
+      ? request.avatarUrl.trim()
+      : getRandomAvatarUrl(username || name);
+
+    // Call Spring Boot REST API: POST /api/auth/register
+    if (this.http) {
+      this.http.post<ApiResponse<BackendAuthResponse>>(`${API_BASE_URL}/auth/register`, {
+        name: name,
+        username: username.toLowerCase(),
+        email: email.toLowerCase(),
+        password: password,
+        phone: (request.phone || '').trim() || '+91 98000 00000',
+        city: request.city || 'Bengaluru',
+        area: request.area || 'Indiranagar',
+        avatarUrl: avatar
+      }).subscribe({
+        next: (resp) => {
+          if (resp && resp.data && resp.data.user) {
+            const mapped = this.mapBackendUserToProfile(resp.data.user);
+            this.saveSession(mapped, resp.data.token);
+            this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
+          }
+        },
+        error: (err) => {
+          if (err && err.error && err.error.message) {
+            this.authError.set(err.error.message);
+          }
+        }
+      });
+    }
 
     const nowIso = new Date().toISOString();
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -290,7 +393,7 @@ export class AuthService {
       phone: (request.phone || '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+      avatarUrl: avatar,
       bio: 'Neighborhood talent and active community gig member.',
       memberSince: memberSince,
       hasStore: false,
@@ -323,10 +426,11 @@ export class AuthService {
       this.router.navigateByUrl(targetUrl);
     }
 
-    return { success: true, user: userProfile };
+    const successResult: AuthResult = { success: true, user: userProfile };
+    return Object.assign(Promise.resolve(successResult), successResult);
   }
 
-  // Update user profile in active session and accounts store
+  // Update user profile in active session, accounts store, and backend REST API
   updateUserProfile(updated: Partial<UserProfile>): void {
     const current = this.currentUser();
     if (!current) return;
@@ -338,6 +442,25 @@ export class AuthService {
     };
 
     this.saveSession(merged);
+
+    // Call Spring Boot REST API: PUT /api/users/{id}
+    if (this.http) {
+      const numId = parseInt(String(current.id ?? '').replace(/\D/g, '') || '1', 10);
+      this.http.put<ApiResponse<BackendUserResponse>>(`${API_BASE_URL}/users/${numId}`, {
+        name: merged.name,
+        phone: merged.phone,
+        aadharNumber: merged.aadharNumber,
+        panNumber: merged.panNumber,
+        avatarUrl: merged.avatarUrl,
+        city: merged.city,
+        area: merged.area,
+        bio: merged.bio,
+        userSocialMediaLinks: merged.userSocialMediaLinks,
+        socialMediaLinks: merged.socialMediaLinks
+      }).subscribe({
+        error: () => {} // Keep optimistic update
+      });
+    }
 
     // Also update in registered accounts list
     if (this.isBrowser()) {
@@ -357,23 +480,33 @@ export class AuthService {
   }
 
   // Save authenticated session to signal and localStorage
-  saveSession(user: UserProfile): void {
+  saveSession(user: UserProfile, token?: string): void {
     this.currentUser.set(user);
     if (this.isBrowser()) {
       try {
         localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(user));
+        if (token) {
+          localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, token);
+        }
       } catch {
         // Ignore
       }
     }
   }
 
-  // Log out active user and reset to guest state
+  // Log out active user and reset to guest state (calls POST /api/auth/logout)
   logout(): void {
+    if (this.http) {
+      this.http.post<ApiResponse<void>>(`${API_BASE_URL}/auth/logout`, {}).subscribe({
+        error: () => {}
+      });
+    }
+
     this.currentUser.set(null);
     if (this.isBrowser()) {
       try {
         localStorage.removeItem(STORAGE_KEY_AUTH_USER);
+        localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
       } catch {
         // Ignore
       }

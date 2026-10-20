@@ -10,6 +10,7 @@ import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.exception.UnauthorizedException;
 import com.aaspass.repository.UserRepository;
 import com.aaspass.service.mapper.DtoMapper;
+import com.aaspass.util.AvatarGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -94,6 +95,7 @@ public class AuthService {
         }
 
         String memberSince = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+        String avatarUrl = AvatarGenerator.getOrDefault(request.getAvatarUrl(), request.getUsername());
 
         User newUser = User.builder()
                 .name(request.getName().trim())
@@ -104,7 +106,7 @@ public class AuthService {
                 .city(request.getCity() != null ? request.getCity() : "Bengaluru")
                 .area(request.getArea() != null ? request.getArea() : "Indiranagar")
                 .bio(request.getBio())
-                .avatarUrl("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80")
+                .avatarUrl(avatarUrl)
                 .memberSince(memberSince)
                 .hasStore(false)
                 .build();

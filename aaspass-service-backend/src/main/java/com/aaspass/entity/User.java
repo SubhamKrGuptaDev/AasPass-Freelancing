@@ -96,15 +96,41 @@ public class User extends BaseAuditEntity {
         this.userSocialMediaLinks = links;
     }
 
-    public void addAddress(Address build) {
-        addresses.add(build);
-    }
-
-    public void addStore(Store priyaStore) {
-
+    public void addAddress(Address address) {
+        if (address != null) {
+            if (this.addresses == null) {
+                this.addresses = new ArrayList<>();
+            }
+            addresses.add(address);
+            address.setUser(this);
+        }
     }
 
     public void removeAddress(Address address) {
+        if (address != null && addresses != null) {
+            addresses.remove(address);
+            address.setUser(null);
+        }
+    }
 
+    public void addStore(Store store) {
+        if (store != null) {
+            if (this.stores == null) {
+                this.stores = new ArrayList<>();
+            }
+            stores.add(store);
+            store.setUser(this);
+            this.hasStore = true;
+        }
+    }
+
+    public void removeStore(Store store) {
+        if (store != null && stores != null) {
+            stores.remove(store);
+            store.setUser(null);
+            if (stores.isEmpty()) {
+                this.hasStore = false;
+            }
+        }
     }
 }

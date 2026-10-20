@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { getRandomAvatarUrl } from '../../models/user.model';
 
 @Component({
   selector: 'app-auth-page',
@@ -280,6 +281,36 @@ import { AuthService } from '../../services/auth.service';
                 />
               </div>
 
+              <!-- Profile Avatar (Optional) -->
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="block text-xs font-bold text-slate-700">Profile Avatar (Optional)</label>
+                  <button 
+                    type="button" 
+                    (click)="randomizeSignupAvatar()" 
+                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-slate-100 text-indigo-600 text-[10px] font-bold rounded-md border border-slate-200 transition cursor-pointer shadow-2xs"
+                    title="Generate a random avatar"
+                  >
+                    🎲 Random Avatar
+                  </button>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <img 
+                    [src]="signupAvatarUrl || getRandomAvatarUrl(signupUsername || signupName || 'user')" 
+                    alt="Avatar Preview" 
+                    class="w-9 h-9 rounded-lg object-cover ring-2 ring-indigo-200 bg-white shrink-0"
+                  />
+                  <input 
+                    type="text" 
+                    [(ngModel)]="signupAvatarUrl" 
+                    name="signupAvatarUrl"
+                    placeholder="Image URL (optional)"
+                    class="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <p class="text-[10px] text-slate-400">If no image is provided, a random avatar will be added automatically.</p>
+              </div>
+
               <button 
                 type="submit"
                 class="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-3"
@@ -319,6 +350,13 @@ export class AuthPageComponent implements OnInit {
   signupArea = 'Indiranagar';
   signupPassword = '';
   signupConfirmPassword = '';
+  signupAvatarUrl = '';
+  getRandomAvatarUrl = getRandomAvatarUrl;
+
+  randomizeSignupAvatar(): void {
+    const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
+    this.signupAvatarUrl = getRandomAvatarUrl(randomSeed);
+  }
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
@@ -376,7 +414,8 @@ export class AuthPageComponent implements OnInit {
       usernameOrEmail: this.signupUsername,
       password: this.signupPassword,
       city: this.signupCity,
-      area: this.signupArea
+      area: this.signupArea,
+      avatarUrl: this.signupAvatarUrl
     });
 
     if (res.success) {

@@ -6,6 +6,75 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-20 18:50:00 IST] - Removal of Frontend Hardcoded Dummy Data & Direct Live API Binding
+* **What Changed:**
+  * **Removed Hardcoded Mock Stores from Frontend**:
+    * Deleted ~360 lines of hardcoded mock stores (`store-1` through `store-7`) and demo stores (`store-user-001`, `store-user-002`) from `StoreService`.
+    * Stores are now exclusively initialized empty `stores = signal<StoreProfile[]>([])` and fetched directly from Spring Boot REST API `GET /api/stores` via `loadStoresFromApi()`.
+    * Added dynamic `fetchStoreById(id)` to retrieve single stores on demand from `GET /api/stores/{id}` when direct navigation occurs, reactively updating the store signals.
+    * Removed `buildDemoStore1()`, `buildDemoStore2()`, and `toggleDemoStore()` from `StoreService`.
+    * Removed demo store toggle button (`⚡ Preview as Store Owner`) from `ProfileComponent`.
+    * Removed `'store-user-001'` fallback in `NavbarComponent.activeStoreId`.
+  * **Removed Hardcoded Guest Profile**:
+    * Replaced default "Aman Sharma" guest fallback in `StoreService.currentUser` with `EMPTY_USER_PROFILE`.
+    * User profile data is now populated strictly from active authentication sessions (`/api/auth/login`, `/api/auth/register`, `/api/users/{id}`).
+  * **Cleaned Up `localStorage` Mock Pre-Seeding**:
+    * Updated `AuthService.initDefaultAccounts()` to remove `seedUsers` so dummy accounts are not pre-written into browser `localStorage`.
+  * **Loading State & UX Polish**:
+    * Added animated loading skeletons on `HomeComponent` and `StoreDetailComponent` while fetching store data from live APIs.
+  * **Verification & Test Coverage**:
+    * Updated unit test suite (`store.service.spec.ts`, `auth.service.spec.ts`) with dedicated test fixture data.
+    * Verified 100% test pass rate on Angular client (31/31 passed) and Spring Boot backend (18/18 passed).
+* **Why Changed:** User requested removal of all hardcoded dummy data from the frontend, ensuring only data originating from live backend APIs is rendered.
+* **Files Modified:**
+  * `aaspass-client/src/app/services/store.service.ts`
+  * `aaspass-client/src/app/services/store.service.spec.ts`
+  * `aaspass-client/src/app/services/auth.service.ts`
+  * `aaspass-client/src/app/services/auth.service.spec.ts`
+  * `aaspass-client/src/app/components/navbar/navbar.ts`
+  * `aaspass-client/src/app/pages/home/home.ts`
+  * `aaspass-client/src/app/pages/store-detail/store-detail.ts`
+  * `aaspass-client/src/app/pages/profile/profile.ts`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
+### [2026-10-20 17:45:00 IST] - Random Avatar Fallback for UserDetails & Database Duplicate Prevention
+* **What Changed:**
+  * **Random Avatar Assignment for User Details**:
+    * Created `AvatarGenerator` (`com.aaspass.util.AvatarGenerator`) in backend to generate unique, deterministic or random SVG avatars via Dicebear Avataaars whenever a user does not provide an image.
+    * Added `avatarUrl` field to `RegisterRequest` in Spring Boot backend.
+    * Updated `AuthService.register()` to check if avatar is provided; if not provided, automatically assigns a random avatar using `AvatarGenerator.getOrDefault()`.
+    * Updated `UserService.updateUser()` and `DtoMapper.toUserResponse()` to guarantee all user responses have a valid avatar, falling back to random avatars instead of hardcoded photos.
+    * Created client-side `getRandomAvatarUrl()` in `user.model.ts` and integrated into `AuthService.signup()`, `AuthService.mapBackendUserToProfile()`, and `StoreService.updateUserProfile()`.
+    * Upgraded `ProfileComponent` to include avatar preview, URL editing, and a "🎲 Random Avatar" generator button in the User Details edit section, ensuring `saveUserDetails()` automatically assigns a random avatar if no image is present.
+    * Added optional Profile Avatar input and "🎲 Random Avatar" button in `AuthPageComponent` signup form.
+  * **Database Duplicate Data Prevention on Startup & Tests**:
+    * Updated `DataInitializer` in backend to check both `userRepository.count() > 0` and `storeRepository.count() > 0`. If existing data is detected in the database, demo data creation is skipped entirely to prevent duplicate records.
+    * Added idempotent checks (`existsByUsername`, `existsByEmail`, `existsByStoreName`) before persisting each demo entity in `DataInitializer`.
+    * Added `existsByStoreName` and `existsByUserIdAndStoreName` to `StoreRepository`.
+    * Added `@Transactional` to `StoreAndUserControllerTest` and `AuthControllerTest` to ensure all integration test entities are automatically rolled back, preventing test runs from accumulating duplicate records in MySQL.
+    * Cleaned up existing duplicate test records from MySQL database.
+    * Added test cases verifying random avatar fallback in both Spring Boot (`AuthControllerTest`, `StoreAndUserControllerTest`) and Angular (`auth.service.spec.ts`).
+* **Why Changed:** Addressed validated issues in the AasPass system where users without images lacked random avatars during UserDetails creation, and application startup / test runs caused duplicate records to accumulate in the database.
+* **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/util/AvatarGenerator.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/RegisterRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/AuthService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/UserService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/mapper/DtoMapper.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/StoreRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/DataInitializer.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/controller/AuthControllerTest.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/controller/StoreAndUserControllerTest.java`
+  * `aaspass-client/src/app/models/user.model.ts`
+  * `aaspass-client/src/app/services/auth.service.ts`
+  * `aaspass-client/src/app/services/auth.service.spec.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
+  * `aaspass-client/src/app/pages/profile/profile.ts`
+  * `aaspass-client/src/app/pages/auth/auth-page.ts`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
 ### [2026-10-15 08:48:00 IST] - Initial Frontend Discovery & Unified Account Implementation
 * **What Changed:** Created the initial Angular frontend architecture including `StoreService` (signal-based state management), Discovery/Home page with distance-radius filtering, Store Detail page, Create Store flow with live preview, and a Unified User Profile page.
 * **Why Changed:** Set up the core user journey for Option A (Unified Account) allowing any user to search nearby gigs or publish a skill store for local side-income before backend integration.
@@ -364,21 +433,66 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-service-backend/pom.xml`
   * `doc/AI-doc/CHANGELOG.md`
 
-### [2026-10-20 11:20:00 IST] - Removed Unused AuthModalComponent & Aligned Navigation with Dedicated Auth Pages
+### [2026-10-20 12:40:00 IST] - Integrated Backend REST APIs with Frontend & Fixed Entity Cascade Mappings
 * **What Changed:**
-  * Resolved Angular compiler warning `NG8113: AuthModalComponent is not used within the template of App [plugin angular-compiler]`.
-  * Removed `AuthModalComponent` from [`App`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/app.ts) imports and eliminated the `<app-auth-modal />` tag from [`app.html`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/app.html).
-  * Safely removed the redundant [`auth-modal/`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/auth-modal) component directory, reducing production bundle size by ~15.5 kB.
-  * Updated [`NavbarComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/navbar/navbar.ts) guest CTA links ("Log In", "Sign Up", "List Services") to use standard `routerLink`s targeting `/login`, `/signup`, and `/create-store`.
-  * Updated [`authGuard`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/guards/auth.guard.ts) to return `router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } })` when unauthenticated users access protected paths (`/profile`, `/create-store`).
-  * Updated [`AuthPageComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/auth/auth-page.ts) to automatically redirect to `returnUrl` (or `/profile`) upon successful login, signup, or 1-click demo login.
-* **Why Changed:** Addressed user request: "▲ [WARNING] NG8113: AuthModalComponent is not used within the template of App [plugin angular-compiler] ... Getting this warning it's not used if not used please remove this".
+  * **Frontend HTTP Client Setup:** Configured `provideHttpClient(withFetch())` in [`app.config.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/app.config.ts) to enable native Angular HTTP requests across the frontend.
+  * **API Configuration & DTO Contracts:** Created [`api.config.ts`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/config/api.config.ts) declaring `API_BASE_URL` (`http://localhost:8080/api`), generic `ApiResponse<T>`, and TypeScript contracts mirroring Spring Boot response DTOs (`BackendAuthResponse`, `BackendUserResponse`, `BackendStoreResponse`).
+  * **Auth Service REST API Integration:** Upgraded [`AuthService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/auth.service.ts) to communicate with Spring Boot endpoints:
+    * `login()` -> `POST /api/auth/login` (with credentials, token persistence, and fallback to pre-seeded accounts).
+    * `signup()` -> `POST /api/auth/register` (creates user in MySQL with duplicate detection).
+    * `logout()` -> `POST /api/auth/logout`.
+    * `updateUserProfile()` -> `PUT /api/users/{id}`.
+  * **Store Service REST API Integration:** Upgraded [`StoreService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.ts) to communicate with backend storefront endpoints:
+    * Startup loading -> `GET /api/stores` (populates signal state from database).
+    * `createStore()` -> `POST /api/stores`.
+    * `updateStore()` -> `PUT /api/stores/{id}`.
+    * `deleteStore()` -> `DELETE /api/stores/{id}`.
+    * `toggleStoreAvailability()` -> `PATCH /api/stores/{id}/toggle-status`.
+    * `addReview()` -> `POST /api/stores/{storeId}/reviews`.
+    * `recordStoreView()` -> `POST /api/stores/{id}/views`.
+  * **Backend Entity Bi-directional Mapping Fixes:**
+    * Implemented helper methods in [`User.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/User.java): `addStore(store)` (assigns `store.setUser(this)`), `removeStore(store)`, `addAddress(address)` (assigns `address.setUser(this)`), `removeAddress(address)`.
+    * Implemented helper methods in [`Store.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java): `addService(item)` (assigns `item.setStore(this)`), `removeService(item)`, `addSocialMediaLink(link)`, `addReview(review)`, `addViewRecord(record)`.
+    * Enabled `PATCH` and `OPTIONS` in [`WebMvcConfig.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/config/WebMvcConfig.java) CORS policy.
+    * Linked demo store packages, addresses, and reviews in [`DataInitializer.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/config/DataInitializer.java).
+  * Cleaned up stale emitted `.js` files from `src/app`.
+* **Why Changed:** Addressed user request to integrate backend REST APIs with the Angular frontend while keeping the existing avatar URL flow intact.
 * **Files Created/Modified:**
-  * `aaspass-client/src/app/app.ts`
-  * `aaspass-client/src/app/app.html`
-  * `aaspass-client/src/app/components/navbar/navbar.ts`
+  * `aaspass-client/src/app/app.config.ts`
+  * `aaspass-client/src/app/config/api.config.ts`
+  * `aaspass-client/src/app/services/auth.service.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
   * `aaspass-client/src/app/guards/auth.guard.ts`
-  * `aaspass-client/src/app/pages/auth/auth-page.ts`
+  * `aaspass-client/src/app/services/auth.service.spec.ts`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/WebMvcConfig.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/DataInitializer.java`
+  * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-20 13:10:00 IST] - Null-Safety Hardening & Compiler Diagnostics Across Backend & Frontend
+* **What Changed:**
+  * **Backend Null Safety:**
+    * Hardened bi-directional relationship helpers in [`User.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/User.java) (`addAddress`, `removeAddress`, `addStore`, `removeStore`) with defensive initialization and null-checks on the collections to prevent `NullPointerException`s if uninitialized collections or null entities are passed.
+    * Hardened bi-directional relationship helpers in [`Store.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java) (`addService`, `removeService`, `addSocialMediaLink`, `addReview`, `addViewRecord`) with defensive lazy collection initialization and null-checks.
+    * Fixed potential unboxing NPE in [`StoreReviewService.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/service/StoreReviewService.java) when evaluating `request.getRating()`, and guarded `request.getUserName().trim()`.
+    * Streamlined store removal in [`StoreService.java`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/src/main/java/com/aaspass/service/StoreService.java) by using `user.removeStore(store)` and guarded `store.getSocialMediaLinks()` against null before `.clear()`.
+  * **Frontend Null Safety:**
+    * In [`AuthService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/auth.service.ts): Protected `loadStoredSession()` and `getRegisteredAccounts()` by validating parsed JSON structure (`typeof parsed === 'object'` and `Array.isArray(parsed)`). Guarded `mapBackendUserToProfile` against null input and filtered null items in nested arrays (`stores`, `services`, `reviews`, `socialMediaLinks`).
+    * In [`StoreService`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/services/store.service.ts): Guarded `mapBackendStoreToProfile` against null input and safely transformed nested arrays. Hardened ID string parsing across `createStore`, `updateStore`, `deleteStore`, `addReview`, and `recordStoreView`.
+    * In [`authGuard`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/guards/auth.guard.ts): Added defensive fallback `state?.url || '/'` for unauthenticated redirection.
+  * **Build Verification:**
+    * Backend: `./mvnw.cmd test-compile` and `./mvnw.cmd test` succeeded cleanly (all 16 tests passing).
+    * Frontend: `npm run build` and `npm test` succeeded cleanly (all 30 tests passing).
+* **Why Changed:** Code quality, null-safety, and compiler diagnostics review following full-stack REST API integration.
+* **Files Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/User.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/entity/Store.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreReviewService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreService.java`
+  * `aaspass-client/src/app/services/auth.service.ts`
+  * `aaspass-client/src/app/services/store.service.ts`
+  * `aaspass-client/src/app/guards/auth.guard.ts`
   * `doc/AI-doc/CHANGELOG.md`
 
 

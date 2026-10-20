@@ -8,8 +8,46 @@ describe('AuthService & AuthGuard', () => {
   let authService: AuthService;
   let router: Router;
 
+  const testUsers = [
+    {
+      id: 'user-001',
+      username: 'aman',
+      password: 'password123',
+      name: 'Aman Sharma',
+      email: 'aman.sharma@example.com',
+      phone: '+91 98765 43210',
+      avatarUrl: '',
+      city: 'Bengaluru',
+      area: 'Indiranagar',
+      bio: '',
+      memberSince: 'March 2026',
+      hasStore: false,
+      stores: [],
+      creationDateTime: new Date().toISOString(),
+      lastUpdateDateTime: new Date().toISOString()
+    },
+    {
+      id: 'user-101',
+      username: 'priya',
+      password: 'password123',
+      name: 'Priya Nair',
+      email: 'priya.nair@example.com',
+      phone: '+91 98111 22334',
+      avatarUrl: '',
+      city: 'Bengaluru',
+      area: 'Indiranagar',
+      bio: '',
+      memberSince: 'Jan 2026',
+      hasStore: true,
+      stores: [],
+      creationDateTime: new Date().toISOString(),
+      lastUpdateDateTime: new Date().toISOString()
+    }
+  ];
+
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('aaspass_registered_accounts', JSON.stringify(testUsers));
     TestBed.configureTestingModule({});
     authService = TestBed.inject(AuthService);
     router = TestBed.inject(Router);
@@ -133,6 +171,33 @@ describe('AuthService & AuthGuard', () => {
     expect(authService.isModalOpen()).toBe(false);
   });
 
+  it('should assign a random avatar when signing up without providing an image', () => {
+    const uniqueUser = 'newuser_' + Date.now();
+    const result = authService.signup({
+      name: 'Random Avatar User',
+      usernameOrEmail: uniqueUser,
+      password: 'password123'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.user?.avatarUrl).toBeDefined();
+    expect(result.user?.avatarUrl).toContain('dicebear.com');
+  });
+
+  it('should use the provided image avatar when user specifies an image URL', () => {
+    const uniqueUser = 'custom_user_' + Date.now();
+    const customImage = 'https://example.com/custom-photo.jpg';
+    const result = authService.signup({
+      name: 'Custom Photo User',
+      usernameOrEmail: uniqueUser,
+      password: 'password123',
+      avatarUrl: customImage
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.user?.avatarUrl).toBe(customImage);
+  });
+
   it('should reset user session on logout', () => {
     authService.login('aman', 'password123');
     expect(authService.isLoggedIn()).toBe(true);
@@ -152,14 +217,14 @@ describe('AuthService & AuthGuard', () => {
       expect(result).toBe(true);
     });
 
-    it('should trigger login popup modal and block access when user is not logged in', () => {
+    it('should redirect to login with returnUrl and block access when user is not logged in', () => {
       authService.logout();
       const route = {} as ActivatedRouteSnapshot;
       const state = { url: '/create-store' } as RouterStateSnapshot;
 
-      TestBed.runInInjectionContext(() => authGuard(route, state));
-      expect(authService.isModalOpen()).toBe(true);
+      const urlTree = TestBed.runInInjectionContext(() => authGuard(route, state));
       expect(authService.returnUrl()).toBe('/create-store');
+      expect(urlTree).toBeDefined();
     });
   });
 });

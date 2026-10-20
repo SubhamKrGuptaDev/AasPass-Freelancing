@@ -17,6 +17,10 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     List<Store> findByCategoryIgnoreCase(String category);
 
+    boolean existsByStoreName(String storeName);
+
+    boolean existsByUserIdAndStoreName(Long userId, String storeName);
+
     @Query("SELECT DISTINCT s FROM Store s " +
             "LEFT JOIN s.skills sk " +
             "WHERE (:city IS NULL OR :city = '' OR LOWER(s.city) = LOWER(:city)) " +

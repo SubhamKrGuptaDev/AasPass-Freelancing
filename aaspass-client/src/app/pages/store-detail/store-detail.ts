@@ -610,6 +610,12 @@ import {
           </div>
         </div>
 
+      } @else if (storeService.isLoading()) {
+        <div class="max-w-md mx-auto text-center py-20 animate-pulse">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-100 mx-auto mb-4"></div>
+          <div class="h-4 bg-slate-200 rounded w-1/2 mx-auto mb-2"></div>
+          <div class="h-3 bg-slate-200 rounded w-1/3 mx-auto"></div>
+        </div>
       } @else {
         <div class="max-w-md mx-auto text-center py-20">
           <h2 class="text-lg font-bold text-slate-800">Store Not Found</h2>

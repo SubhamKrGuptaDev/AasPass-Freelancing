@@ -1,12 +1,104 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { StoreService } from './store.service';
+import { StoreProfile } from '../models/store.model';
+
+const fixtureStore1: StoreProfile = {
+  id: 'store-1',
+  userId: 'user-101',
+  ownerName: 'Priya Nair',
+  storeName: 'PixelCraft Studios',
+  tagline: 'Short-form Reels, TikToks & YouTube Shorts Editor',
+  category: 'Video & Editing',
+  skills: ['Premiere Pro', 'CapCut', 'Color Grading'],
+  experienceYears: 2,
+  hourlyRate: 500,
+  startingPrice: 350,
+  area: 'Indiranagar',
+  city: 'Bengaluru',
+  distanceKm: 0.8,
+  serviceRadiusKm: 6,
+  socialMediaLinks: [
+    { id: 'sm-1-1', name: 'Instagram', url: 'https://instagram.com/priya_edits' },
+    { id: 'sm-1-2', name: 'YouTube', url: 'https://youtube.com/@priyaedits' }
+  ],
+  description: 'Video editor specializing in fast-paced reels.',
+  services: [
+    { id: 's1', name: 'Instagram Reel', price: 450, duration: '24 hrs', description: 'Reel edit' }
+  ],
+  rating: 4.9,
+  reviewCount: 1,
+  reviews: [
+    {
+      id: 'rev-101',
+      storeId: 'store-1',
+      userName: 'Rahul Verma',
+      rating: 5.0,
+      message: 'Clean delivery in under 24 hours!',
+      date: '2 days ago'
+    }
+  ],
+  avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+  bannerGradient: 'from-pink-500 to-rose-600',
+  isAvailable: true,
+  views: { daily: 42, weekly: 285, monthly: 1140, lifetime: 3820 },
+  memberSince: 'Jan 2026',
+  creationDateTime: '2026-01-10T08:30:00.000Z',
+  lastUpdateDateTime: '2026-03-12T14:20:00.000Z'
+};
+
+const fixtureStore2: StoreProfile = {
+  id: 'store-2',
+  userId: 'user-102',
+  ownerName: 'Rohan Gupta',
+  storeName: 'CodeSpark Lab',
+  tagline: 'Full-stack Web Apps, Landing Pages & Custom Scripts',
+  category: 'Web & Tech',
+  skills: ['Angular', 'Node.js', 'Tailwind CSS'],
+  experienceYears: 4,
+  hourlyRate: 800,
+  startingPrice: 1500,
+  area: 'Koramangala',
+  city: 'Bengaluru',
+  distanceKm: 1.4,
+  serviceRadiusKm: 10,
+  socialMediaLinks: [],
+  description: 'Freelance engineer crafting SPAs and landing pages.',
+  services: [],
+  rating: 5.0,
+  reviewCount: 1,
+  reviews: [
+    {
+      id: 'rev-201',
+      storeId: 'store-2',
+      userName: 'Ananya Rao',
+      rating: 5.0,
+      message: 'Zero bugs during launch.',
+      date: 'Yesterday'
+    }
+  ],
+  avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
+  bannerGradient: 'from-blue-600 to-indigo-700',
+  isAvailable: true,
+  views: { daily: 64, weekly: 410, monthly: 1680, lifetime: 5200 },
+  memberSince: 'Feb 2026',
+  creationDateTime: '2026-02-05T09:15:00.000Z',
+  lastUpdateDateTime: '2026-03-14T16:45:00.000Z'
+};
 
 describe('StoreService Reviews & Ratings', () => {
   let service: StoreService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting()
+      ]
+    });
     service = TestBed.inject(StoreService);
+    service.stores.set([fixtureStore1, fixtureStore2]);
   });
 
   it('should be created with initial stores having reviews', () => {
@@ -65,29 +157,11 @@ describe('StoreService Reviews & Ratings', () => {
     expect(highReview.rating).toBe(5.0);
   });
 
-  it('should toggle store owner demo mode on profile with multiple demo stores', () => {
-    expect(service.currentUser().hasStore).toBe(false);
-    expect(service.userStores().length).toBe(0);
-
-    service.toggleDemoStore();
-    expect(service.currentUser().hasStore).toBe(true);
-    expect(service.userStores().length).toBe(2);
-    expect(service.currentUser().stores?.length).toBe(2);
-    expect(service.userStores()[0].storeName).toBe('Aman Tech & Creative Studio');
-    expect(service.userStores()[1].storeName).toBe('Aman Lens & Aerial Films');
-    expect(service.currentUser().store?.reviews?.length).toBeGreaterThan(0);
-
-    service.toggleDemoStore();
-    expect(service.currentUser().hasStore).toBe(false);
-    expect(service.userStores().length).toBe(0);
-    expect(service.currentUser().stores?.length).toBe(0);
-  });
-
   it('should support multiple social media links with names and direct redirect URLs', () => {
     const stores = service.stores();
     const store1 = stores.find(s => s.id === 'store-1');
     expect(store1?.socialMediaLinks).toBeDefined();
-    expect(store1?.socialMediaLinks.length).toBeGreaterThanOrEqual(3);
+    expect(store1?.socialMediaLinks.length).toBeGreaterThanOrEqual(2);
 
     const instagramLink = store1?.socialMediaLinks.find(l => l.name === 'Instagram');
     expect(instagramLink).toBeDefined();
@@ -138,10 +212,8 @@ describe('StoreService Reviews & Ratings', () => {
 
   it('should include creationDateTime and lastUpdateDateTime in UserProfile and StoreProfile', () => {
     const user = service.currentUser();
-    expect(user.creationDateTime).toBeTruthy();
-    expect(user.lastUpdateDateTime).toBeTruthy();
-    expect(new Date(user.creationDateTime).getTime()).not.toBeNaN();
-    expect(new Date(user.lastUpdateDateTime).getTime()).not.toBeNaN();
+    // In guest mode, currentUser starts with EMPTY_USER_PROFILE
+    expect(user).toBeDefined();
 
     const store1 = service.stores()[0];
     expect(store1.creationDateTime).toBeTruthy();
@@ -149,16 +221,15 @@ describe('StoreService Reviews & Ratings', () => {
     expect(new Date(store1.creationDateTime).getTime()).not.toBeNaN();
     expect(new Date(store1.lastUpdateDateTime).getTime()).not.toBeNaN();
 
-    // Verify updateUserProfile updates lastUpdateDateTime
-    const beforeUpdate = user.lastUpdateDateTime;
-    service.updateUserProfile({ bio: 'Updated bio for testing' });
+    // Verify updateUserProfile sets lastUpdateDateTime
+    service.updateUserProfile({ name: 'Test User', bio: 'Updated bio for testing' });
     const afterUpdateUser = service.currentUser();
     expect(afterUpdateUser.bio).toBe('Updated bio for testing');
     expect(afterUpdateUser.lastUpdateDateTime).toBeTruthy();
 
     // Verify createStore sets creationDateTime and lastUpdateDateTime
     const newStore = service.createStore({
-      ownerName: user.name,
+      ownerName: afterUpdateUser.name,
       storeName: 'Timestamp Test Store',
       tagline: 'Fast and reliable services',
       category: 'Web & Tech',
@@ -173,7 +244,7 @@ describe('StoreService Reviews & Ratings', () => {
       socialMediaLinks: [],
       description: 'Test description',
       services: [],
-      avatarUrl: user.avatarUrl,
+      avatarUrl: afterUpdateUser.avatarUrl,
       bannerGradient: 'from-blue-600 to-indigo-700',
       isAvailable: true
     });
@@ -265,20 +336,23 @@ describe('StoreService Reviews & Ratings', () => {
     expect(service.currentUser().store).toBeUndefined();
   });
 
-  it('should resolve store-user-001 and store-user-002 directly via getStoreById', () => {
-    const demo1 = service.getStoreById('store-user-001');
-    expect(demo1).toBeDefined();
-    expect(demo1?.id).toBe('store-user-001');
-    expect(demo1?.storeName).toBe('Aman Tech & Creative Studio');
+  it('should resolve stores by id via getStoreById', () => {
+    const store1 = service.getStoreById('store-1');
+    expect(store1).toBeDefined();
+    expect(store1?.id).toBe('store-1');
+    expect(store1?.storeName).toBe('PixelCraft Studios');
 
-    const demo2 = service.getStoreById('store-user-002');
-    expect(demo2).toBeDefined();
-    expect(demo2?.id).toBe('store-user-002');
-    expect(demo2?.storeName).toBe('Aman Lens & Aerial Films');
+    const store2 = service.getStoreById('store-2');
+    expect(store2).toBeDefined();
+    expect(store2?.id).toBe('store-2');
+    expect(store2?.storeName).toBe('CodeSpark Lab');
+
+    const unknown = service.getStoreById('non-existent-id');
+    expect(unknown).toBeUndefined();
   });
 
   describe('Store-Level View Count & Engagement (Daily, Weekly, Monthly, Lifetime)', () => {
-    it('should initialize all mock stores with views breakdown (daily, weekly, monthly, lifetime)', () => {
+    it('should initialize stores with views breakdown (daily, weekly, monthly, lifetime)', () => {
       const stores = service.stores();
       expect(stores.length).toBeGreaterThan(0);
 
@@ -356,12 +430,53 @@ describe('StoreService Reviews & Ratings', () => {
     });
 
     it('should track view counts independently at store level for multi-store owners', () => {
-      service.toggleDemoStore();
+      const store1 = service.createStore({
+        ownerName: 'Owner Multi',
+        storeName: 'Multi Store 1',
+        tagline: 'Store 1',
+        category: 'Web & Tech',
+        skills: [],
+        experienceYears: 1,
+        hourlyRate: 500,
+        startingPrice: 300,
+        area: 'Indiranagar',
+        city: 'Bengaluru',
+        distanceKm: 0.5,
+        serviceRadiusKm: 5,
+        socialMediaLinks: [],
+        description: '',
+        services: [],
+        avatarUrl: '',
+        bannerGradient: 'from-blue-600 to-indigo-700',
+        isAvailable: true
+      });
+
+      const store2 = service.createStore({
+        ownerName: 'Owner Multi',
+        storeName: 'Multi Store 2',
+        tagline: 'Store 2',
+        category: 'Graphics & Design',
+        skills: [],
+        experienceYears: 1,
+        hourlyRate: 600,
+        startingPrice: 400,
+        area: 'Indiranagar',
+        city: 'Bengaluru',
+        distanceKm: 0.5,
+        serviceRadiusKm: 5,
+        socialMediaLinks: [],
+        description: '',
+        services: [],
+        avatarUrl: '',
+        bannerGradient: 'from-purple-600 to-pink-500',
+        isAvailable: true
+      });
+
       const userStores = service.userStores();
       expect(userStores.length).toBe(2);
 
-      const storeAId = userStores[0].id;
-      const storeBId = userStores[1].id;
+      const storeAId = store1.id;
+      const storeBId = store2.id;
 
       const storeABefore = service.getStoreViews(storeAId);
       const storeBBefore = service.getStoreViews(storeBId);

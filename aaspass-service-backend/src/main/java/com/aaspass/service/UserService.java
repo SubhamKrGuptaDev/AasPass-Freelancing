@@ -11,6 +11,7 @@ import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.AddressRepository;
 import com.aaspass.repository.UserRepository;
 import com.aaspass.service.mapper.DtoMapper;
+import com.aaspass.util.AvatarGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -59,7 +60,12 @@ public class UserService {
         if (request.getPhone() != null) user.setPhone(request.getPhone().trim());
         if (request.getAadharNumber() != null) user.setAadharNumber(request.getAadharNumber().trim());
         if (request.getPanNumber() != null) user.setPanNumber(request.getPanNumber().trim());
-        if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl().trim());
+        if (request.getAvatarUrl() != null) {
+            String trimmedAvatar = request.getAvatarUrl().trim();
+            user.setAvatarUrl(trimmedAvatar.isEmpty() ? AvatarGenerator.generateRandomAvatar(user.getUsername()) : trimmedAvatar);
+        } else if (user.getAvatarUrl() == null || user.getAvatarUrl().trim().isEmpty()) {
+            user.setAvatarUrl(AvatarGenerator.generateRandomAvatar(user.getUsername()));
+        }
         if (request.getCity() != null) user.setCity(request.getCity().trim());
         if (request.getArea() != null) user.setArea(request.getArea().trim());
         if (request.getBio() != null) user.setBio(request.getBio().trim());

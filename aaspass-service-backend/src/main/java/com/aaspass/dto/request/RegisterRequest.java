@@ -40,4 +40,5 @@ public class RegisterRequest {
     private String city;
     private String area;
     private String bio;
+    private String avatarUrl;
 }

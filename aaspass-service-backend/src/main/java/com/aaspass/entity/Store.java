@@ -129,23 +129,50 @@ public class Store extends BaseAuditEntity {
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StoreViewRecord> viewHistory = new ArrayList<>();
 
-    public void addService(StoreServiceItem build) {
-
-    }
-
-    public void addSocialMediaLink(SocialMediaLink instagram) {
-
-    }
-
-    public void addReview(StoreReview build) {
-
-    }
-
-    public void addViewRecord(StoreViewRecord viewRecord) {
-
+    public void addService(StoreServiceItem serviceItem) {
+        if (serviceItem != null) {
+            if (this.services == null) {
+                this.services = new ArrayList<>();
+            }
+            services.add(serviceItem);
+            serviceItem.setStore(this);
+        }
     }
 
     public void removeService(StoreServiceItem serviceItem) {
+        if (serviceItem != null && services != null) {
+            services.remove(serviceItem);
+            serviceItem.setStore(null);
+        }
+    }
 
+    public void addSocialMediaLink(SocialMediaLink link) {
+        if (link != null) {
+            if (this.socialMediaLinks == null) {
+                this.socialMediaLinks = new ArrayList<>();
+            }
+            socialMediaLinks.add(link);
+            link.setStore(this);
+        }
+    }
+
+    public void addReview(StoreReview review) {
+        if (review != null) {
+            if (this.reviews == null) {
+                this.reviews = new ArrayList<>();
+            }
+            reviews.add(review);
+            review.setStore(this);
+        }
+    }
+
+    public void addViewRecord(StoreViewRecord record) {
+        if (record != null) {
+            if (this.viewHistory == null) {
+                this.viewHistory = new ArrayList<>();
+            }
+            viewHistory.add(record);
+            record.setStore(this);
+        }
     }
 }

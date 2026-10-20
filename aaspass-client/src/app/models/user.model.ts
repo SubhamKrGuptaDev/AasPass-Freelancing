@@ -39,6 +39,19 @@ export interface SignupRequest {
   phone?: string;
   city?: string;
   area?: string;
+  avatarUrl?: string;
+}
+
+/**
+ * Returns a valid SVG avatar URL using Dicebear Avataaars seeded with the user identifier,
+ * or generates a random avatar when no identifier is supplied.
+ */
+export function getRandomAvatarUrl(seed?: string): string {
+  const clean = (seed && seed.trim())
+    ? seed.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '')
+    : '';
+  const finalSeed = clean.length > 0 ? clean : 'user-' + Math.random().toString(36).substring(2, 8);
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalSeed)}`;
 }
 
 export interface AuthResult {

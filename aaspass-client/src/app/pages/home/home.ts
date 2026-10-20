@@ -150,7 +150,24 @@ import { StoreProfile } from '../../models/store.model';
         </div>
 
         <!-- Stores Card Grid -->
-        @if (storeService.filteredStores().length > 0) {
+        @if (storeService.isLoading()) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs animate-pulse">
+                <div class="h-3 bg-slate-200 rounded w-1/3 mb-4"></div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-200"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                  </div>
+                </div>
+                <div class="h-3 bg-slate-200 rounded w-full mb-2"></div>
+                <div class="h-3 bg-slate-200 rounded w-2/3"></div>
+              </div>
+            }
+          </div>
+        } @else if (storeService.filteredStores().length > 0) {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @for (store of storeService.filteredStores(); track store.id) {
               <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-xl hover:border-indigo-300 transition-all flex flex-col group">

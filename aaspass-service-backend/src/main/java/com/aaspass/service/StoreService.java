@@ -173,13 +173,17 @@ public class StoreService {
         }
 
         if (request.getSocialMediaLinks() != null) {
-            store.getSocialMediaLinks().clear();
+            if (store.getSocialMediaLinks() != null) {
+                store.getSocialMediaLinks().clear();
+            }
             for (SocialMediaLinkDto linkDto : request.getSocialMediaLinks()) {
-                SocialMediaLink link = SocialMediaLink.builder()
-                        .name(linkDto.getName())
-                        .url(linkDto.getUrl())
-                        .build();
-                store.addSocialMediaLink(link);
+                if (linkDto != null) {
+                    SocialMediaLink link = SocialMediaLink.builder()
+                            .name(linkDto.getName())
+                            .url(linkDto.getUrl())
+                            .build();
+                    store.addSocialMediaLink(link);
+                }
             }
         }
 
@@ -196,10 +200,7 @@ public class StoreService {
 
         User user = store.getUser();
         if (user != null) {
-            user.getStores().remove(store);
-            if (user.getStores().isEmpty()) {
-                user.setHasStore(false);
-            }
+            user.removeStore(store);
             userRepository.save(user);
         }
 

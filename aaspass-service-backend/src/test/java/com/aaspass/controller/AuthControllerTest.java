@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.hamcrest.Matchers.*;
@@ -19,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 public class AuthControllerTest {
 
     @Autowired
@@ -115,7 +117,32 @@ public class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.token", notNullValue()))
-                .andExpect(jsonPath("$.data.user.username", is(uniqueUser)));
+                .andExpect(jsonPath("$.data.user.username", is(uniqueUser)))
+                .andExpect(jsonPath("$.data.user.avatarUrl", containsString("dicebear.com")));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register - Should retain custom avatar when user provides one")
+    public void testRegisterNewUserWithExplicitAvatar() throws Exception {
+        String uniqueUser = "custom_avatar_" + System.currentTimeMillis();
+        String customAvatar = "https://custom-avatar.example.com/photo.png";
+        RegisterRequest request = RegisterRequest.builder()
+                .name("Avatar Test User")
+                .username(uniqueUser)
+                .email(uniqueUser + "@example.com")
+                .password("securePassword123")
+                .phone("+91 99999 77777")
+                .city("Bengaluru")
+                .area("Koramangala")
+                .avatarUrl(customAvatar)
+                .build();
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.user.avatarUrl", is(customAvatar)));
     }
 
     @Test
