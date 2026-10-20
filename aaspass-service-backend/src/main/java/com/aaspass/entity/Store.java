@@ -129,4 +129,23 @@ public class Store extends BaseAuditEntity {
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StoreViewRecord> viewHistory = new ArrayList<>();
 
+    public void addService(StoreServiceItem build) {
+
+    }
+
+    public void addSocialMediaLink(SocialMediaLink instagram) {
+
+    }
+
+    public void addReview(StoreReview build) {
+
+    }
+
+    public void addViewRecord(StoreViewRecord viewRecord) {
+
+    }
+
+    public void removeService(StoreServiceItem serviceItem) {
+
+    }
 }

@@ -299,4 +299,88 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * `aaspass-client/src/app/services/store.service.ts`
   * `doc/AI-doc/CHANGELOG.md`
 
+### [2026-10-19 23:20:00 IST] - Implemented Complete Spring Boot MVC REST API Layer with Login & Logging
+* **What Changed:**
+  * **MVC Pattern Structure:**
+    * **Model Layer:** Domain entities (`User`, `Store`, `Address`, `StoreServiceItem`, `StoreReview`, `StoreViewRecord`, `SocialMediaLink`, `StoreEngagementStats`), request DTOs (`LoginRequest`, `RegisterRequest`, `UserUpdateRequest`, `AddressRequest`, `StoreCreateRequest`, `StoreUpdateRequest`, `ServiceItemRequest`, `StoreReviewRequest`), response DTOs (`ApiResponse<T>`, `AuthResponse`, `UserResponse`, `StoreResponse`, `AddressResponse`, `ServiceItemResponse`, `StoreReviewResponse`), and Spring Data JPA Repositories (`UserRepository`, `StoreRepository`, `AddressRepository`, `StoreServiceItemRepository`, `StoreReviewRepository`, `SocialMediaLinkRepository`, `StoreViewRecordRepository`).
+    * **Service Layer:** `AuthService` (authentication, password validation, token issuance), `UserService` (profile & KYC updates, multi-address management), `StoreService` (catalog discovery, multi-criteria search, storefront creation/updates, status toggle, view analytics), `StoreServiceItemService` (gig package CRUD), and `StoreReviewService` (customer reviews & rating recalculations).
+    * **Controller Layer:** `@RestController` classes `AuthController`, `UserController`, `StoreController`, `StoreServiceItemController`, and `StoreReviewController` with CORS enabled for frontend clients (`http://localhost:4200`).
+  * **Basic Login & Auth API:**
+    * Implemented `POST /api/auth/login` supporting login via username or email with password verification.
+    * Implemented `POST /api/auth/register` with duplicate username/email detection.
+    * Implemented `GET /api/auth/me` and `POST /api/auth/logout`.
+    * Added `DataInitializer` pre-seeding demo accounts (`aman`, `priya`, `rohan`) with password `password123` so login is functional out-of-the-box.
+  * **API Call Tracking & Logging Everywhere:**
+    * Created `ApiLoggingFilter` (`OncePerRequestFilter`) logging every incoming and outgoing HTTP API call with unique request ID, HTTP method, URI, query string, client IP, response status, and duration in milliseconds.
+    * Integrated SLF4J loggers in all Controllers, Services, and `GlobalExceptionHandler` (`@RestControllerAdvice`) for full end-to-end auditability.
+  * **Comprehensive Unit & Integration Tests:**
+    * Created `AuthControllerTest` and `StoreAndUserControllerTest` covering all API endpoints, auth flows, and edge cases (16 passing tests).
+* **Why Changed:** Addressed user request: "let's start the API implementation and please follow mvc pattern: create all the API which are needed, implement basic login API, and add logs everywhere for track API calls".
+* **Files Created/Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/ApiResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/AuthResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/UserResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/StoreResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/AddressResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/ServiceItemResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/StoreReviewResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/common/SocialMediaLinkDto.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/LoginRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/RegisterRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/UserUpdateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/AddressRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreCreateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreUpdateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/ServiceItemRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreReviewRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/UserRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/StoreRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/AddressRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/StoreServiceItemRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/StoreReviewRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/SocialMediaLinkRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/repository/StoreViewRecordRepository.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/AuthService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/UserService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreServiceItemService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreReviewService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/mapper/DtoMapper.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/AuthController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/UserController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreServiceItemController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreReviewController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/WebMvcConfig.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/DataInitializer.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/config/logging/ApiLoggingFilter.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/exception/ResourceNotFoundException.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/exception/BadRequestException.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/exception/UnauthorizedException.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/exception/DuplicateResourceException.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/exception/GlobalExceptionHandler.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/controller/AuthControllerTest.java`
+  * `aaspass-service-backend/src/test/java/com/aaspass/controller/StoreAndUserControllerTest.java`
+  * `aaspass-service-backend/pom.xml`
+  * `doc/AI-doc/CHANGELOG.md`
+
+### [2026-10-20 11:20:00 IST] - Removed Unused AuthModalComponent & Aligned Navigation with Dedicated Auth Pages
+* **What Changed:**
+  * Resolved Angular compiler warning `NG8113: AuthModalComponent is not used within the template of App [plugin angular-compiler]`.
+  * Removed `AuthModalComponent` from [`App`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/app.ts) imports and eliminated the `<app-auth-modal />` tag from [`app.html`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/app.html).
+  * Safely removed the redundant [`auth-modal/`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/auth-modal) component directory, reducing production bundle size by ~15.5 kB.
+  * Updated [`NavbarComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/components/navbar/navbar.ts) guest CTA links ("Log In", "Sign Up", "List Services") to use standard `routerLink`s targeting `/login`, `/signup`, and `/create-store`.
+  * Updated [`authGuard`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/guards/auth.guard.ts) to return `router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } })` when unauthenticated users access protected paths (`/profile`, `/create-store`).
+  * Updated [`AuthPageComponent`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-client/src/app/pages/auth/auth-page.ts) to automatically redirect to `returnUrl` (or `/profile`) upon successful login, signup, or 1-click demo login.
+* **Why Changed:** Addressed user request: "▲ [WARNING] NG8113: AuthModalComponent is not used within the template of App [plugin angular-compiler] ... Getting this warning it's not used if not used please remove this".
+* **Files Created/Modified:**
+  * `aaspass-client/src/app/app.ts`
+  * `aaspass-client/src/app/app.html`
+  * `aaspass-client/src/app/components/navbar/navbar.ts`
+  * `aaspass-client/src/app/guards/auth.guard.ts`
+  * `aaspass-client/src/app/pages/auth/auth-page.ts`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
+
 

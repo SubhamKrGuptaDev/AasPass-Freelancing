@@ -59,35 +59,32 @@ import { FormsModule } from '@angular/forms';
 
             <!-- GUEST / UNAUTHENTICATED ACTIONS -->
             @if (!authService.isLoggedIn()) {
-              <!-- Open Store CTA (Prompts Login Modal with returnUrl to /create-store) -->
-              <button 
-                type="button"
-                (click)="authService.openLoginModal('/create-store')"
+              <!-- Open Store CTA -->
+              <a 
+                routerLink="/create-store"
                 class="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition-all transform active:scale-95 cursor-pointer"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 <span>List Services</span>
-              </button>
+              </a>
 
-              <!-- Log In Button (Opens Modal) -->
-              <button 
-                type="button"
-                (click)="authService.openLoginModal()"
+              <!-- Log In Button -->
+              <a 
+                routerLink="/login"
                 class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 border border-slate-200 transition cursor-pointer"
               >
                 <span>Log In</span>
-              </button>
+              </a>
 
-              <!-- Sign Up Button (Opens Modal in Signup mode) -->
-              <button 
-                type="button"
-                (click)="authService.openSignupModal()"
+              <!-- Sign Up Button -->
+              <a 
+                routerLink="/signup"
                 class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition transform active:scale-95 cursor-pointer"
               >
                 <span>Sign Up</span>
-              </button>
+              </a>
             } @else {
               <!-- AUTHENTICATED ACTIONS -->
 

@@ -344,10 +344,15 @@ export class AuthPageComponent implements OnInit {
     this.showPassword.update(v => !v);
   }
 
+  private navigateAfterAuth(): void {
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/profile';
+    this.router.navigateByUrl(returnUrl);
+  }
+
   quickLogin(userId: string): void {
     const success = this.authService.quickLogin(userId);
     if (success) {
-      this.router.navigate(['/profile']);
+      this.navigateAfterAuth();
     }
   }
 
@@ -355,7 +360,7 @@ export class AuthPageComponent implements OnInit {
     event.preventDefault();
     const res = this.authService.login(this.loginInput, this.loginPassword);
     if (res.success) {
-      this.router.navigate(['/profile']);
+      this.navigateAfterAuth();
     }
   }
 
@@ -375,7 +380,7 @@ export class AuthPageComponent implements OnInit {
     });
 
     if (res.success) {
-      this.router.navigate(['/profile']);
+      this.navigateAfterAuth();
     }
   }
 }

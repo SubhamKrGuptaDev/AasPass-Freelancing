@@ -28,9 +28,9 @@ import java.util.List;
 @Table(name = "users")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class User extends BaseAuditEntity {
 
     @Column(name = "name", nullable = false, length = 100)
@@ -96,4 +96,15 @@ public class User extends BaseAuditEntity {
         this.userSocialMediaLinks = links;
     }
 
+    public void addAddress(Address build) {
+        addresses.add(build);
+    }
+
+    public void addStore(Store priyaStore) {
+
+    }
+
+    public void removeAddress(Address address) {
+
+    }
 }

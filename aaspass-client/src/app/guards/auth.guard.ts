@@ -17,13 +17,6 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  // Trigger login popup modal with requested return URL
-  authService.openLoginModal(state.url);
-
-  // On direct/first URL navigation, redirect router safely to Home so it is not left on a blank outlet
-  if (!router.navigated) {
-    return router.createUrlTree(['/']);
-  }
-
-  return false;
+  // Redirect to dedicated /login page with requested returnUrl
+  return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };
