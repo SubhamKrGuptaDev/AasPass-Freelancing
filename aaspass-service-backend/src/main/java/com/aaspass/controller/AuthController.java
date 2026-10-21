@@ -45,12 +45,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         log.info("[API-CALL] POST /api/auth/login - Received login request for identifier: '{}'",
-                request.getUsernameOrEmail());
+                request.usernameOrEmail());
 
         AuthResponse authResponse = authService.login(request);
 
         log.info("[API-CALL] POST /api/auth/login - Completed successfully for user ID: {}",
-                authResponse.getUser().getId());
+                authResponse.user() != null ? authResponse.user().id() : null);
 
         return ResponseEntity.ok(ApiResponse.success(authResponse, "Login successful"));
     }
@@ -65,12 +65,12 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         log.info("[API-CALL] POST /api/auth/register - Received registration request for username: '{}', email: '{}'",
-                request.getUsername(), request.getEmail());
+                request.username(), request.email());
 
         AuthResponse authResponse = authService.register(request);
 
         log.info("[API-CALL] POST /api/auth/register - User registered successfully with ID: {}",
-                authResponse.getUser().getId());
+                authResponse.user() != null ? authResponse.user().id() : null);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(authResponse, "Account registered successfully"));

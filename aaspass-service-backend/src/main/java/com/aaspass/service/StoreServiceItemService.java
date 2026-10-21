@@ -47,17 +47,17 @@ public class StoreServiceItemService {
     @Transactional
     public ServiceItemResponse addService(Long storeId, ServiceItemRequest request) {
         log.info("[SERVICE ITEM] Adding service item '{}' (price: {}) to store ID: {}",
-                request.getName(), request.getPrice(), storeId);
+                request.name(), request.price(), storeId);
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
 
         StoreServiceItem serviceItem = StoreServiceItem.builder()
                 .store(store)
-                .name(request.getName().trim())
-                .price(request.getPrice())
-                .duration(request.getDuration())
-                .description(request.getDescription())
+                .name(request.name().trim())
+                .price(request.price())
+                .duration(request.duration())
+                .description(request.description())
                 .build();
 
         store.addService(serviceItem);
@@ -77,10 +77,10 @@ public class StoreServiceItemService {
             throw new BadRequestException("Service item does not belong to specified store");
         }
 
-        if (request.getName() != null) serviceItem.setName(request.getName().trim());
-        if (request.getPrice() != null) serviceItem.setPrice(request.getPrice());
-        if (request.getDuration() != null) serviceItem.setDuration(request.getDuration());
-        if (request.getDescription() != null) serviceItem.setDescription(request.getDescription());
+        if (request.name() != null) serviceItem.setName(request.name().trim());
+        if (request.price() != null) serviceItem.setPrice(request.price());
+        if (request.duration() != null) serviceItem.setDuration(request.duration());
+        if (request.description() != null) serviceItem.setDescription(request.description());
 
         StoreServiceItem updated = serviceItemRepository.save(serviceItem);
         log.info("[SERVICE ITEM] Successfully updated service item ID: {}", serviceId);

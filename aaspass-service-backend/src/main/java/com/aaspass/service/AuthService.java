@@ -42,7 +42,7 @@ public class AuthService {
      */
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String identifier = request.getUsernameOrEmail() != null ? request.getUsernameOrEmail().trim() : "";
+        String identifier = request.usernameOrEmail() != null ? request.usernameOrEmail().trim() : "";
         log.info("[AUTH LOGIN ATTEMPT] Identifying user by: '{}'", identifier);
 
         User user = userRepository.findByUsernameOrEmail(identifier)
@@ -52,7 +52,7 @@ public class AuthService {
                 });
 
         // Basic password check
-        if (!user.getPassword().equals(request.getPassword())) {
+        if (!user.getPassword().equals(request.password())) {
             log.warn("[AUTH LOGIN FAILED] Password mismatch for user ID: {} (username: '{}')", user.getId(), user.getUsername());
             throw new UnauthorizedException("Invalid username or password");
         }
@@ -82,30 +82,30 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         log.info("[AUTH REGISTER ATTEMPT] Registering username='{}', email='{}'",
-                request.getUsername(), request.getEmail());
+                request.username(), request.email());
 
-        if (userRepository.existsByUsername(request.getUsername())) {
-            log.warn("[AUTH REGISTER FAILED] Username '{}' is already taken", request.getUsername());
-            throw new DuplicateResourceException("Username '" + request.getUsername() + "' is already in use");
+        if (userRepository.existsByUsername(request.username())) {
+            log.warn("[AUTH REGISTER FAILED] Username '{}' is already taken", request.username());
+            throw new DuplicateResourceException("Username '" + request.username() + "' is already in use");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            log.warn("[AUTH REGISTER FAILED] Email '{}' is already registered", request.getEmail());
-            throw new DuplicateResourceException("Email '" + request.getEmail() + "' is already registered");
+        if (userRepository.existsByEmail(request.email())) {
+            log.warn("[AUTH REGISTER FAILED] Email '{}' is already registered", request.email());
+            throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
         }
 
         String memberSince = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
-        String avatarUrl = AvatarGenerator.getOrDefault(request.getAvatarUrl(), request.getUsername());
+        String avatarUrl = AvatarGenerator.getOrDefault(request.avatarUrl(), request.username());
 
         User newUser = User.builder()
-                .name(request.getName().trim())
-                .username(request.getUsername().trim().toLowerCase())
-                .email(request.getEmail().trim().toLowerCase())
-                .password(request.getPassword()) // Store credentials for user
-                .phone(request.getPhone())
-                .city(request.getCity() != null ? request.getCity() : "Bengaluru")
-                .area(request.getArea() != null ? request.getArea() : "Indiranagar")
-                .bio(request.getBio())
+                .name(request.name().trim())
+                .username(request.username().trim().toLowerCase())
+                .email(request.email().trim().toLowerCase())
+                .password(request.password()) // Store credentials for user
+                .phone(request.phone())
+                .city(request.city() != null ? request.city() : "Bengaluru")
+                .area(request.area() != null ? request.area() : "Indiranagar")
+                .bio(request.bio())
                 .avatarUrl(avatarUrl)
                 .memberSince(memberSince)
                 .hasStore(false)

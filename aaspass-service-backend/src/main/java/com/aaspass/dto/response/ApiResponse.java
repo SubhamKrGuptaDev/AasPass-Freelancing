@@ -1,10 +1,6 @@
 package com.aaspass.dto.response;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -13,31 +9,22 @@ import java.time.LocalDateTime;
  *
  * @param <T> Payload data type
  */
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class ApiResponse<T> {
+@Builder
+public record ApiResponse<T>(
+    boolean success,
+    String message,
+    T data,
+    LocalDateTime timestamp
+) {
 
-    private boolean success;
-    private String message;
-    private T data;
-    private LocalDateTime timestamp = LocalDateTime.now();
-
-    private ApiResponse(ApiResponseBuilder<T> object) {
-        this.success = object.success;
-        this.message = object.message;
-        this.data = object.data;
-        this.timestamp = object.timestamp;
+    public ApiResponse {
+        if (timestamp == null) {
+            timestamp = LocalDateTime.now();
+        }
     }
 
     public static <T> ApiResponse<T> success(T data, String message) {
-        return new ApiResponseBuilder<T>()
-                .success(true)
-                .message(message)
-                .data(data)
-                .timestamp(LocalDateTime.now())
-                .build();
+        return new ApiResponse<>(true, message, data, LocalDateTime.now());
     }
 
     public static <T> ApiResponse<T> success(T data) {
@@ -45,56 +32,10 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponseBuilder<T>()
-                .success(false)
-                .message(message)
-                .data(null)
-                .timestamp(LocalDateTime.now())
-                .build();
+        return new ApiResponse<>(false, message, null, LocalDateTime.now());
     }
 
     public static <T> ApiResponse<T> error(String message, T errorDetails) {
-        return new ApiResponseBuilder<T>()
-                .success(false)
-                .message(message)
-                .data(errorDetails)
-                .timestamp(LocalDateTime.now())
-                .build();
+        return new ApiResponse<>(false, message, errorDetails, LocalDateTime.now());
     }
-
-    public static class ApiResponseBuilder<T> {
-        private boolean success;
-        private String message;
-        private T data;
-        private LocalDateTime timestamp = LocalDateTime.now();
-
-        public ApiResponseBuilder() {}
-
-        public ApiResponseBuilder<T> success(boolean success) {
-            this.success = success;
-            return this;
-        }
-
-        public ApiResponseBuilder<T> message(String message) {
-            this.message = message;
-            return this;
-        }
-
-        public ApiResponseBuilder<T> data(T data) {
-            this.data = data;
-            return this;
-        }
-
-        public ApiResponseBuilder<T> timestamp(LocalDateTime timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public ApiResponse<T> build() {
-            return new ApiResponse<T>(this);
-        }
-
-    }
-
-
 }

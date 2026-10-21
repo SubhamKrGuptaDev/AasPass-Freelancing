@@ -6,6 +6,50 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-21 21:30:00 IST] - Modernization of Backend DTOs to Java 17 Records
+* **What Changed:**
+  * **Converted 16 Request and Response DTOs to Java Records**:
+    * Replaced boilerplate `@Getter`, `@Setter`, `@NoArgsConstructor`, `@AllArgsConstructor` classes with immutable Java 17 `record`s.
+    * Integrated Lombok `@Builder` on records to preserve fluent instantiation across services, mappers, and unit tests.
+    * Added compact constructors to enforce defensive defaults (e.g. non-null default lists `List.of()`, timestamps, and fallback values).
+    * Retained all Jakarta Bean Validation annotations (`@NotBlank`, `@Size`, `@Email`, `@NotNull`, `@DecimalMin`, `@DecimalMax`) on record components.
+  * **Updated Controllers, Services, and Test Accessors**:
+    * Updated accessor invocations from JavaBean style (`get...()`) to native record accessor syntax across controllers (`AuthController`, `StoreController`, `StoreReviewController`, `StoreServiceItemController`, `UserController`) and service classes (`AuthService`, `StoreService`, `StoreReviewService`, `StoreServiceItemService`, `UserService`).
+    * Preserved 100% backward compatibility with REST API contracts and frontend JSON schemas.
+  * **Verification**:
+    * Ran `.\mvnw.cmd test-compile` - 100% clean compilation.
+    * Ran `.\mvnw.cmd test` - 18/18 tests passed.
+    * Ran `npm run build` in `aaspass-client` - 100% clean frontend compilation.
+* **Why Changed:** User requested transitioning Request and Response classes to Java records for idiomatic immutability, zero boilerplate, and native framework performance in Java 17.
+* **Files Modified:**
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/common/SocialMediaLinkDto.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/AddressRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/LoginRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/RegisterRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/ServiceItemRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreCreateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreReviewRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/StoreUpdateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/request/UserUpdateRequest.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/AddressResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/ApiResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/AuthResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/ServiceItemResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/StoreResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/StoreReviewResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/dto/response/UserResponse.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/AuthController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreReviewController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/StoreServiceItemController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/controller/UserController.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/AuthService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreReviewService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/StoreServiceItemService.java`
+  * `aaspass-service-backend/src/main/java/com/aaspass/service/UserService.java`
+  * `doc/AI-doc/CHANGELOG.md`
+
 ### [2026-10-20 18:50:00 IST] - Removal of Frontend Hardcoded Dummy Data & Direct Live API Binding
 * **What Changed:**
   * **Removed Hardcoded Mock Stores from Frontend**:

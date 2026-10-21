@@ -48,28 +48,28 @@ public class StoreReviewService {
     @Transactional
     public StoreReviewResponse addReview(Long storeId, StoreReviewRequest request) {
         log.info("[STORE REVIEW] Adding review for store ID: {} from user: '{}', rating: {}",
-                storeId, request.getUserName(), request.getRating());
+                storeId, request.userName(), request.rating());
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
 
         // Enforce strict bounding between 1.0 and 5.0 with safe null default for rating
-        double rawRating = request.getRating() != null ? request.getRating() : 5.0;
+        double rawRating = request.rating() != null ? request.rating() : 5.0;
         double clampedRating = Math.max(1.0, Math.min(5.0, rawRating));
 
         String reviewDate = LocalDate.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
 
-        String reviewerName = request.getUserName() != null && !request.getUserName().trim().isEmpty()
-                ? request.getUserName().trim()
+        String reviewerName = request.userName() != null && !request.userName().trim().isEmpty()
+                ? request.userName().trim()
                 : "Anonymous";
 
         StoreReview review = StoreReview.builder()
                 .store(store)
                 .userName(reviewerName)
-                .userAvatar(request.getUserAvatar() != null ? request.getUserAvatar() :
+                .userAvatar(request.userAvatar() != null ? request.userAvatar() :
                         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80")
                 .rating(clampedRating)
-                .message(request.getMessage() != null ? request.getMessage().trim() : "")
+                .message(request.message() != null ? request.message().trim() : "")
                 .reviewDate(reviewDate)
                 .build();
 

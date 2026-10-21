@@ -1,27 +1,18 @@
 package com.aaspass.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * Request payload for user login authentication.
  */
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class LoginRequest {
-
+public record LoginRequest(
     @NotBlank(message = "Username or email is required")
-    private String usernameOrEmail;
+    String usernameOrEmail,
 
     @NotBlank(message = "Password is required")
-    private String password;
+    String password,
 
-    private Boolean rememberMe;
-}
+    Boolean rememberMe
+) {}

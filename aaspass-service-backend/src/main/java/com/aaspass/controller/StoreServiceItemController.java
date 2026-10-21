@@ -55,7 +55,7 @@ public class StoreServiceItemController {
             @PathVariable("storeId") Long storeId,
             @Valid @RequestBody ServiceItemRequest request) {
         log.info("[API-CALL] POST /api/stores/{}/services - Adding service: '{}', price: {}",
-                storeId, request.getName(), request.getPrice());
+                storeId, request.name(), request.price());
         ServiceItemResponse response = serviceItemService.addService(storeId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Service package added successfully"));

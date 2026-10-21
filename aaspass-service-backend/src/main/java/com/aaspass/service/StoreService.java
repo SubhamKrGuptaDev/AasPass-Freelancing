@@ -84,56 +84,56 @@ public class StoreService {
 
     @Transactional
     public StoreResponse createStore(StoreCreateRequest request) {
-        log.info("[STORE SERVICE] Creating store '{}' for user ID: {}", request.getStoreName(), request.getUserId());
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
+        log.info("[STORE SERVICE] Creating store '{}' for user ID: {}", request.storeName(), request.userId());
+        User user = userRepository.findById(request.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.userId()));
 
         String memberSince = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
-        String ownerName = (request.getOwnerName() != null && !request.getOwnerName().isBlank())
-                ? request.getOwnerName().trim()
+        String ownerName = (request.ownerName() != null && !request.ownerName().isBlank())
+                ? request.ownerName().trim()
                 : user.getName();
 
         Store store = Store.builder()
                 .user(user)
                 .ownerName(ownerName)
-                .storeName(request.getStoreName().trim())
-                .tagline(request.getTagline())
-                .category(request.getCategory().trim())
-                .skills(request.getSkills() != null ? new ArrayList<>(request.getSkills()) : new ArrayList<>())
-                .experienceYears(request.getExperienceYears() != null ? request.getExperienceYears() : 0)
-                .hourlyRate(request.getHourlyRate())
-                .startingPrice(request.getStartingPrice())
-                .area(request.getArea().trim())
-                .city(request.getCity().trim())
-                .serviceRadiusKm(request.getServiceRadiusKm() != null ? request.getServiceRadiusKm() : 10)
-                .description(request.getDescription())
-                .avatarUrl(request.getAvatarUrl() != null ? request.getAvatarUrl() : user.getAvatarUrl())
-                .bannerGradient(request.getBannerGradient() != null ? request.getBannerGradient() : "from-indigo-500 to-purple-600")
+                .storeName(request.storeName().trim())
+                .tagline(request.tagline())
+                .category(request.category().trim())
+                .skills(request.skills() != null ? new ArrayList<>(request.skills()) : new ArrayList<>())
+                .experienceYears(request.experienceYears() != null ? request.experienceYears() : 0)
+                .hourlyRate(request.hourlyRate())
+                .startingPrice(request.startingPrice())
+                .area(request.area().trim())
+                .city(request.city().trim())
+                .serviceRadiusKm(request.serviceRadiusKm() != null ? request.serviceRadiusKm() : 10)
+                .description(request.description())
+                .avatarUrl(request.avatarUrl() != null ? request.avatarUrl() : user.getAvatarUrl())
+                .bannerGradient(request.bannerGradient() != null ? request.bannerGradient() : "from-indigo-500 to-purple-600")
                 .isAvailable(true)
                 .memberSince(memberSince)
                 .views(StoreEngagementStats.builder().daily(0).weekly(0).monthly(0).lifetime(0).build())
-                .storeSocialMediaLinks(request.getStoreSocialMediaLinks())
+                .storeSocialMediaLinks(request.storeSocialMediaLinks())
                 .build();
 
         // Attach initial services if provided
-        if (request.getServices() != null) {
-            for (ServiceItemRequest sReq : request.getServices()) {
+        if (request.services() != null) {
+            for (ServiceItemRequest sReq : request.services()) {
                 StoreServiceItem item = StoreServiceItem.builder()
-                        .name(sReq.getName())
-                        .price(sReq.getPrice())
-                        .duration(sReq.getDuration())
-                        .description(sReq.getDescription())
+                        .name(sReq.name())
+                        .price(sReq.price())
+                        .duration(sReq.duration())
+                        .description(sReq.description())
                         .build();
                 store.addService(item);
             }
         }
 
         // Attach dynamic social links if provided
-        if (request.getSocialMediaLinks() != null) {
-            for (SocialMediaLinkDto linkDto : request.getSocialMediaLinks()) {
+        if (request.socialMediaLinks() != null) {
+            for (SocialMediaLinkDto linkDto : request.socialMediaLinks()) {
                 SocialMediaLink link = SocialMediaLink.builder()
-                        .name(linkDto.getName())
-                        .url(linkDto.getUrl())
+                        .name(linkDto.name())
+                        .url(linkDto.url())
                         .build();
                 store.addSocialMediaLink(link);
             }
@@ -153,34 +153,34 @@ public class StoreService {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
 
-        if (request.getStoreName() != null) store.setStoreName(request.getStoreName().trim());
-        if (request.getOwnerName() != null) store.setOwnerName(request.getOwnerName().trim());
-        if (request.getTagline() != null) store.setTagline(request.getTagline());
-        if (request.getCategory() != null) store.setCategory(request.getCategory().trim());
-        if (request.getSkills() != null) store.setSkills(new ArrayList<>(request.getSkills()));
-        if (request.getExperienceYears() != null) store.setExperienceYears(request.getExperienceYears());
-        if (request.getHourlyRate() != null) store.setHourlyRate(request.getHourlyRate());
-        if (request.getStartingPrice() != null) store.setStartingPrice(request.getStartingPrice());
-        if (request.getArea() != null) store.setArea(request.getArea().trim());
-        if (request.getCity() != null) store.setCity(request.getCity().trim());
-        if (request.getServiceRadiusKm() != null) store.setServiceRadiusKm(request.getServiceRadiusKm());
-        if (request.getDescription() != null) store.setDescription(request.getDescription());
-        if (request.getAvatarUrl() != null) store.setAvatarUrl(request.getAvatarUrl());
-        if (request.getBannerGradient() != null) store.setBannerGradient(request.getBannerGradient());
-        if (request.getIsAvailable() != null) store.setIsAvailable(request.getIsAvailable());
-        if (request.getStoreSocialMediaLinks() != null) {
-            store.setStoreSocialMediaLinks(request.getStoreSocialMediaLinks());
+        if (request.storeName() != null) store.setStoreName(request.storeName().trim());
+        if (request.ownerName() != null) store.setOwnerName(request.ownerName().trim());
+        if (request.tagline() != null) store.setTagline(request.tagline());
+        if (request.category() != null) store.setCategory(request.category().trim());
+        if (request.skills() != null) store.setSkills(new ArrayList<>(request.skills()));
+        if (request.experienceYears() != null) store.setExperienceYears(request.experienceYears());
+        if (request.hourlyRate() != null) store.setHourlyRate(request.hourlyRate());
+        if (request.startingPrice() != null) store.setStartingPrice(request.startingPrice());
+        if (request.area() != null) store.setArea(request.area().trim());
+        if (request.city() != null) store.setCity(request.city().trim());
+        if (request.serviceRadiusKm() != null) store.setServiceRadiusKm(request.serviceRadiusKm());
+        if (request.description() != null) store.setDescription(request.description());
+        if (request.avatarUrl() != null) store.setAvatarUrl(request.avatarUrl());
+        if (request.bannerGradient() != null) store.setBannerGradient(request.bannerGradient());
+        if (request.isAvailable() != null) store.setIsAvailable(request.isAvailable());
+        if (request.storeSocialMediaLinks() != null) {
+            store.setStoreSocialMediaLinks(request.storeSocialMediaLinks());
         }
 
-        if (request.getSocialMediaLinks() != null) {
+        if (request.socialMediaLinks() != null) {
             if (store.getSocialMediaLinks() != null) {
                 store.getSocialMediaLinks().clear();
             }
-            for (SocialMediaLinkDto linkDto : request.getSocialMediaLinks()) {
+            for (SocialMediaLinkDto linkDto : request.socialMediaLinks()) {
                 if (linkDto != null) {
                     SocialMediaLink link = SocialMediaLink.builder()
-                            .name(linkDto.getName())
-                            .url(linkDto.getUrl())
+                            .name(linkDto.name())
+                            .url(linkDto.url())
                             .build();
                     store.addSocialMediaLink(link);
                 }

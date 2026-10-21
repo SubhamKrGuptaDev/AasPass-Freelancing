@@ -79,7 +79,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<AddressResponse>> addAddress(
             @PathVariable("userId") Long userId,
             @Valid @RequestBody AddressRequest request) {
-        log.info("[API-CALL] POST /api/users/{}/addresses - Adding new address in area: '{}'", userId, request.getArea());
+        log.info("[API-CALL] POST /api/users/{}/addresses - Adding new address in area: '{}'", userId, request.area());
         AddressResponse response = userService.addAddress(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Address added successfully"));

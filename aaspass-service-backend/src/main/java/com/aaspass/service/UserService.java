@@ -56,21 +56,21 @@ public class UserService {
                     return new ResourceNotFoundException("User", "id", id);
                 });
 
-        if (request.getName() != null) user.setName(request.getName().trim());
-        if (request.getPhone() != null) user.setPhone(request.getPhone().trim());
-        if (request.getAadharNumber() != null) user.setAadharNumber(request.getAadharNumber().trim());
-        if (request.getPanNumber() != null) user.setPanNumber(request.getPanNumber().trim());
-        if (request.getAvatarUrl() != null) {
-            String trimmedAvatar = request.getAvatarUrl().trim();
+        if (request.name() != null) user.setName(request.name().trim());
+        if (request.phone() != null) user.setPhone(request.phone().trim());
+        if (request.aadharNumber() != null) user.setAadharNumber(request.aadharNumber().trim());
+        if (request.panNumber() != null) user.setPanNumber(request.panNumber().trim());
+        if (request.avatarUrl() != null) {
+            String trimmedAvatar = request.avatarUrl().trim();
             user.setAvatarUrl(trimmedAvatar.isEmpty() ? AvatarGenerator.generateRandomAvatar(user.getUsername()) : trimmedAvatar);
         } else if (user.getAvatarUrl() == null || user.getAvatarUrl().trim().isEmpty()) {
             user.setAvatarUrl(AvatarGenerator.generateRandomAvatar(user.getUsername()));
         }
-        if (request.getCity() != null) user.setCity(request.getCity().trim());
-        if (request.getArea() != null) user.setArea(request.getArea().trim());
-        if (request.getBio() != null) user.setBio(request.getBio().trim());
-        if (request.getUserSocialMediaLinks() != null) {
-            user.setUserSocialMediaLinks(request.getUserSocialMediaLinks());
+        if (request.city() != null) user.setCity(request.city().trim());
+        if (request.area() != null) user.setArea(request.area().trim());
+        if (request.bio() != null) user.setBio(request.bio().trim());
+        if (request.userSocialMediaLinks() != null) {
+            user.setUserSocialMediaLinks(request.userSocialMediaLinks());
         }
 
         User updatedUser = userRepository.save(user);
@@ -91,12 +91,12 @@ public class UserService {
 
     @Transactional
     public AddressResponse addAddress(Long userId, AddressRequest request) {
-        log.info("[USER SERVICE] Adding address for user ID: {}, area: '{}'", userId, request.getArea());
+        log.info("[USER SERVICE] Adding address for user ID: {}, area: '{}'", userId, request.area());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
         // If this address is set as default, unset existing default
-        if (Boolean.TRUE.equals(request.getIsDefault())) {
+        if (Boolean.TRUE.equals(request.isDefault())) {
             addressRepository.findByUserIdAndIsDefaultTrue(userId)
                     .ifPresent(existingDefault -> {
                         existingDefault.setIsDefault(false);
@@ -106,16 +106,16 @@ public class UserService {
 
         Address address = Address.builder()
                 .user(user)
-                .addressType(request.getAddressType() != null ? request.getAddressType() : "HOME")
-                .addressLine(request.getAddressLine())
-                .area(request.getArea())
-                .city(request.getCity())
-                .state(request.getState())
-                .pincode(request.getPincode())
-                .landmark(request.getLandmark())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .isDefault(Boolean.TRUE.equals(request.getIsDefault()))
+                .addressType(request.addressType() != null ? request.addressType() : "HOME")
+                .addressLine(request.addressLine())
+                .area(request.area())
+                .city(request.city())
+                .state(request.state())
+                .pincode(request.pincode())
+                .landmark(request.landmark())
+                .latitude(request.latitude())
+                .longitude(request.longitude())
+                .isDefault(Boolean.TRUE.equals(request.isDefault()))
                 .build();
 
         user.addAddress(address);
@@ -134,26 +134,26 @@ public class UserService {
             throw new BadRequestException("Address does not belong to specified user");
         }
 
-        if (Boolean.TRUE.equals(request.getIsDefault()) && !Boolean.TRUE.equals(address.getIsDefault())) {
+        if (Boolean.TRUE.equals(request.isDefault()) && !Boolean.TRUE.equals(address.getIsDefault())) {
             addressRepository.findByUserIdAndIsDefaultTrue(userId)
                     .ifPresent(existingDefault -> {
                         existingDefault.setIsDefault(false);
                         addressRepository.save(existingDefault);
                     });
             address.setIsDefault(true);
-        } else if (request.getIsDefault() != null) {
-            address.setIsDefault(request.getIsDefault());
+        } else if (request.isDefault() != null) {
+            address.setIsDefault(request.isDefault());
         }
 
-        if (request.getAddressType() != null) address.setAddressType(request.getAddressType());
-        if (request.getAddressLine() != null) address.setAddressLine(request.getAddressLine());
-        if (request.getArea() != null) address.setArea(request.getArea());
-        if (request.getCity() != null) address.setCity(request.getCity());
-        if (request.getState() != null) address.setState(request.getState());
-        if (request.getPincode() != null) address.setPincode(request.getPincode());
-        if (request.getLandmark() != null) address.setLandmark(request.getLandmark());
-        if (request.getLatitude() != null) address.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) address.setLongitude(request.getLongitude());
+        if (request.addressType() != null) address.setAddressType(request.addressType());
+        if (request.addressLine() != null) address.setAddressLine(request.addressLine());
+        if (request.area() != null) address.setArea(request.area());
+        if (request.city() != null) address.setCity(request.city());
+        if (request.state() != null) address.setState(request.state());
+        if (request.pincode() != null) address.setPincode(request.pincode());
+        if (request.landmark() != null) address.setLandmark(request.landmark());
+        if (request.latitude() != null) address.setLatitude(request.latitude());
+        if (request.longitude() != null) address.setLongitude(request.longitude());
 
         Address updated = addressRepository.save(address);
         log.info("[USER SERVICE] Successfully updated address ID: {}", addressId);

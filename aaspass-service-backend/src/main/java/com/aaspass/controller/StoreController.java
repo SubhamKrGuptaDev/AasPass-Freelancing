@@ -83,7 +83,7 @@ public class StoreController {
     @PostMapping
     public ResponseEntity<ApiResponse<StoreResponse>> createStore(@Valid @RequestBody StoreCreateRequest request) {
         log.info("[API-CALL] POST /api/stores - Creating store: '{}' for user: {}",
-                request.getStoreName(), request.getUserId());
+                request.storeName(), request.userId());
 
         StoreResponse response = storeService.createStore(request);
         return ResponseEntity.status(HttpStatus.CREATED)

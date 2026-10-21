@@ -53,7 +53,7 @@ public class StoreReviewController {
             @PathVariable("storeId") Long storeId,
             @Valid @RequestBody StoreReviewRequest request) {
         log.info("[API-CALL] POST /api/stores/{}/reviews - User '{}' submitting rating: {}",
-                storeId, request.getUserName(), request.getRating());
+                storeId, request.userName(), request.rating());
 
         StoreReviewResponse response = reviewService.addReview(storeId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
