@@ -26,21 +26,7 @@ export interface UserAccount extends UserProfile {
   password?: string;
 }
 
-export interface AuthCredentials {
-  usernameOrEmail: string;
-  password: string;
-  rememberMe?: boolean;
-}
-
-export interface SignupRequest {
-  name: string;
-  usernameOrEmail: string;
-  password: string;
-  phone?: string;
-  city?: string;
-  area?: string;
-  avatarUrl?: string;
-}
+export type { AuthCredentials, SignupRequest } from './request.model';
 
 /**
  * Returns a valid SVG avatar URL using Dicebear Avataaars seeded with the user identifier,

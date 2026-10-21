@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { AuthHttpService } from './auth-http.service';
-import { API_BASE_URL, ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../config/api.config';
+import { API_BASE_URL } from '../../config/api.config';
+import { ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../models/response.model';
 
 describe('AuthHttpService', () => {
   let service: AuthHttpService;

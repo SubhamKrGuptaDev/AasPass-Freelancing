@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthResult, SignupRequest, UserAccount, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
-import { BackendUserResponse } from '../../config/api.config';
+import { BackendUserResponse } from '../../models/response.model';
 import { AuthHttpService } from './auth-http.service';
 
 const STORAGE_KEY_AUTH_USER = 'aaspass_auth_user';

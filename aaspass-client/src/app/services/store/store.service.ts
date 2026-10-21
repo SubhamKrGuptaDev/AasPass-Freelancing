@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { API_BASE_URL, ApiResponse, BackendStoreResponse, BackendUserResponse } from '../config/api.config';
+import { BackendStoreResponse } from '../../models/response.model';
 import {
   StoreProfile,
   StoreReview,
@@ -14,9 +13,10 @@ import {
   StoreViewRecord,
   getStoreViews,
   getEngagementCount
-} from '../models/store.model';
-import { UserProfile, getRandomAvatarUrl } from '../models/user.model';
-import { AuthService } from './auth/auth.service';
+} from '../../models/store.model';
+import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
+import { AuthService } from '../auth/auth.service';
+import { StoreHttpService } from './store-http.service';
 
 export const EMPTY_USER_PROFILE: UserProfile = {
   id: '',
@@ -39,7 +39,7 @@ export const EMPTY_USER_PROFILE: UserProfile = {
 })
 export class StoreService {
   readonly authService = inject(AuthService);
-  private http = inject(HttpClient, { optional: true });
+  private storeHttpService = inject(StoreHttpService);
 
   // Current user (Option A: Unified Account - only populated from authenticated session)
   readonly currentUser = signal<UserProfile>(this.authService.currentUser() || EMPTY_USER_PROFILE);
@@ -73,11 +73,10 @@ export class StoreService {
   readonly stores = signal<StoreProfile[]>([]);
   readonly isLoading = signal<boolean>(false);
 
-  // Load stores from Spring Boot REST API: GET /api/stores
+  // Load stores from Spring Boot REST API via StoreHttpService: GET /api/stores
   loadStoresFromApi(): void {
-    if (!this.http) return;
     this.isLoading.set(true);
-    this.http.get<ApiResponse<BackendStoreResponse[]>>(`${API_BASE_URL}/stores`).subscribe({
+    this.storeHttpService.getAllStores().subscribe({
       next: (res) => {
         this.isLoading.set(false);
         if (res && res.data && Array.isArray(res.data)) {
@@ -236,12 +235,12 @@ export class StoreService {
     });
   });
 
-  // Fetch single store from Spring Boot REST API: GET /api/stores/{id}
+  // Fetch single store from Spring Boot REST API via StoreHttpService: GET /api/stores/{id}
   fetchStoreById(id: string): void {
-    if (!this.http || !id) return;
+    if (!id) return;
     const numId = parseInt(String(id).replace(/\D/g, '') || id, 10);
     if (isNaN(numId)) return;
-    this.http.get<ApiResponse<BackendStoreResponse>>(`${API_BASE_URL}/stores/${numId}`).subscribe({
+    this.storeHttpService.getStoreById(numId).subscribe({
       next: (res) => {
         if (res && res.data) {
           const profile = this.mapBackendStoreToProfile(res.data);
@@ -335,45 +334,43 @@ export class StoreService {
       };
     });
 
-    // Call Spring Boot REST API: POST /api/stores
-    if (this.http) {
-      const payload = {
-        userId: parseInt(String(user.id ?? '').replace(/\D/g, '') || '1', 10),
-        storeName: newStore.storeName,
-        ownerName: newStore.ownerName || user.name,
-        tagline: newStore.tagline,
-        category: newStore.category,
-        skills: newStore.skills,
-        experienceYears: newStore.experienceYears,
-        hourlyRate: newStore.hourlyRate,
-        startingPrice: newStore.startingPrice,
-        area: newStore.area,
-        city: newStore.city,
-        serviceRadiusKm: newStore.serviceRadiusKm,
-        description: newStore.description,
-        avatarUrl: newStore.avatarUrl,
-        bannerGradient: newStore.bannerGradient,
-        storeSocialMediaLinks: newStore.storeSocialMediaLinks,
-        socialMediaLinks: newStore.socialMediaLinks,
-        services: newStore.services
-      };
+    // Call Spring Boot REST API via StoreHttpService: POST /api/stores
+    const payload = {
+      userId: parseInt(String(user.id ?? '').replace(/\D/g, '') || '1', 10),
+      storeName: newStore.storeName,
+      ownerName: newStore.ownerName || user.name,
+      tagline: newStore.tagline,
+      category: newStore.category,
+      skills: newStore.skills,
+      experienceYears: newStore.experienceYears,
+      hourlyRate: newStore.hourlyRate,
+      startingPrice: newStore.startingPrice,
+      area: newStore.area,
+      city: newStore.city,
+      serviceRadiusKm: newStore.serviceRadiusKm,
+      description: newStore.description,
+      avatarUrl: newStore.avatarUrl,
+      bannerGradient: newStore.bannerGradient,
+      storeSocialMediaLinks: newStore.storeSocialMediaLinks,
+      socialMediaLinks: newStore.socialMediaLinks,
+      services: newStore.services
+    };
 
-      this.http.post<ApiResponse<BackendStoreResponse>>(`${API_BASE_URL}/stores`, payload).subscribe({
-        next: (res) => {
-          if (res && res.data) {
-            const backendMapped = this.mapBackendStoreToProfile(res.data);
-            this.stores.update(list => list.map(s => s.id === newStoreId ? backendMapped : s));
-            this.currentUser.update(u => ({
-              ...u,
-              hasStore: true,
-              store: u.store?.id === newStoreId ? backendMapped : u.store,
-              stores: (u.stores || []).map(s => s.id === newStoreId ? backendMapped : s)
-            }));
-          }
-        },
-        error: () => {}
-      });
-    }
+    this.storeHttpService.createStore(payload).subscribe({
+      next: (res) => {
+        if (res && res.data) {
+          const backendMapped = this.mapBackendStoreToProfile(res.data);
+          this.stores.update(list => list.map(s => s.id === newStoreId ? backendMapped : s));
+          this.currentUser.update(u => ({
+            ...u,
+            hasStore: true,
+            store: u.store?.id === newStoreId ? backendMapped : u.store,
+            stores: (u.stores || []).map(s => s.id === newStoreId ? backendMapped : s)
+          }));
+        }
+      },
+      error: () => {}
+    });
 
     return newStore;
   }
@@ -425,16 +422,14 @@ export class StoreService {
       }
     }
 
-    // Call Spring Boot REST API: POST /api/stores/{storeId}/reviews
-    if (this.http) {
-      const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-      this.http.post<ApiResponse<any>>(`${API_BASE_URL}/stores/${numId}/reviews`, {
-        userName: newReview.userName,
-        userAvatar: this.currentUser().avatarUrl,
-        rating: clampedRating,
-        message: newReview.message
-      }).subscribe({ error: () => {} });
-    }
+    // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{storeId}/reviews
+    const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
+    this.storeHttpService.addReview(numId, {
+      userName: newReview.userName,
+      userAvatar: this.currentUser().avatarUrl,
+      rating: clampedRating,
+      message: newReview.message
+    }).subscribe({ error: () => {} });
 
     return newReview;
   }
@@ -493,11 +488,9 @@ export class StoreService {
       }
     }
 
-    // Call Spring Boot REST API: POST /api/stores/{id}/views
-    if (this.http) {
-      const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-      this.http.post<ApiResponse<BackendStoreResponse>>(`${API_BASE_URL}/stores/${numId}/views?viewerId=${encodeURIComponent(viewerId || 'guest')}`, {}).subscribe({ error: () => {} });
-    }
+    // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{id}/views
+    const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
+    this.storeHttpService.recordStoreView(numId, viewerId).subscribe({ error: () => {} });
   }
 
   // Get view metrics for a specific store
@@ -562,29 +555,27 @@ export class StoreService {
       };
     });
 
-    // Call Spring Boot REST API: PUT /api/stores/{id}
-    if (this.http) {
-      const numId = parseInt(String(targetStoreId ?? '').replace(/\D/g, '') || '1', 10);
-      this.http.put<ApiResponse<BackendStoreResponse>>(`${API_BASE_URL}/stores/${numId}`, {
-        storeName: updated.storeName,
-        ownerName: updated.ownerName,
-        tagline: updated.tagline,
-        category: updated.category,
-        skills: updated.skills,
-        experienceYears: updated.experienceYears,
-        hourlyRate: updated.hourlyRate,
-        startingPrice: updated.startingPrice,
-        area: updated.area,
-        city: updated.city,
-        serviceRadiusKm: updated.serviceRadiusKm,
-        description: updated.description,
-        avatarUrl: updated.avatarUrl,
-        bannerGradient: updated.bannerGradient,
-        isAvailable: updated.isAvailable,
-        storeSocialMediaLinks: updated.storeSocialMediaLinks,
-        socialMediaLinks: updated.socialMediaLinks
-      }).subscribe({ error: () => {} });
-    }
+    // Call Spring Boot REST API via StoreHttpService: PUT /api/stores/{id}
+    const numId = parseInt(String(targetStoreId ?? '').replace(/\D/g, '') || '1', 10);
+    this.storeHttpService.updateStore(numId, {
+      storeName: updated.storeName,
+      ownerName: updated.ownerName,
+      tagline: updated.tagline,
+      category: updated.category,
+      skills: updated.skills,
+      experienceYears: updated.experienceYears,
+      hourlyRate: updated.hourlyRate,
+      startingPrice: updated.startingPrice,
+      area: updated.area,
+      city: updated.city,
+      serviceRadiusKm: updated.serviceRadiusKm,
+      description: updated.description,
+      avatarUrl: updated.avatarUrl,
+      bannerGradient: updated.bannerGradient,
+      isAvailable: updated.isAvailable,
+      storeSocialMediaLinks: updated.storeSocialMediaLinks,
+      socialMediaLinks: updated.socialMediaLinks
+    }).subscribe({ error: () => {} });
   }
 
   // Delete an existing store owned by user
@@ -604,11 +595,9 @@ export class StoreService {
       };
     });
 
-    // Call Spring Boot REST API: DELETE /api/stores/{id}
-    if (this.http) {
-      const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-      this.http.delete<ApiResponse<void>>(`${API_BASE_URL}/stores/${numId}`).subscribe({ error: () => {} });
-    }
+    // Call Spring Boot REST API via StoreHttpService: DELETE /api/stores/{id}
+    const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
+    this.storeHttpService.deleteStore(numId).subscribe({ error: () => {} });
   }
 
   // Update basic user profile with UserSocialMediaLinks

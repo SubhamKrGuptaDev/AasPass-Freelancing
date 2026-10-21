@@ -1,42 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
-import { API_BASE_URL, ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../config/api.config';
-import { UserSocialMediaLinks, SocialMediaLink } from '../../models/store.model';
+import { API_BASE_URL } from '../../config/api.config';
+import { ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../models/response.model';
+import { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
-export interface LoginPayload {
-  usernameOrEmail: string;
-  password: string;
-}
-
-export interface RegisterPayload {
-  name: string;
-  username: string;
-  email: string;
-  password: string;
-  phone?: string;
-  city?: string;
-  area?: string;
-  avatarUrl?: string;
-}
-
-export interface UpdateUserPayload {
-  name?: string;
-  phone?: string;
-  aadharNumber?: string;
-  panNumber?: string;
-  avatarUrl?: string;
-  city?: string;
-  area?: string;
-  bio?: string;
-  userSocialMediaLinks?: UserSocialMediaLinks | Record<string, string | undefined>;
-  socialMediaLinks?: SocialMediaLink[] | Array<{ id?: number | string; name: string; url: string }>;
-}
-
-export interface RequestOptions {
-  headers?: HttpHeaders | Record<string, string | string[]>;
-  params?: HttpParams | Record<string, string | number | boolean | readonly (string | number | boolean)[]>;
-}
+export type { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
 @Injectable({
   providedIn: 'root'
