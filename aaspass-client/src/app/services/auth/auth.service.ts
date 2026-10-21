@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { AuthResult, SignupRequest, UserAccount, UserProfile, getRandomAvatarUrl } from '../models/user.model';
-import { API_BASE_URL, ApiResponse, BackendAuthResponse, BackendUserResponse } from '../config/api.config';
+import { AuthResult, SignupRequest, UserAccount, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
+import { BackendUserResponse } from '../../config/api.config';
+import { AuthHttpService } from './auth-http.service';
 
 const STORAGE_KEY_AUTH_USER = 'aaspass_auth_user';
 const STORAGE_KEY_AUTH_TOKEN = 'aaspass_auth_token';
@@ -23,7 +23,7 @@ export interface DemoAccount {
 })
 export class AuthService {
   private router = inject(Router);
-  private http = inject(HttpClient, { optional: true });
+  private authHttpService = inject(AuthHttpService);
 
   // Available Demo accounts for 1-click test login
   readonly demoAccounts: DemoAccount[] = [
@@ -213,7 +213,7 @@ export class AuthService {
     return [];
   }
 
-  // Authenticate user with username or email and password (supports live Spring REST API & local fallback)
+  // Authenticate user with username or email and password (supports live Spring REST API via AuthHttpService & local fallback)
   login(usernameOrEmail: string, password: string): AuthResult {
     this.authError.set(null);
     this.authSuccessMessage.set(null);
@@ -235,32 +235,30 @@ export class AuthService {
       return Object.assign(Promise.resolve(failResult), failResult);
     }
 
-    // Call Spring Boot REST API: POST /api/auth/login
-    if (this.http) {
-      this.http.post<ApiResponse<BackendAuthResponse>>(`${API_BASE_URL}/auth/login`, {
-        usernameOrEmail: cleanInput,
-        password: cleanPassword
-      }).subscribe({
-        next: (resp) => {
-          if (resp && resp.data && resp.data.user) {
-            const mapped = this.mapBackendUserToProfile(resp.data.user);
-            this.saveSession(mapped, resp.data.token);
-            this.authSuccessMessage.set(`Welcome back, ${mapped.name}!`);
-            const targetUrl = this.returnUrl();
-            this.isModalOpen.set(false);
-            this.returnUrl.set(null);
-            if (targetUrl) {
-              this.router.navigateByUrl(targetUrl);
-            }
-          }
-        },
-        error: (err) => {
-          if (err && err.error && err.error.message) {
-            this.authError.set(err.error.message);
+    // Call Spring Boot REST API via AuthHttpService: POST /api/auth/login
+    this.authHttpService.login({
+      usernameOrEmail: cleanInput,
+      password: cleanPassword
+    }).subscribe({
+      next: (resp) => {
+        if (resp?.data?.user) {
+          const mapped = this.mapBackendUserToProfile(resp.data.user);
+          this.saveSession(mapped, resp.data.token);
+          this.authSuccessMessage.set(`Welcome back, ${mapped.name}!`);
+          const targetUrl = this.returnUrl();
+          this.isModalOpen.set(false);
+          this.returnUrl.set(null);
+          if (targetUrl) {
+            this.router.navigateByUrl(targetUrl);
           }
         }
-      });
-    }
+      },
+      error: (err) => {
+        if (err?.error?.message) {
+          this.authError.set(err.error.message);
+        }
+      }
+    });
 
     // Local evaluation fallback for test runner & offline mode
     const accounts = this.getRegisteredAccounts();
@@ -301,7 +299,7 @@ export class AuthService {
     return res.success;
   }
 
-  // Register a new user account with username/email and password (supports live Spring REST API & local fallback)
+  // Register a new user account with username/email and password (supports live Spring REST API via AuthHttpService & local fallback)
   signup(request: SignupRequest): AuthResult {
     this.authError.set(null);
     this.authSuccessMessage.set(null);
@@ -352,32 +350,30 @@ export class AuthService {
       ? request.avatarUrl.trim()
       : getRandomAvatarUrl(username || name);
 
-    // Call Spring Boot REST API: POST /api/auth/register
-    if (this.http) {
-      this.http.post<ApiResponse<BackendAuthResponse>>(`${API_BASE_URL}/auth/register`, {
-        name: name,
-        username: username.toLowerCase(),
-        email: email.toLowerCase(),
-        password: password,
-        phone: (request.phone || '').trim() || '+91 98000 00000',
-        city: request.city || 'Bengaluru',
-        area: request.area || 'Indiranagar',
-        avatarUrl: avatar
-      }).subscribe({
-        next: (resp) => {
-          if (resp && resp.data && resp.data.user) {
-            const mapped = this.mapBackendUserToProfile(resp.data.user);
-            this.saveSession(mapped, resp.data.token);
-            this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
-          }
-        },
-        error: (err) => {
-          if (err && err.error && err.error.message) {
-            this.authError.set(err.error.message);
-          }
+    // Call Spring Boot REST API via AuthHttpService: POST /api/auth/register
+    this.authHttpService.register({
+      name: name,
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      password: password,
+      phone: (request.phone || '').trim() || '+91 98000 00000',
+      city: request.city || 'Bengaluru',
+      area: request.area || 'Indiranagar',
+      avatarUrl: avatar
+    }).subscribe({
+      next: (resp) => {
+        if (resp?.data?.user) {
+          const mapped = this.mapBackendUserToProfile(resp.data.user);
+          this.saveSession(mapped, resp.data.token);
+          this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
         }
-      });
-    }
+      },
+      error: (err) => {
+        if (err?.error?.message) {
+          this.authError.set(err.error.message);
+        }
+      }
+    });
 
     const nowIso = new Date().toISOString();
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -430,7 +426,7 @@ export class AuthService {
     return Object.assign(Promise.resolve(successResult), successResult);
   }
 
-  // Update user profile in active session, accounts store, and backend REST API
+  // Update user profile in active session, accounts store, and backend REST API via AuthHttpService
   updateUserProfile(updated: Partial<UserProfile>): void {
     const current = this.currentUser();
     if (!current) return;
@@ -443,24 +439,22 @@ export class AuthService {
 
     this.saveSession(merged);
 
-    // Call Spring Boot REST API: PUT /api/users/{id}
-    if (this.http) {
-      const numId = parseInt(String(current.id ?? '').replace(/\D/g, '') || '1', 10);
-      this.http.put<ApiResponse<BackendUserResponse>>(`${API_BASE_URL}/users/${numId}`, {
-        name: merged.name,
-        phone: merged.phone,
-        aadharNumber: merged.aadharNumber,
-        panNumber: merged.panNumber,
-        avatarUrl: merged.avatarUrl,
-        city: merged.city,
-        area: merged.area,
-        bio: merged.bio,
-        userSocialMediaLinks: merged.userSocialMediaLinks,
-        socialMediaLinks: merged.socialMediaLinks
-      }).subscribe({
-        error: () => {} // Keep optimistic update
-      });
-    }
+    // Call Spring Boot REST API via AuthHttpService: PUT /api/users/{id}
+    const numId = parseInt(String(current.id ?? '').replace(/\D/g, '') || '1', 10);
+    this.authHttpService.updateUser(numId, {
+      name: merged.name,
+      phone: merged.phone,
+      aadharNumber: merged.aadharNumber,
+      panNumber: merged.panNumber,
+      avatarUrl: merged.avatarUrl,
+      city: merged.city,
+      area: merged.area,
+      bio: merged.bio,
+      userSocialMediaLinks: merged.userSocialMediaLinks,
+      socialMediaLinks: merged.socialMediaLinks
+    }).subscribe({
+      error: () => {} // Keep optimistic update
+    });
 
     // Also update in registered accounts list
     if (this.isBrowser()) {
@@ -494,13 +488,11 @@ export class AuthService {
     }
   }
 
-  // Log out active user and reset to guest state (calls POST /api/auth/logout)
+  // Log out active user and reset to guest state (calls POST /api/auth/logout via AuthHttpService)
   logout(): void {
-    if (this.http) {
-      this.http.post<ApiResponse<void>>(`${API_BASE_URL}/auth/logout`, {}).subscribe({
-        error: () => {}
-      });
-    }
+    this.authHttpService.logout().subscribe({
+      error: () => {}
+    });
 
     this.currentUser.set(null);
     if (this.isBrowser()) {

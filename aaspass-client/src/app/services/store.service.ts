@@ -16,7 +16,7 @@ import {
   getEngagementCount
 } from '../models/store.model';
 import { UserProfile, getRandomAvatarUrl } from '../models/user.model';
-import { AuthService } from './auth.service';
+import { AuthService } from './auth/auth.service';
 
 export const EMPTY_USER_PROFILE: UserProfile = {
   id: '',

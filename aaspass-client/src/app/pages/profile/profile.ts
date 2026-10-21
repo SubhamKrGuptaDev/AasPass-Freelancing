@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store.service';
-import { AuthService } from '../../services/auth.service';
+import { AuthService } from '../../services/auth/auth.service';
 import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
