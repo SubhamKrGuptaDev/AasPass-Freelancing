@@ -2,6 +2,7 @@ package com.aaspass.dto.request;
 
 import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import java.util.List;
  * Request payload for updating an existing store storefront.
  */
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record StoreUpdateRequest(
     String storeName,
     String ownerName,

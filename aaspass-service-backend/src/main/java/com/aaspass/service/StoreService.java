@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -118,24 +119,28 @@ public class StoreService {
         // Attach initial services if provided
         if (request.services() != null) {
             for (ServiceItemRequest sReq : request.services()) {
-                StoreServiceItem item = StoreServiceItem.builder()
-                        .name(sReq.name())
-                        .price(sReq.price())
-                        .duration(sReq.duration())
-                        .description(sReq.description())
-                        .build();
-                store.addService(item);
+                if (sReq != null && sReq.name() != null && !sReq.name().isBlank()) {
+                    StoreServiceItem item = StoreServiceItem.builder()
+                            .name(sReq.name().trim())
+                            .price(sReq.price() != null ? sReq.price() : BigDecimal.ZERO)
+                            .duration(sReq.duration())
+                            .description(sReq.description())
+                            .build();
+                    store.addService(item);
+                }
             }
         }
 
         // Attach dynamic social links if provided
         if (request.socialMediaLinks() != null) {
             for (SocialMediaLinkDto linkDto : request.socialMediaLinks()) {
-                SocialMediaLink link = SocialMediaLink.builder()
-                        .name(linkDto.name())
-                        .url(linkDto.url())
-                        .build();
-                store.addSocialMediaLink(link);
+                if (linkDto != null && linkDto.name() != null && !linkDto.name().isBlank() && linkDto.url() != null && !linkDto.url().isBlank()) {
+                    SocialMediaLink link = SocialMediaLink.builder()
+                            .name(linkDto.name().trim())
+                            .url(linkDto.url().trim())
+                            .build();
+                    store.addSocialMediaLink(link);
+                }
             }
         }
 
@@ -177,10 +182,10 @@ public class StoreService {
                 store.getSocialMediaLinks().clear();
             }
             for (SocialMediaLinkDto linkDto : request.socialMediaLinks()) {
-                if (linkDto != null) {
+                if (linkDto != null && linkDto.name() != null && !linkDto.name().isBlank() && linkDto.url() != null && !linkDto.url().isBlank()) {
                     SocialMediaLink link = SocialMediaLink.builder()
-                            .name(linkDto.name())
-                            .url(linkDto.url())
+                            .name(linkDto.name().trim())
+                            .url(linkDto.url().trim())
                             .build();
                     store.addSocialMediaLink(link);
                 }

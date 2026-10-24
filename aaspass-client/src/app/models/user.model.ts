@@ -3,6 +3,7 @@ import { StoreProfile, UserSocialMediaLinks, SocialMediaLink } from './store.mod
 export interface UserProfile {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   aadharNumber?: string;

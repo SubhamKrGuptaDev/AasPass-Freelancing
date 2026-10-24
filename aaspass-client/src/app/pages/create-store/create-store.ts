@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
@@ -43,6 +43,27 @@ export class CreateStoreComponent implements OnInit {
 
   isEditing = false;
   editingStoreId = '';
+
+  isSubmitting = signal<boolean>(false);
+  errorMessage = signal<string | null>(null);
+  private errorToastTimer: any = null;
+
+  showErrorToast(msg: string): void {
+    this.errorMessage.set(msg);
+    if (this.errorToastTimer) {
+      clearTimeout(this.errorToastTimer);
+    }
+    this.errorToastTimer = setTimeout(() => {
+      this.errorMessage.set(null);
+    }, 8000);
+  }
+
+  dismissError(): void {
+    if (this.errorToastTimer) {
+      clearTimeout(this.errorToastTimer);
+    }
+    this.errorMessage.set(null);
+  }
 
   formData = {
     storeName: 'QuickEdits Bangalore',
@@ -153,6 +174,10 @@ export class CreateStoreComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.isSubmitting()) {
+      return;
+    }
+
     const skills = this.skillsInput
       .split(',')
       .map(s => s.trim())
@@ -169,6 +194,9 @@ export class CreateStoreComponent implements OnInit {
     const storeSocialMediaLinks: StoreSocialMediaLinks = toStoreSocialMediaLinks(validSocialLinks);
 
     if (this.isEditing && this.editingStoreId) {
+      this.isSubmitting.set(true);
+      this.errorMessage.set(null);
+
       this.storeService.updateStore({
         storeName: this.formData.storeName,
         tagline: this.formData.tagline,
@@ -184,8 +212,17 @@ export class CreateStoreComponent implements OnInit {
         storeSocialMediaLinks: storeSocialMediaLinks,
         userSocialLinks: storeSocialMediaLinks,
         description: this.formData.description
-      }, this.editingStoreId);
-      this.router.navigate(['/stores', this.editingStoreId]);
+      }, this.editingStoreId).subscribe({
+        next: () => {
+          this.isSubmitting.set(false);
+          this.router.navigate(['/stores', this.editingStoreId]);
+        },
+        error: (err) => {
+          this.isSubmitting.set(false);
+          const msg = err?.error?.message || err?.message || 'Failed to update store details in database. Please try again.';
+          this.showErrorToast(msg);
+        }
+      });
       return;
     }
 
@@ -206,7 +243,10 @@ export class CreateStoreComponent implements OnInit {
       }
     ];
 
-    const newStore = this.storeService.createStore({
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+
+    this.storeService.createStore({
       ownerName: this.storeService.currentUser().name,
       storeName: this.formData.storeName,
       tagline: this.formData.tagline,
@@ -227,9 +267,17 @@ export class CreateStoreComponent implements OnInit {
       avatarUrl: this.storeService.currentUser().avatarUrl,
       bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
       isAvailable: true
+    }).subscribe({
+      next: (persistedStore) => {
+        this.isSubmitting.set(false);
+        // Navigate directly to the verified persisted store detail page!
+        this.router.navigate(['/stores', persistedStore.id]);
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        const msg = err?.error?.message || err?.message || 'Failed to save store to the database. Please ensure backend service is running and try again.';
+        this.showErrorToast(msg);
+      }
     });
-
-    // Navigate directly to the newly created store detail page!
-    this.router.navigate(['/stores', newStore.id]);
   }
 }

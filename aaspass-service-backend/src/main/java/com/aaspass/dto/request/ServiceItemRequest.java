@@ -1,5 +1,6 @@
 package com.aaspass.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +12,10 @@ import java.math.BigDecimal;
  * Request payload for creating or modifying a store gig/service package.
  */
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ServiceItemRequest(
+    Object id,
+
     @NotBlank(message = "Service item name is required")
     String name,
 

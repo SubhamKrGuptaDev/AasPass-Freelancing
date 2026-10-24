@@ -210,9 +210,18 @@
             </a>
             <button 
               type="submit" 
-              class="w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/30 transition transform active:scale-98 cursor-pointer"
+              [disabled]="isSubmitting()"
+              class="w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/30 transition transform active:scale-98 cursor-pointer flex items-center justify-center gap-2"
             >
-              {{ isEditing ? '💾 Update Store & Social Links' : '🚀 Publish Store & Start Receiving Gigs' }}
+              @if (isSubmitting()) {
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>{{ isEditing ? 'Updating Store...' : 'Publishing & Saving Store...' }}</span>
+              } @else {
+                <span>{{ isEditing ? '💾 Update Store & Social Links' : '🚀 Publish Store & Start Receiving Gigs' }}</span>
+              }
             </button>
           </div>
 
@@ -300,6 +309,38 @@
       </div>
 
     </div>
+
+    <!-- Middle-of-Screen Error Toaster Alert -->
+    @if (errorMessage()) {
+      <div 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-fade-in"
+        (click)="dismissError()"
+      >
+        <div 
+          class="bg-white rounded-3xl shadow-2xl border-2 border-rose-300 max-w-md w-full p-6 sm:p-7 text-center transform transition-all scale-100 animate-in fade-in zoom-in duration-200"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold ring-8 ring-rose-50/70">
+            ⚠️
+          </div>
+          <h3 class="text-lg font-black text-slate-900 mb-2 tracking-tight">
+            {{ isEditing ? 'Failed to Update Store' : 'Failed to Publish Store' }}
+          </h3>
+          <p class="text-xs text-rose-700 bg-rose-50/80 border border-rose-200 rounded-2xl p-3.5 mb-5 leading-relaxed font-semibold">
+            {{ errorMessage() }}
+          </p>
+          <div class="flex items-center justify-center gap-3">
+            <button 
+              type="button" 
+              (click)="dismissError()" 
+              class="w-full sm:w-auto px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm hover:shadow cursor-pointer"
+            >
+              Dismiss & Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
   </div>
 </div>

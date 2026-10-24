@@ -1,4 +1,6 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Observable, of, throwError } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { BackendStoreResponse } from '../../models/response.model';
 import {
   StoreProfile,
@@ -272,8 +274,28 @@ export class StoreService {
     return undefined;
   }
 
+  // Helper to reliably resolve the correct numeric database User ID (for Demo accounts and active DB users)
+  getNumericUserId(user?: UserProfile): number {
+    const u = user || this.currentUser();
+    if (!u) return 1;
+    const username = (u.username || '').toLowerCase();
+    const name = (u.name || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    if (username === 'aman' || name.includes('aman') || email.includes('aman') || u.id === 'user-001' || u.id === '1') return 1;
+    if (username === 'priya' || name.includes('priya') || email.includes('priya') || u.id === 'user-101' || u.id === '2') return 2;
+    if (username === 'rohan' || name.includes('rohan') || email.includes('rohan') || u.id === 'user-102' || u.id === '3') return 3;
+    const rawId = String(u.id ?? '').trim();
+    const digits = rawId.replace(/\D/g, '');
+    if (digits) {
+      const parsed = parseInt(digits, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return 1;
+  }
+
   // Create a new store (Option A: transforms regular user into a store owner or adds an additional store)
-  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime'>>): StoreProfile {
+  // Returns an Observable of StoreProfile (with store properties merged for full backward compatibility)
+  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime'>>): Observable<StoreProfile> & StoreProfile {
     const user = this.currentUser();
     const newStoreId = 'store-' + (this.stores().length + 1) + '-' + Math.random().toString(36).substring(2, 6);
     const nowIso = new Date().toISOString();
@@ -318,61 +340,84 @@ export class StoreService {
       lastUpdateDateTime: storeData.lastUpdateDateTime || nowIso
     };
 
-    // Add to stores list
-    this.stores.update(list => [newStore, ...list]);
+    // Prepare clean payload for Spring Boot REST API: POST /api/stores
+    // Filter out client temporary string IDs (like 'sm-init-1', 's-initial-1') so Jackson deserializes cleanly
+    const cleanSocialLinks = (newStore.socialMediaLinks || [])
+      .filter(l => Boolean(l && l.name && l.name.trim() && l.url && l.url.trim()))
+      .map(l => ({
+        name: l.name.trim(),
+        url: l.url.trim()
+      }));
 
-    // Update user profile with the new store and ensure multi-store list contains it
-    this.currentUser.update(u => {
-      const existingStores = u.stores || (u.store ? [u.store] : []);
-      const updatedStores = [newStore, ...existingStores.filter(s => s.id !== newStore.id)];
-      return {
-        ...u,
-        hasStore: true,
-        store: newStore,
-        stores: updatedStores,
-        lastUpdateDateTime: nowIso
-      };
-    });
+    const cleanServices = (newStore.services || [])
+      .filter(s => Boolean(s && s.name && s.name.trim()))
+      .map(s => ({
+        name: s.name.trim(),
+        price: Number(s.price) || 0,
+        duration: s.duration || '',
+        description: s.description || ''
+      }));
 
-    // Call Spring Boot REST API via StoreHttpService: POST /api/stores
+    const numericUserId = this.getNumericUserId(user);
+
     const payload = {
-      userId: parseInt(String(user.id ?? '').replace(/\D/g, '') || '1', 10),
-      storeName: newStore.storeName,
-      ownerName: newStore.ownerName || user.name,
-      tagline: newStore.tagline,
-      category: newStore.category,
-      skills: newStore.skills,
-      experienceYears: newStore.experienceYears,
-      hourlyRate: newStore.hourlyRate,
-      startingPrice: newStore.startingPrice,
-      area: newStore.area,
-      city: newStore.city,
-      serviceRadiusKm: newStore.serviceRadiusKm,
-      description: newStore.description,
-      avatarUrl: newStore.avatarUrl,
-      bannerGradient: newStore.bannerGradient,
+      userId: numericUserId,
+      storeName: newStore.storeName.trim(),
+      ownerName: (newStore.ownerName || user.name || 'Store Owner').trim(),
+      tagline: newStore.tagline ? newStore.tagline.trim() : '',
+      category: newStore.category.trim(),
+      skills: newStore.skills || [],
+      experienceYears: Number(newStore.experienceYears) || 0,
+      hourlyRate: Number(newStore.hourlyRate) || 0,
+      startingPrice: Number(newStore.startingPrice) || 0,
+      area: newStore.area.trim(),
+      city: newStore.city.trim(),
+      serviceRadiusKm: Number(newStore.serviceRadiusKm) || 10,
+      description: newStore.description || '',
+      avatarUrl: (newStore.avatarUrl && newStore.avatarUrl.trim()) ? newStore.avatarUrl.trim() : (user.avatarUrl || ''),
+      bannerGradient: newStore.bannerGradient || 'from-indigo-600 via-purple-600 to-pink-500',
       storeSocialMediaLinks: newStore.storeSocialMediaLinks,
-      socialMediaLinks: newStore.socialMediaLinks,
-      services: newStore.services
+      socialMediaLinks: cleanSocialLinks,
+      services: cleanServices
     };
 
-    this.storeHttpService.createStore(payload).subscribe({
-      next: (res) => {
-        if (res && res.data) {
-          const backendMapped = this.mapBackendStoreToProfile(res.data);
-          this.stores.update(list => list.map(s => s.id === newStoreId ? backendMapped : s));
-          this.currentUser.update(u => ({
+    const request$ = this.storeHttpService.createStore(payload).pipe(
+      map(res => {
+        if (!res || !res.data) {
+          throw new Error(res?.message || 'Failed to create store in database');
+        }
+        const backendMapped = this.mapBackendStoreToProfile(res.data);
+
+        // Update master stores signal list with the real persisted store
+        this.stores.update(list => [
+          backendMapped,
+          ...list.filter(s => String(s.id) !== String(backendMapped.id) && s.id !== newStoreId)
+        ]);
+
+        // Update currentUser and persist to localStorage session so reload keeps store
+        this.currentUser.update(u => {
+          const existingStores = u.stores || (u.store ? [u.store] : []);
+          const updatedStores = [
+            backendMapped,
+            ...existingStores.filter(s => String(s.id) !== String(backendMapped.id) && s.id !== newStoreId)
+          ];
+          const updatedUser: UserProfile = {
             ...u,
             hasStore: true,
-            store: u.store?.id === newStoreId ? backendMapped : u.store,
-            stores: (u.stores || []).map(s => s.id === newStoreId ? backendMapped : s)
-          }));
-        }
-      },
-      error: () => {}
-    });
+            store: backendMapped,
+            stores: updatedStores,
+            lastUpdateDateTime: nowIso
+          };
+          this.authService.saveSession(updatedUser);
+          return updatedUser;
+        });
 
-    return newStore;
+        return backendMapped;
+      })
+    );
+
+    // Merge newStore properties onto the observable for backward compatibility with synchronous callers/tests
+    return Object.assign(request$, newStore);
   }
 
   // Add customer review for a store owner (rating bounded between 1.0 and 5.0)
@@ -506,10 +551,12 @@ export class StoreService {
   }
 
   // Update existing store details (supports optional storeId to update specific store)
-  updateStore(updated: Partial<StoreProfile>, storeId?: string): void {
+  updateStore(updated: Partial<StoreProfile>, storeId?: string): Observable<StoreProfile> {
     const user = this.currentUser();
     const targetStoreId = storeId || user.store?.id || (user.stores && user.stores.length > 0 ? user.stores[0].id : undefined);
-    if (!targetStoreId) return;
+    if (!targetStoreId) {
+      return throwError(() => new Error('Target store ID not found for update'));
+    }
 
     const nowIso = new Date().toISOString();
 
@@ -537,7 +584,9 @@ export class StoreService {
     }));
 
     const updatedStore = this.getStoreById(targetStoreId);
-    if (!updatedStore) return;
+    if (!updatedStore) {
+      return throwError(() => new Error('Store profile could not be resolved'));
+    }
 
     this.currentUser.update(u => {
       const currentStores = u.stores || (u.store ? [u.store] : []);
@@ -546,36 +595,55 @@ export class StoreService {
         ? currentStores.map(s => s.id === targetStoreId ? updatedStore : s)
         : [updatedStore, ...currentStores];
       const isPrimary = u.store?.id === targetStoreId || !u.store;
-      return {
+      const updatedUser: UserProfile = {
         ...u,
         hasStore: true,
         store: isPrimary ? updatedStore : u.store,
         stores: updatedStores,
         lastUpdateDateTime: nowIso
       };
+      this.authService.saveSession(updatedUser);
+      return updatedUser;
     });
+
+    // Clean dynamic social links for Spring REST API (strip client string IDs)
+    const cleanSocialLinks = (updated.socialMediaLinks || updatedStore.socialMediaLinks || [])
+      .filter(l => Boolean(l && l.name && l.name.trim() && l.url && l.url.trim()))
+      .map(l => ({
+        name: l.name.trim(),
+        url: l.url.trim()
+      }));
 
     // Call Spring Boot REST API via StoreHttpService: PUT /api/stores/{id}
     const numId = parseInt(String(targetStoreId ?? '').replace(/\D/g, '') || '1', 10);
-    this.storeHttpService.updateStore(numId, {
-      storeName: updated.storeName,
-      ownerName: updated.ownerName,
-      tagline: updated.tagline,
-      category: updated.category,
-      skills: updated.skills,
-      experienceYears: updated.experienceYears,
-      hourlyRate: updated.hourlyRate,
-      startingPrice: updated.startingPrice,
-      area: updated.area,
-      city: updated.city,
-      serviceRadiusKm: updated.serviceRadiusKm,
-      description: updated.description,
-      avatarUrl: updated.avatarUrl,
-      bannerGradient: updated.bannerGradient,
-      isAvailable: updated.isAvailable,
-      storeSocialMediaLinks: updated.storeSocialMediaLinks,
-      socialMediaLinks: updated.socialMediaLinks
-    }).subscribe({ error: () => {} });
+    return this.storeHttpService.updateStore(numId, {
+      storeName: updated.storeName || updatedStore.storeName,
+      ownerName: updated.ownerName || updatedStore.ownerName,
+      tagline: updated.tagline !== undefined ? updated.tagline : updatedStore.tagline,
+      category: updated.category || updatedStore.category,
+      skills: updated.skills || updatedStore.skills,
+      experienceYears: updated.experienceYears !== undefined ? updated.experienceYears : updatedStore.experienceYears,
+      hourlyRate: updated.hourlyRate !== undefined ? updated.hourlyRate : updatedStore.hourlyRate,
+      startingPrice: updated.startingPrice !== undefined ? updated.startingPrice : updatedStore.startingPrice,
+      area: updated.area || updatedStore.area,
+      city: updated.city || updatedStore.city,
+      serviceRadiusKm: updated.serviceRadiusKm !== undefined ? updated.serviceRadiusKm : updatedStore.serviceRadiusKm,
+      description: updated.description !== undefined ? updated.description : updatedStore.description,
+      avatarUrl: updated.avatarUrl || updatedStore.avatarUrl,
+      bannerGradient: updated.bannerGradient || updatedStore.bannerGradient,
+      isAvailable: updated.isAvailable !== undefined ? updated.isAvailable : updatedStore.isAvailable,
+      storeSocialMediaLinks: updated.storeSocialMediaLinks || updatedStore.storeSocialMediaLinks,
+      socialMediaLinks: cleanSocialLinks
+    }).pipe(
+      map(res => {
+        if (res && res.data) {
+          const backendMapped = this.mapBackendStoreToProfile(res.data);
+          this.stores.update(list => list.map(s => String(s.id) === String(targetStoreId) ? backendMapped : s));
+          return backendMapped;
+        }
+        return updatedStore;
+      })
+    );
   }
 
   // Delete an existing store owned by user
