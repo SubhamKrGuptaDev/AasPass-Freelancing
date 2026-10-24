@@ -183,7 +183,7 @@ export class StoreService {
   // Filter signals
   readonly searchQuery = signal<string>('');
   readonly selectedCategory = signal<string>('All');
-  readonly selectedMaxDistanceKm = signal<number>(10);
+  readonly selectedMaxDistanceKm = signal<number>(50);
   readonly selectedCity = signal<string>('Bengaluru');
 
   // Categories list
@@ -204,17 +204,11 @@ export class StoreService {
   readonly filteredStores = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
     const cat = this.selectedCategory();
-    const maxDist = this.selectedMaxDistanceKm();
     const city = this.selectedCity().toLowerCase();
 
     return this.stores().filter(store => {
       // City check
       if (store.city.toLowerCase() !== city) {
-        return false;
-      }
-
-      // Distance check
-      if (maxDist < 50 && store.distanceKm > maxDist) {
         return false;
       }
 
@@ -732,6 +726,6 @@ export class StoreService {
   resetFilters(): void {
     this.searchQuery.set('');
     this.selectedCategory.set('All');
-    this.selectedMaxDistanceKm.set(10);
+    this.selectedMaxDistanceKm.set(50);
   }
 }

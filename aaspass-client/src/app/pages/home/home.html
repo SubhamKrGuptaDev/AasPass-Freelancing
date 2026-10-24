@@ -26,47 +26,22 @@
         Meet at a nearby cafe, collaborate in person, or get urgent local work done fast.
       </p>
 
-      <!-- Search Box & Proximity Controls -->
+      <!-- Search Box -->
       <div class="bg-white rounded-2xl p-3 sm:p-4 shadow-2xl text-slate-900 max-w-3xl mx-auto">
-        <div class="flex flex-col sm:flex-row gap-3">
-          
-          <!-- Search Input -->
-          <div class="relative flex-1">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-            <input 
-              type="text" 
-              [ngModel]="storeService.searchQuery()"
-              (ngModelChange)="storeService.setSearchQuery($event)"
-              placeholder="Search skill, service, or store (e.g. Reels, Web, Python)..." 
-              class="w-full pl-11 pr-4 py-3 bg-slate-100/80 rounded-xl text-sm font-medium placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
-            />
+        <!-- Search Input -->
+        <div class="relative w-full">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
           </div>
-
-          <!-- Distance Radius Dropdown / Buttons -->
-          <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl text-xs font-semibold">
-            <span class="text-slate-500 px-2 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-              </svg>
-              Radius:
-            </span>
-            <button 
-              *ngFor="let dist of [2, 5, 10, 50]"
-              type="button"
-              (click)="storeService.setSelectedDistance(dist)"
-              [class.bg-indigo-600]="storeService.selectedMaxDistanceKm() === dist"
-              [class.text-white]="storeService.selectedMaxDistanceKm() === dist"
-              [class.text-slate-700]="storeService.selectedMaxDistanceKm() !== dist"
-              class="px-2.5 py-1.5 rounded-lg transition"
-            >
-              {{ dist === 50 ? 'All' : dist + 'km' }}
-            </button>
-          </div>
-
+          <input 
+            type="text" 
+            [ngModel]="storeService.searchQuery()"
+            (ngModelChange)="storeService.setSearchQuery($event)"
+            placeholder="Search skill, service, or store (e.g. Reels, Web, Python)..." 
+            class="w-full pl-11 pr-4 py-3 bg-slate-100/80 rounded-xl text-sm font-medium placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
+          />
         </div>
 
         <!-- Category Pills -->
@@ -107,9 +82,6 @@
             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
               📍 {{ storeService.selectedCity() }}
             </span>
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-              Within {{ storeService.selectedMaxDistanceKm() === 50 ? 'all city' : storeService.selectedMaxDistanceKm() + ' km' }}
-            </span>
             @if (storeService.selectedCategory() !== 'All') {
               <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
                 {{ storeService.selectedCategory() }}
@@ -123,7 +95,7 @@
       </div>
 
       <!-- Active filters pill / Reset -->
-      @if (storeService.searchQuery() || storeService.selectedCategory() !== 'All' || storeService.selectedMaxDistanceKm() !== 10) {
+      @if (storeService.searchQuery() || storeService.selectedCategory() !== 'All') {
         <button 
           type="button"
           (click)="storeService.resetFilters()"
