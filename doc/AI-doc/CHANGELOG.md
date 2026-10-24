@@ -6,6 +6,26 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-24 20:25:00 IST] - Created Comprehensive Master Project Specification Document
+* **What Changed:**
+  * Created exhaustive master documentation file `doc/PROJECT_DETAILS.md` detailing all aspects of the AasPass platform:
+    * **Executive Summary & Mission:** Neighborhood-first freelancing and skill marketplace bridging local creators/students and clients within 2-10 km.
+    * **Competitive Differentiation Matrix:** In-depth feature comparison with Upwork/Fiverr, Urban Company, Google Maps, and WhatsApp groups.
+    * **Unified Account Model (Option A):** Single identity for both hiring and offering gigs, plus multi-store ownership per profile.
+    * **Technology Stack:** Angular 22 (Signals, Standalone Components, Tailwind CSS v4, Vite/Vitest) & Spring Boot 4.x / Java 17 (Maven, JPA, MySQL, Lombok, Records).
+    * **System Architecture & Data Flows:** Mermaid system architecture diagrams and proximity discovery sequence flows.
+    * **Data Model & Schema:** Complete Mermaid ER diagram and entity documentation (`User`, `Store`, `Address`, `StoreServiceItem`, `StoreReview`, `SocialMediaLink`, `StoreViewRecord`, `StoreEngagementStats`, `StoreSocialMediaLinks`, `UserSocialMediaLinks`).
+    * **Full REST API Directory:** Complete endpoint tables for Auth, Stores, Services, Reviews, Users, and Multi-Address management with `ApiResponse<T>` contract.
+    * **Frontend Architecture:** Signal-driven reactive state, component breakdown (`Navbar`, `AuthModal`, `SocialMediaLinks`, `Home`, `StoreDetail`, `CreateStore`, `Profile`), and route protection guards.
+    * **Feature Breakdown & User Journeys:** Proximity discovery, digital storefronts, live preview builder, KYC (masked Aadhaar & PAN), multi-address book, store availability toggles, review rating bounds [1.0 - 5.0], and timeframe engagement analytics (Daily, Weekly, Monthly, Lifetime).
+    * **Engineering & Null-Safety Standards:** Guidelines for defect prevention in Spring Boot and Angular.
+    * **Local Setup Guide & Demo Credentials:** Step-by-step MySQL initialization, backend/frontend startup commands, and pre-seeded test accounts (`aman`, `priya`, `rohan`).
+    * **Roadmap:** Completed v1.0.0 milestones and upcoming v2.0.0 milestones (Spatial GIS queries, SMS OTP / JWT, WebSockets chat, Escrow payments).
+* **Why Changed:** User requested a comprehensive, all-encompassing project details document inside the `doc` folder.
+* **Files Created/Modified:**
+  * `doc/PROJECT_DETAILS.md`
+  * `doc/AI-doc/CHANGELOG.md`
+
 ### [2026-10-21 21:30:00 IST] - Modernization of Backend DTOs to Java 17 Records
 * **What Changed:**
   * **Converted 16 Request and Response DTOs to Java Records**:
