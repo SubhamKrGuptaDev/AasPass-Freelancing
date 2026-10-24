@@ -66,8 +66,9 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
 | :--- | :--- | :--- |
 | **Frontend** | Angular 22 | Modern Standalone Components, Signal-based reactive state |
 | **Styling** | Tailwind CSS v4 | Responsive utility-first design, modern gradients & micro-interactions |
-| **Backend** | Spring Boot 4.x / Java 25 | REST APIs, Maven build system |
-| **Change Tracking** | Markdown Documentation | `doc/AI-doc/CHANGELOG.md` for historical change auditing |
+| **Backend** | Spring Boot 4.x / Java 17 | REST APIs, Spring Data JPA, Hibernate, Java 17 Records, Maven |
+| **Database** | MySQL 8.x | Relational persistence, connection pooling |
+| **Documentation** | Markdown Dossiers | `doc/PROJECT_DETAILS.md` (Master Spec) & `doc/AI-doc/CHANGELOG.md` |
 
 ---
 
@@ -78,20 +79,32 @@ AasPass-Freelancing/
 ├── aaspass-client/               # Angular 22 Frontend Application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── components/       # Shared UI components (Navbar, etc.)
-│   │   │   ├── models/           # TypeScript interfaces (User, Store, Services)
-│   │   │   ├── pages/            # Page components (Home, StoreDetail, CreateStore, Profile)
-│   │   │   └── services/         # Reactive signal services (StoreService)
+│   │   │   ├── components/       # Shared UI components (Navbar, AuthModal, SocialLinks)
+│   │   │   ├── config/           # API configuration (api.config.ts)
+│   │   │   ├── guards/           # Functional route guards (authGuard)
+│   │   │   ├── models/           # TypeScript interfaces (User, Store, Requests, Responses)
+│   │   │   ├── pages/            # Page components (Home, StoreDetail, CreateStore, Profile, Auth)
+│   │   │   └── services/         # Reactive signal services (StoreService, AuthService)
 │   │   └── styles.css            # Tailwind CSS imports & global styles
 │   └── package.json
-├── aaspass-service/              # Spring Boot Java Backend Application
+├── aaspass-service-backend/      # Spring Boot Java 17 Backend Application
 │   ├── src/main/java/com/aaspass/
-│   ├── src/main/resources/
+│   │   ├── config/               # WebMvcConfig (CORS), DataInitializer, Logging filters
+│   │   ├── controller/           # REST Controllers (Auth, Store, User, Reviews, Services)
+│   │   ├── dto/                  # Java 17 Records (Request, Response, Common)
+│   │   ├── entity/               # JPA Entities (User, Store, Address, Reviews, etc.)
+│   │   ├── exception/            # GlobalExceptionHandler & Custom Exceptions
+│   │   ├── repository/           # Spring Data JPA Repositories
+│   │   ├── service/              # Business Service layer & DtoMapper
+│   │   └── util/                 # Helper utilities (AvatarGenerator)
+│   ├── src/main/resources/       # application.properties (Datasource & JPA)
 │   └── pom.xml
 ├── doc/
-│   └── AI-doc/
-│       └── CHANGELOG.md          # AI development log with timestamped records
-└── README.md                     # Project overview and architecture guide
+│   ├── AI-doc/
+│   │   └── CHANGELOG.md          # AI development log with timestamped records
+│   └── PROJECT_DETAILS.md        # Complete master project specifications & architecture
+├── AGENTS.md                     # Engineering guidelines, zero-assumptions & coding standards
+└── README.md                     # Project overview and quick start guide
 ```
 
 ---
@@ -99,10 +112,25 @@ AasPass-Freelancing/
 ## 🚀 Getting Started
 
 ### Prerequisites
+* **Java 17 LTS** (JDK 17) & **Maven**
 * **Node.js** (v20+ recommended) & **npm**
-* **Java 25** & **Maven**
+* **MySQL 8.x** running locally on port `3306`
+
+### Running the Backend Service
+1. Ensure MySQL is running and the database exists:
+   ```sql
+   CREATE DATABASE IF NOT EXISTS aaspass;
+   ```
+2. Navigate to `aaspass-service-backend` and run the application:
+   ```powershell
+   cd aaspass-service-backend
+   .\mvnw.cmd spring-boot:run
+   ```
+   *(On macOS / Linux use `./mvnw spring-boot:run`)*  
+   The backend REST API will be available at `http://localhost:8080/api`. Default demo accounts will be auto-seeded on initial launch if the database is empty.
 
 ### Running the Frontend
+In a separate terminal:
 ```powershell
 cd aaspass-client
 npm install
@@ -110,11 +138,17 @@ npm start
 ```
 Navigate to `http://localhost:4200` to access the application.
 
-### Running the Backend Service
-```powershell
-cd aaspass-service
-./mvnw spring-boot:run
-```
+---
+
+### 🔑 Default Demo Accounts
+
+| Username | Email | Password | Role / Account Type |
+| :--- | :--- | :--- | :--- |
+| `aman` | `aman.sharma@example.com` | `password123` | Regular User / Neighbor (Indiranagar, Bengaluru) |
+| `priya` | `priya.nair@example.com` | `password123` | Store Owner: PixelCraft Studios (Video Editing) |
+| `rohan` | `rohan.gupta@example.com` | `password123` | Store Owner: FullStack Craft (Web & Tech) |
+
+*(Quick 1-click login buttons are also available inside the frontend login popup modal).*
 
 ---
 
@@ -124,17 +158,29 @@ cd aaspass-service
   - [x] Concept validation and global/local market comparison.
   - [x] Adoption of Option A (Unified Account Model).
 - [x] **Phase 2: Core Frontend Flows**
-  - [x] Proximity discovery and distance-radius search.
-  - [x] Store detail pages with service packages and social media profiles.
+  - [x] Proximity discovery and distance-radius search (2km, 5km, 10km, City).
+  - [x] Store detail pages with service packages and dual verified social channels.
   - [x] Store registration flow with real-time live preview.
-  - [x] Profile management with Aadhaar and PAN verification fields.
-- [ ] **Phase 3: Backend REST Services & Persistence**
-  - [ ] Spring Boot entity models and database schema (PostgreSQL / MongoDB).
-  - [ ] Geolocation / spatial indexing for coordinate-based radius queries.
-  - [ ] Store and gig package CRUD endpoints.
-- [ ] **Phase 4: Authentication & Security**
-  - [ ] Phone OTP / JWT-based authentication.
-  - [ ] KYC verification integration.
-- [ ] **Phase 5: Messaging & Neighborhood Escrow**
-  - [ ] In-app direct chat.
+  - [x] Profile management with multi-store ownership and multi-address book.
+  - [x] Store engagement view analytics (Daily, Weekly, Monthly, Lifetime).
+- [x] **Phase 3: Backend REST Services & Persistence**
+  - [x] Spring Boot 4.x layered architecture (Controller, Service, JPA Repository).
+  - [x] Domain entities with two-tier superclasses (`BaseIdEntity`, `BaseAuditEntity`).
+  - [x] MySQL database persistence with Hibernate DDL updates.
+  - [x] Modern Java 17 immutable Records for request/response DTOs.
+  - [x] Store, Gig Package, Review, and User Address CRUD endpoints.
+  - [x] End-to-end API call logging (`ApiLoggingFilter`) and Global Exception Handling.
+- [x] **Phase 4: Authentication & Client Integration**
+  - [x] Username/email & password authentication with pre-seeded demo accounts.
+  - [x] Context-aware login popup modal with route interception via `authGuard`.
+  - [x] Full-stack REST integration connecting Angular client to Spring Boot endpoints.
+  - [x] Aadhaar and PAN KYC tracking with masked security formatting.
+- [ ] **Phase 5: Spatial Indexing & Neighborhood Escrow**
+  - [ ] Geolocation / spatial indexing (MySQL GIS `ST_Distance_Sphere`) for coordinate queries.
+  - [ ] Phone OTP / JWT-based stateless authentication.
+  - [ ] In-app direct chat (WebSocket / STOMP).
   - [ ] Milestone-based payment escrow for gig completion.
+
+---
+
+> For exhaustive architectural details, ER schemas, and complete API specifications, see **[`doc/PROJECT_DETAILS.md`](doc/PROJECT_DETAILS.md)**.

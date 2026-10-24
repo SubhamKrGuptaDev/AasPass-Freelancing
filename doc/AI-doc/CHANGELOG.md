@@ -6,6 +6,23 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-24 20:55:00 IST] - Corrected Backend Service References and Alignment in README.md
+* **What Changed:**
+  * Updated [`README.md`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/README.md) to fix inaccurate backend references and outdated execution guides:
+    * Corrected Java version from `Java 25` to `Java 17 LTS` matching `pom.xml` (`<java.version>17</java.version>`).
+    * Corrected backend service folder name from `aaspass-service` to `aaspass-service-backend`.
+    * Corrected execution command to `.\mvnw.cmd spring-boot:run` (PowerShell) / `./mvnw spring-boot:run` (Bash).
+    * Added MySQL database setup instructions (`CREATE DATABASE IF NOT EXISTS aaspass`).
+    * Updated Repository Structure diagram with detailed subdirectories (`dto`, `entity`, `repository`, `service`, `config`, `guards`, etc.).
+    * Added Default Demo Test Accounts table (`aman`, `priya`, `rohan` / `password123`).
+    * Updated Roadmap: Marked Phase 3 (Backend REST Services & Persistence) and Phase 4 (Authentication & Client Integration) as completed.
+    * Added cross-reference link to master specification `doc/PROJECT_DETAILS.md`.
+* **Why Changed:** User reported that the backend service details in `README.md` were wrong and requested an update.
+* **Files Modified:**
+  * `README.md`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
 ### [2026-10-24 20:25:00 IST] - Created Comprehensive Master Project Specification Document
 * **What Changed:**
   * Created exhaustive master documentation file `doc/PROJECT_DETAILS.md` detailing all aspects of the AasPass platform:
