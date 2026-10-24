@@ -136,37 +136,6 @@
             Sign In
           </button>
         </form>
-
-        <!-- Quick Demo Accounts -->
-        <div class="mt-6 pt-5 border-t border-slate-100">
-          <span class="text-[10px] uppercase font-bold text-slate-400 block mb-2.5">
-            ⚡ Quick 1-Click Demo Logins:
-          </span>
-          <div class="space-y-2">
-            @for (demo of authService.demoAccounts; track demo.id) {
-              <button 
-                type="button"
-                (click)="quickLogin(demo.id)"
-                class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-200 transition text-left cursor-pointer group"
-              >
-                <div class="flex items-center gap-2.5">
-                  <img [src]="demo.avatarUrl" alt="" class="w-7 h-7 rounded-full object-cover" />
-                  <div>
-                    <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 block">
-                      {{ demo.name }}
-                    </span>
-                    <span class="text-[10px] text-slate-400 block -mt-0.5">
-                      {{ demo.role }}
-                    </span>
-                  </div>
-                </div>
-                <span class="text-xs font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
-                  Log In →
-                </span>
-              </button>
-            }
-          </div>
-        </div>
       }
 
       <!-- SIGNUP FORM -->

@@ -20,8 +20,8 @@ export class AuthPageComponent implements OnInit {
   mode = signal<'login' | 'signup'>('login');
   isLoginMode = computed(() => this.mode() === 'login');
 
-  loginInput = 'aman';
-  loginPassword = 'password123';
+  loginInput = '';
+  loginPassword = '';
   showPassword = signal<boolean>(false);
 
   signupName = '';
@@ -65,13 +65,6 @@ export class AuthPageComponent implements OnInit {
   private navigateAfterAuth(): void {
     const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/profile';
     this.router.navigateByUrl(returnUrl);
-  }
-
-  quickLogin(userId: string): void {
-    const success = this.authService.quickLogin(userId);
-    if (success) {
-      this.navigateAfterAuth();
-    }
   }
 
   onLoginSubmit(event: Event): void {
