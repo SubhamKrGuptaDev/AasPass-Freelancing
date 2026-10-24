@@ -54,6 +54,7 @@ public final class DtoMapper {
                 .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
                 .city(user.getCity())
                 .area(user.getArea())
+                .country(user.getCountry() != null && !user.getCountry().isBlank() ? user.getCountry() : "India")
                 .bio(user.getBio())
                 .memberSince(user.getMemberSince())
                 .hasStore(user.getHasStore())

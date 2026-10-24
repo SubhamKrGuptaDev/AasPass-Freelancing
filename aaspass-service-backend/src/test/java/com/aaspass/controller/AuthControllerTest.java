@@ -108,6 +108,7 @@ public class AuthControllerTest {
                 .phone("+91 99999 88888")
                 .city("Bengaluru")
                 .area("Whitefield")
+                .country("India")
                 .bio("Software engineer testing the platform")
                 .build();
 
@@ -118,6 +119,7 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.token", notNullValue()))
                 .andExpect(jsonPath("$.data.user.username", is(uniqueUser)))
+                .andExpect(jsonPath("$.data.user.country", is("India")))
                 .andExpect(jsonPath("$.data.user.avatarUrl", containsString("dicebear.com")));
     }
 

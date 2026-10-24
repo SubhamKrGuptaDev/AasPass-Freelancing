@@ -18,6 +18,7 @@ public record UserUpdateRequest(
     String avatarUrl,
     String city,
     String area,
+    String country,
     String bio,
     UserSocialMediaLinks userSocialMediaLinks,
     List<SocialMediaLinkDto> socialMediaLinks

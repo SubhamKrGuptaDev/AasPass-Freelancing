@@ -23,11 +23,13 @@ import { StoreHttpService } from './store-http.service';
 export const EMPTY_USER_PROFILE: UserProfile = {
   id: '',
   name: '',
+  username: '',
   email: '',
   phone: '',
   avatarUrl: '',
   city: 'Bengaluru',
   area: '',
+  country: 'India',
   bio: '',
   memberSince: '',
   hasStore: false,
@@ -199,6 +201,19 @@ export class StoreService {
 
   // Available cities for selection
   readonly availableCities = ['Bengaluru', 'Delhi NCR', 'Mumbai', 'Pune', 'Hyderabad'];
+
+  // Available countries for selection
+  readonly availableCountries = [
+    'India',
+    'United States',
+    'United Kingdom',
+    'Canada',
+    'Australia',
+    'Germany',
+    'France',
+    'United Arab Emirates',
+    'Singapore'
+  ];
 
   // Reactive filtered stores
   readonly filteredStores = computed(() => {

@@ -98,6 +98,7 @@ public class StoreAndUserControllerTest {
                 .phone("+91 91234 56789")
                 .aadharNumber("XXXX-XXXX-9999")
                 .panNumber("NEWPN1234M")
+                .country("India")
                 .build();
 
         mockMvc.perform(put("/api/users/1")
@@ -106,6 +107,7 @@ public class StoreAndUserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.bio", containsString("Updated bio")))
+                .andExpect(jsonPath("$.data.country", is("India")))
                 .andExpect(jsonPath("$.data.panNumber", is("NEWPN1234M")));
     }
 

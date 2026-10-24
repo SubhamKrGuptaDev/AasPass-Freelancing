@@ -134,6 +134,25 @@ describe('AuthService & AuthGuard', () => {
     expect(authService.isLoggedIn()).toBe(true);
   });
 
+  it('should register a new user with separate username, email, and country', () => {
+    const signupResult = authService.signup({
+      name: 'Aditi Rao',
+      username: 'aditi_rao',
+      email: 'aditi.rao@example.com',
+      country: 'India',
+      city: 'Mumbai',
+      area: 'Bandra',
+      password: 'password123'
+    });
+
+    expect(signupResult.success).toBe(true);
+    expect(signupResult.user?.name).toBe('Aditi Rao');
+    expect(signupResult.user?.username).toBe('aditi_rao');
+    expect(signupResult.user?.email).toBe('aditi.rao@example.com');
+    expect(signupResult.user?.country).toBe('India');
+    expect(authService.currentUser()?.country).toBe('India');
+  });
+
   it('should prevent duplicate signup with existing username or email', () => {
     const duplicateResult = authService.signup({
       name: 'Duplicate Aman',

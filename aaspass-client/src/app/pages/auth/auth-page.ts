@@ -26,12 +26,26 @@ export class AuthPageComponent implements OnInit {
 
   signupName = '';
   signupUsername = '';
+  signupEmail = '';
+  signupCountry = 'India';
   signupCity = 'Bengaluru';
   signupArea = 'Indiranagar';
   signupPassword = '';
   signupConfirmPassword = '';
   signupAvatarUrl = '';
   getRandomAvatarUrl = getRandomAvatarUrl;
+
+  readonly availableCountries = [
+    'India',
+    'United States',
+    'United Kingdom',
+    'Canada',
+    'Australia',
+    'Germany',
+    'France',
+    'United Arab Emirates',
+    'Singapore'
+  ];
 
   randomizeSignupAvatar(): void {
     const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
@@ -77,6 +91,16 @@ export class AuthPageComponent implements OnInit {
 
   onSignupSubmit(event: Event): void {
     event.preventDefault();
+    if (!this.signupUsername || this.signupUsername.trim().length < 3) {
+      this.authService.authError.set('Please provide a username with at least 3 characters.');
+      return;
+    }
+
+    if (!this.signupEmail || !this.signupEmail.includes('@')) {
+      this.authService.authError.set('Please enter a valid email address.');
+      return;
+    }
+
     if (this.signupPassword !== this.signupConfirmPassword) {
       this.authService.authError.set('Passwords do not match. Please re-enter your password.');
       return;
@@ -84,10 +108,12 @@ export class AuthPageComponent implements OnInit {
 
     const res = this.authService.signup({
       name: this.signupName,
-      usernameOrEmail: this.signupUsername,
-      password: this.signupPassword,
+      username: this.signupUsername.trim(),
+      email: this.signupEmail.trim(),
+      country: this.signupCountry,
       city: this.signupCity,
       area: this.signupArea,
+      password: this.signupPassword,
       avatarUrl: this.signupAvatarUrl
     });
 

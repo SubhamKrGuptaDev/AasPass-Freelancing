@@ -22,6 +22,7 @@ public record UserResponse(
     String avatarUrl,
     String city,
     String area,
+    String country,
     String bio,
     String memberSince,
     Boolean hasStore,

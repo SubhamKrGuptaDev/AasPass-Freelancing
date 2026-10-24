@@ -16,6 +16,7 @@ export interface DemoAccount {
   password: string;
   role: string;
   avatarUrl: string;
+  country?: string;
 }
 
 @Injectable({
@@ -112,11 +113,13 @@ export class AuthService {
       return {
         id: '1',
         name: 'User',
+        username: 'user',
         email: 'user@example.com',
         phone: '+91 98000 00000',
         avatarUrl: getRandomAvatarUrl('user'),
         city: 'Bengaluru',
         area: 'Indiranagar',
+        country: 'India',
         bio: '',
         memberSince: 'March 2026',
         hasStore: false,
@@ -129,6 +132,7 @@ export class AuthService {
     return {
       id: String(u.id ?? ''),
       name: u.name || '',
+      username: u.username || '',
       email: u.email || '',
       phone: u.phone || '+91 98000 00000',
       aadharNumber: u.aadharNumber,
@@ -136,6 +140,7 @@ export class AuthService {
       avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) ? u.avatarUrl.trim() : getRandomAvatarUrl(u.username || u.name || String(u.id ?? '')),
       city: u.city || 'Bengaluru',
       area: u.area || 'Indiranagar',
+      country: u.country || 'India',
       bio: u.bio || '',
       memberSince: u.memberSince || 'March 2026',
       hasStore: Boolean(u.hasStore),
@@ -299,14 +304,16 @@ export class AuthService {
     return res.success;
   }
 
-  // Register a new user account with username/email and password (supports live Spring REST API via AuthHttpService & local fallback)
+  // Register a new user account with username, email, country and password (supports live Spring REST API via AuthHttpService & local fallback)
   signup(request: SignupRequest): AuthResult {
     this.authError.set(null);
     this.authSuccessMessage.set(null);
 
     const name = (request.name || '').trim();
-    const input = (request.usernameOrEmail || '').trim();
+    const rawUsername = (request.username || (request.usernameOrEmail && !request.usernameOrEmail.includes('@') ? request.usernameOrEmail : '')).trim();
+    const rawEmail = (request.email || (request.usernameOrEmail && request.usernameOrEmail.includes('@') ? request.usernameOrEmail : '')).trim();
     const password = (request.password || '').trim();
+    const country = (request.country || 'India').trim();
 
     if (!name || name.length < 2) {
       const err = 'Please provide your full name (minimum 2 characters).';
@@ -315,8 +322,19 @@ export class AuthService {
       return Object.assign(Promise.resolve(failResult), failResult);
     }
 
-    if (!input || input.length < 3) {
-      const err = 'Please provide a valid username or email (minimum 3 characters).';
+    // Determine username & email with backward-compatible fallback
+    const username = rawUsername || (rawEmail ? rawEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : (request.usernameOrEmail || '').trim());
+    const email = rawEmail || (username ? (username.includes('@') ? username : `${username}@aaspass.local`) : '');
+
+    if (!username || username.length < 3) {
+      const err = 'Please provide a valid username (minimum 3 characters).';
+      this.authError.set(err);
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
+    }
+
+    if (!email || !email.includes('@')) {
+      const err = 'Please provide a valid email address.';
       this.authError.set(err);
       const failResult: AuthResult = { success: false, message: err };
       return Object.assign(Promise.resolve(failResult), failResult);
@@ -330,21 +348,21 @@ export class AuthService {
     }
 
     const accounts = this.getRegisteredAccounts();
-    const isTaken = accounts.some(acc => 
-      acc.username?.toLowerCase() === input.toLowerCase() || 
-      acc.email?.toLowerCase() === input.toLowerCase()
-    );
-
-    if (isTaken) {
-      const err = `An account with "${input}" already exists. Please log in instead.`;
+    const usernameTaken = accounts.some(acc => acc.username?.toLowerCase() === username.toLowerCase());
+    if (usernameTaken) {
+      const err = `An account with username "${username}" already exists. Please log in instead.`;
       this.authError.set(err);
       const failResult: AuthResult = { success: false, message: err };
       return Object.assign(Promise.resolve(failResult), failResult);
     }
 
-    const isEmail = input.includes('@');
-    const username = isEmail ? input.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : input;
-    const email = isEmail ? input : `${input}@aaspass.local`;
+    const emailTaken = accounts.some(acc => acc.email?.toLowerCase() === email.toLowerCase());
+    if (emailTaken) {
+      const err = `An account with email "${email}" already exists. Please log in instead.`;
+      this.authError.set(err);
+      const failResult: AuthResult = { success: false, message: err };
+      return Object.assign(Promise.resolve(failResult), failResult);
+    }
 
     const avatar = (request.avatarUrl && request.avatarUrl.trim())
       ? request.avatarUrl.trim()
@@ -359,6 +377,7 @@ export class AuthService {
       phone: (request.phone || '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',
+      country: country,
       avatarUrl: avatar
     }).subscribe({
       next: (resp) => {
@@ -389,6 +408,7 @@ export class AuthService {
       phone: (request.phone || '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',
+      country: country,
       avatarUrl: avatar,
       bio: 'Neighborhood talent and active community gig member.',
       memberSince: memberSince,
@@ -449,6 +469,7 @@ export class AuthService {
       avatarUrl: merged.avatarUrl,
       city: merged.city,
       area: merged.area,
+      country: merged.country,
       bio: merged.bio,
       userSocialMediaLinks: merged.userSocialMediaLinks,
       socialMediaLinks: merged.socialMediaLinks

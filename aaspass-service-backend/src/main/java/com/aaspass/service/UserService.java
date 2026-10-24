@@ -68,6 +68,7 @@ public class UserService {
         }
         if (request.city() != null) user.setCity(request.city().trim());
         if (request.area() != null) user.setArea(request.area().trim());
+        if (request.country() != null && !request.country().isBlank()) user.setCountry(request.country().trim());
         if (request.bio() != null) user.setBio(request.bio().trim());
         if (request.userSocialMediaLinks() != null) {
             user.setUserSocialMediaLinks(request.userSocialMediaLinks());

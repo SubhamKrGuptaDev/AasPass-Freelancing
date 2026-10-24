@@ -48,6 +48,7 @@ export interface RegisterRequest {
   phone?: string;
   city?: string;
   area?: string;
+  country?: string;
   bio?: string;
   avatarUrl?: string;
 }
@@ -60,6 +61,7 @@ export interface UserUpdateRequest {
   avatarUrl?: string;
   city?: string;
   area?: string;
+  country?: string;
   bio?: string;
   userSocialMediaLinks?: UserSocialMediaLinksRequest | Record<string, string | undefined>;
   socialMediaLinks?: SocialMediaLinkRequest[] | Array<{ id?: number | string; name: string; url: string }>;
@@ -141,11 +143,14 @@ export interface AuthCredentials {
 
 export interface SignupRequest {
   name: string;
-  usernameOrEmail: string;
+  username?: string;
+  email?: string;
+  usernameOrEmail?: string;
   password: string;
   phone?: string;
   city?: string;
   area?: string;
+  country?: string;
   avatarUrl?: string;
 }
 

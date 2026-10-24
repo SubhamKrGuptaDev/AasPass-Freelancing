@@ -261,6 +261,11 @@
                   <span class="text-xs font-bold text-slate-900 block truncate">
                     {{ storeService.currentUser()?.name || 'User' }}
                   </span>
+                  @if (storeService.currentUser()?.username) {
+                    <span class="text-[11px] font-mono font-bold text-indigo-600 block truncate">
+                      &#64;{{ storeService.currentUser()?.username }}
+                    </span>
+                  }
                   <span class="text-[11px] text-slate-500 block truncate">
                     {{ storeService.currentUser()?.email || '' }}
                   </span>

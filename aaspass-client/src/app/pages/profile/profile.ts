@@ -36,11 +36,13 @@ export class ProfileComponent {
 
   isEditingUser = false;
   editName = this.storeService.currentUser().name;
+  editUsername = this.storeService.currentUser().username || '';
   editPhone = this.storeService.currentUser().phone;
   editAadhar = this.storeService.currentUser().aadharNumber || '';
   editPan = this.storeService.currentUser().panNumber || '';
   editArea = this.storeService.currentUser().area;
   editCity = this.storeService.currentUser().city;
+  editCountry = this.storeService.currentUser().country || 'India';
   editBio = this.storeService.currentUser().bio;
   editAvatarUrl = this.storeService.currentUser().avatarUrl || '';
 
@@ -67,11 +69,13 @@ export class ProfileComponent {
   startEditUser(): void {
     const user = this.storeService.currentUser();
     this.editName = user.name;
+    this.editUsername = user.username || '';
     this.editPhone = user.phone;
     this.editAadhar = user.aadharNumber || '';
     this.editPan = user.panNumber || '';
     this.editArea = user.area;
     this.editCity = user.city;
+    this.editCountry = user.country || 'India';
     this.editBio = user.bio;
     this.editAvatarUrl = user.avatarUrl || getRandomAvatarUrl(user.name);
     this.editUserSocialLinks = this.getUserSocialLinks().map(l => ({ ...l }));
@@ -160,6 +164,7 @@ export class ProfileComponent {
       panNumber: this.editPan ? this.editPan.toUpperCase() : '',
       area: this.editArea,
       city: this.editCity,
+      country: this.editCountry,
       bio: this.editBio,
       avatarUrl: finalAvatar,
       socialMediaLinks: validSocial,

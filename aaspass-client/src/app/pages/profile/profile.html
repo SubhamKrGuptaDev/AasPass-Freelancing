@@ -54,6 +54,11 @@
             alt="Avatar" 
             class="w-24 h-24 rounded-2xl object-cover ring-4 ring-slate-100 shadow-md"
           />
+          @if (storeService.currentUser().username) {
+            <span class="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+              &#64;{{ storeService.currentUser().username }}
+            </span>
+          }
           <span class="text-[11px] font-semibold text-slate-400">Member since {{ storeService.currentUser().memberSince }}</span>
         </div>
 
@@ -67,6 +72,11 @@
               </div>
 
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Username</span>
+                <span class="text-sm font-mono font-bold text-indigo-600">&#64;{{ storeService.currentUser().username || 'user' }}</span>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                 <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Email Address</span>
                 <span class="text-sm font-semibold text-slate-800">{{ storeService.currentUser().email }}</span>
               </div>
@@ -74,6 +84,13 @@
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                 <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Phone Number</span>
                 <span class="text-sm font-semibold text-slate-800">{{ storeService.currentUser().phone }}</span>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Country</span>
+                <span class="text-sm font-semibold text-slate-800">
+                  🌐 {{ storeService.currentUser().country || 'India' }}
+                </span>
               </div>
 
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
@@ -187,6 +204,19 @@
                   />
                 </div>
                 <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Username (Account Handle)</label>
+                  <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs font-mono font-bold">@</span>
+                    <input 
+                      type="text" 
+                      [value]="editUsername || storeService.currentUser().username || ''" 
+                      disabled
+                      class="w-full pl-8 pr-3.5 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-500 cursor-not-allowed"
+                      title="Username is a unique account identifier and cannot be modified."
+                    />
+                  </div>
+                </div>
+                <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
                   <input 
                     type="text" 
@@ -213,21 +243,30 @@
                   />
                 </div>
                 <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Country</label>
+                  <select 
+                    [(ngModel)]="editCountry" 
+                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option *ngFor="let c of storeService.availableCountries" [value]="c">{{ c }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">City</label>
+                  <select 
+                    [(ngModel)]="editCity" 
+                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option *ngFor="let c of storeService.availableCities" [value]="c">{{ c }}</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
                   <label class="block text-xs font-bold text-slate-700 mb-1">Area / Neighborhood</label>
                   <input 
                     type="text" 
                     [(ngModel)]="editArea" 
                     class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
                   />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">City</label>
-                  <select 
-                    [(ngModel)]="editCity" 
-                    class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                  >
-                    <option *ngFor="let c of storeService.availableCities" [value]="c">{{ c }}</option>
-                  </select>
                 </div>
               </div>
               <div>

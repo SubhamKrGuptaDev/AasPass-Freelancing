@@ -64,6 +64,10 @@ public class User extends BaseAuditEntity {
     @Column(name = "area", length = 100)
     private String area;
 
+    @Builder.Default
+    @Column(name = "country", length = 60)
+    private String country = "India";
+
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 

@@ -11,6 +11,7 @@ export interface UserProfile {
   avatarUrl: string;
   city: string;
   area: string;
+  country?: string;
   bio: string;
   memberSince: string;
   hasStore: boolean;

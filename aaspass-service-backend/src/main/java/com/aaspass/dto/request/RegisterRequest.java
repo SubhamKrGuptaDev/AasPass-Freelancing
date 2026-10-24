@@ -30,6 +30,7 @@ public record RegisterRequest(
     String phone,
     String city,
     String area,
+    String country,
     String bio,
     String avatarUrl
 ) {}

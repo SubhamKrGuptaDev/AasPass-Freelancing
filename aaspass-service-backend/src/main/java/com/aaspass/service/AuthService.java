@@ -105,6 +105,7 @@ public class AuthService {
                 .phone(request.phone())
                 .city(request.city() != null ? request.city() : "Bengaluru")
                 .area(request.area() != null ? request.area() : "Indiranagar")
+                .country(request.country() != null && !request.country().isBlank() ? request.country().trim() : "India")
                 .bio(request.bio())
                 .avatarUrl(avatarUrl)
                 .memberSince(memberSince)
