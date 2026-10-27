@@ -67,7 +67,7 @@ public class SecurityConfig {
     /**
      * HS256 decoder for the access JWT. {@code iss} is kept as a plain string (Spring's default
      * converter would try to parse it as a URL and fail on "aaspass"); validation covers issuer,
-     * expiry (zero skew, {@code token_expired}) and live session ({@code session_revoked}).
+     * expiry/not-before (zero skew; expiry → {@code token_expired}) and live session ({@code session_revoked}).
      */
     @Bean
     public JwtDecoder jwtDecoder(SecurityProperties properties, Clock clock, SessionService sessionService) {
@@ -135,7 +135,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers(csrfExempt)
+                        // CSRF exemptions live only in the post-processor's matcher below (single source).
                         // The resource server registers a CSRF exemption for every request carrying a
                         // bearer token, assuming header-borne tokens. Ours is a cookie the browser sends
                         // automatically, so pin the matcher to exempt only login/register/refresh.

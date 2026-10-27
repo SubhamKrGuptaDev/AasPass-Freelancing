@@ -115,16 +115,27 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         IssuedSession issued;
+        Long userId;
+        UserResponse user;
         try {
             issued = sessionService.rotate(refreshToken);
-        } catch (UnauthorizedException e) {
-            log.info("[API-CALL] POST /api/auth/refresh - Refresh rejected ({}); clearing auth cookies", e.code());
+            userId = issued.session().getUser() != null ? issued.session().getUser().getId() : null;
+            user = authService.getUser(userId);
+        } catch (RuntimeException e) {
+            // Any failure after reading _rid (rotation or user lookup) leaves the client's cookies
+            // unusable, so clear both rather than let it replay a now-previous refresh token.
+            if (e instanceof UnauthorizedException unauthorized) {
+                log.info("[API-CALL] POST /api/auth/refresh - Refresh rejected ({}); clearing auth cookies",
+                        unauthorized.code());
+            } else {
+                log.warn("[API-CALL] POST /api/auth/refresh - Refresh failed ({}); clearing auth cookies",
+                        e.getClass().getSimpleName());
+            }
             authCookieService.clearSession(httpRequest, httpResponse);
             throw e;
         }
 
-        Long userId = issued.session().getUser() != null ? issued.session().getUser().getId() : null;
-        UserResponse user = authService.getUser(userId);
+        // Only write new cookies once everything succeeded.
         authCookieService.writeSession(httpRequest, httpResponse, issued);
 
         log.info("[API-CALL] POST /api/auth/refresh - Rotated session {} for user ID: {}",

@@ -1,5 +1,6 @@
 package com.aaspass.controller;
 
+import com.aaspass.config.security.SecurityProperties;
 import com.aaspass.dto.request.LoginRequest;
 import com.aaspass.dto.request.RegisterRequest;
 import com.aaspass.entity.User;
@@ -7,6 +8,7 @@ import com.aaspass.repository.UserRepository;
 import com.aaspass.security.token.AuthCookieService;
 import com.aaspass.security.token.JwtTokenService;
 import com.aaspass.support.AuthTestSupport;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
@@ -16,11 +18,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -60,6 +69,9 @@ public class AuthControllerTest {
 
     @Autowired
     private JwtTokenService jwtTokenService;
+
+    @Autowired
+    private SecurityProperties securityProperties;
 
     // ---------------------------------------------------------------- helpers
 
@@ -294,6 +306,32 @@ public class AuthControllerTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("GET /api/auth/me - token with nbf in the future is UNAUTHENTICATED")
+    public void notYetValidTokenIsUnauthenticated() throws Exception {
+        Cookie[] cookies = AuthTestSupport.login(mockMvc, "aman", "password123");
+        String sid = sidClaim(cookies[0].getValue());
+        User aman = userRepository.findByUsername("aman").orElseThrow();
+        Instant now = Instant.now();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(JwtTokenService.ISSUER)
+                .subject(String.valueOf(aman.getId()))
+                .issuedAt(now)
+                .notBefore(now.plus(5, ChronoUnit.MINUTES))
+                .expiresAt(now.plus(15, ChronoUnit.MINUTES))
+                .claim("sid", sid)
+                .claim("username", "aman")
+                .build();
+        JwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(
+                new SecretKeySpec(securityProperties.jwtSecretBytes(), "HmacSHA256")));
+        String notYetValid = encoder.encode(JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+
+        mockMvc.perform(get("/api/auth/me").cookie(new Cookie(SID, notYetValid)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is("UNAUTHENTICATED")));
+    }
+
     // ---------------------------------------------------------------- refresh
 
     @Test
@@ -407,6 +445,7 @@ public class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("SESSION_REVOKED")))
                 .andReturn();
+        assertClearsBothCookies(refresh);
         for (Cookie c : refresh.getResponse().getCookies()) {
             if (SID.equals(c.getName())) {
                 assertTrue(c.getValue() == null || c.getValue().isEmpty(), "no new access cookie may be issued");
