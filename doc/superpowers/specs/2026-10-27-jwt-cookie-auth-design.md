@@ -39,7 +39,7 @@ OTP/SMS login, "manage devices / log out everywhere" UI, real KYC verification a
 Add `spring-boot-starter-security` and `spring-boot-starter-oauth2-resource-server`.
 
 - **Validation:** `oauth2ResourceServer().jwt()` with a `NimbusJwtDecoder` built from the HS256 secret. Spring validates signature, `exp`, `nbf`, `iss`.
-- **Token source:** custom `CookieBearerTokenResolver` reads the `AASPASS_AT` cookie (header `Authorization` is ignored).
+- **Token source:** custom `CookieBearerTokenResolver` reads the `_sid` cookie (header `Authorization` is ignored).
 - **Session check:** a custom `OAuth2TokenValidator<Jwt>` (`ActiveSessionValidator`) rejects tokens whose `sid` session is revoked or expired, so logout takes effect immediately.
 - **Issuing:** `JwtTokenService` uses `NimbusJwtEncoder` (HS256) to mint access tokens.
 - `SessionCreationPolicy.STATELESS` — no `HttpSession`/`JSESSIONID`.
@@ -48,7 +48,7 @@ Add `spring-boot-starter-security` and `spring-boot-starter-oauth2-resource-serv
 
 The Angular dev server gets a proxy (`aaspass-client/proxy.conf.json`, wired via `angular.json` `serve.options.proxyConfig`) forwarding `/api` → `http://localhost:8080`. `API_BASE_URL` becomes `'/api'`.
 
-Reasons: browser and API become same-origin, so cookies can be `SameSite=Strict`, CORS is not on the critical path, and Angular's built-in XSRF support works (it skips absolute URLs).
+Reasons: browser and API become same-origin, so SPA-initiated API calls are same-site and send `SameSite` cookies, CORS is not on the critical path, and Angular's built-in XSRF support works (it skips absolute URLs).
 
 `WebMvcConfig` CORS rules remain (for direct `:8080` access) and are exposed to Spring Security via `http.cors()`. All 10 controller-level `@CrossOrigin` annotations are removed.
 
@@ -56,11 +56,19 @@ Reasons: browser and API become same-origin, so cookies can be `SameSite=Strict`
 
 | Cookie | Value | HttpOnly | Secure | SameSite | Path | Max-Age |
 |---|---|---|---|---|---|---|
-| `AASPASS_AT` | Access JWT | yes | configurable (`aaspass.security.cookie-secure`, default `true`) | Strict | `/api` | 900 s |
-| `AASPASS_RT` | Opaque refresh token (32 random bytes, base64url) | yes | configurable | Strict | `/api/auth` | 30 days minus elapsed session age |
-| `XSRF-TOKEN` | CSRF token | **no** (Angular must read it) | configurable | Strict | `/` | session |
+| `_sid` | Access JWT (carries `sid` + user id) | yes | auto (see below) | **Lax** | `/api` | 900 s |
+| `_rid` | Opaque refresh token (32 random bytes, base64url) | yes | auto | **Strict** | `/api/auth` | 30 days minus elapsed session age |
+| `XSRF-TOKEN` | CSRF token | **no** (Angular must read it) | auto | Strict | `/` | session |
 
-Cookies are built in one place: `AuthCookieService` (`ResponseCookie` builder), which also produces the clearing variants (`Max-Age=0`).
+The JWT reaches the browser only through `Set-Cookie` response headers on login, register and refresh — never in the JSON body and never via an `Authorization: Bearer` header. ("Bearer" survives only as Spring Security's internal type name; the `tokenType` field is removed from responses.)
+
+**Why `_sid` is `Lax`, not `Strict`:** SPA-initiated API calls are same-site either way, but future flows where another site navigates the browser *to the backend* — Google OAuth2 redirecting to `/login/oauth2/code/google`, a payment gateway returning the user via GET — need the cookie on that top-level GET navigation, which `Strict` withholds. `Lax` still withholds cookies on cross-site POST/fetch, and every state-changing request also requires the CSRF token, so CSRF protection is unchanged. `_rid` stays `Strict` because only our own page ever calls `/api/auth/refresh`. Payment-gateway POST callbacks and webhooks must be verified by gateway signature, never by session cookie.
+
+**`Secure` — automatic by host:** omitted when the request host (`request.getServerName()`) is `localhost`, `127.0.0.1` or `::1`/`[::1]`; added for every other host. No config switch.
+
+**`Domain`:** never set for `localhost` or IP-address hosts — browsers reject or ignore `Domain=localhost`/`Domain=127.0.0.1`, and a host-only cookie already binds to exactly that host. For real domains, `aaspass.security.cookie-domain` (empty by default ⇒ host-only) is applied when set, e.g. `aaspass.in` so `api.aaspass.in` and `aaspass.in` share the cookie.
+
+Cookies are built in one place: `AuthCookieService` (`ResponseCookie` builder, taking the current `HttpServletRequest` to decide `Secure`/`Domain`), which also produces the clearing variants (`Max-Age=0`, same `Path`/`Domain` so the browser actually deletes them). The CSRF cookie uses the same Secure/Domain decision via `CookieCsrfTokenRepository.setCookieCustomizer`.
 
 ### 2.4 Access JWT claims
 
@@ -82,27 +90,27 @@ No PII beyond username; no KYC, email or phone.
 1. Look up user by username or email (case-insensitive, trimmed).
 2. `passwordEncoder.matches(raw, hash)`; on miss or mismatch → `401 INVALID_CREDENTIALS` with the generic message "Invalid username or password". A dummy BCrypt compare is run when the user does not exist to keep timing uniform.
 3. Create `UserSession` (new `sessionId`, `refreshTokenHash = sha256(rt)`, `userAgent`, `ipAddress`, `expiresAt = now + 30d`, `lastUsedAt = now`).
-4. Set `AASPASS_AT` and `AASPASS_RT` cookies; body = `ApiResponse<AuthResponse>` where `AuthResponse` contains `success`, `message`, `user`. **`token` and `tokenType` fields are removed.**
+4. Set `_sid` and `_rid` cookies; body = `ApiResponse<AuthResponse>` where `AuthResponse` contains `success`, `message`, `user`. **`token` and `tokenType` fields are removed.**
 
 ### 3.2 Register — `POST /api/auth/register`
 Same as today's validation and duplicate checks, but password is BCrypt-hashed. Then identical to login steps 3–4 (auto-login).
 
 ### 3.3 Authenticated request
-Browser sends `AASPASS_AT` automatically → resolver → decoder → `ActiveSessionValidator` → `JwtAuthenticationToken`. Controllers obtain the user via `CurrentUser` (see §5.2).
+Browser sends `_sid` automatically → resolver → decoder → `ActiveSessionValidator` → `JwtAuthenticationToken`. Controllers obtain the user via `CurrentUser` (see §5.2).
 
 ### 3.4 Refresh — `POST /api/auth/refresh`
-1. Read `AASPASS_RT`; missing → `401 UNAUTHENTICATED`.
+1. Read `_rid`; missing → `401 UNAUTHENTICATED`.
 2. Find session by `sha256(rt)`.
    - Not found by current hash but found by `previousRefreshTokenHash` → **reuse detected**: revoke session (`REUSE_DETECTED`), clear cookies, `401 SESSION_REVOKED`.
    - Not found at all → clear cookies, `401 UNAUTHENTICATED`.
 3. Session revoked or `expiresAt` passed → clear cookies, `401 SESSION_REVOKED`.
 4. Rotate: `previousRefreshTokenHash = refreshTokenHash`, `refreshTokenHash = sha256(newRt)`, `lastUsedAt = now`. `expiresAt` is **not** extended (30-day absolute cap).
-5. Set new `AASPASS_AT` + `AASPASS_RT`; body = `ApiResponse<UserResponse>`.
+5. Set new `_sid` + `_rid`; body = `ApiResponse<UserResponse>`.
 
 Rotation runs in a transaction with a pessimistic write lock on the session row so two concurrent refreshes with the same token cannot both succeed.
 
 ### 3.5 Logout — `POST /api/auth/logout`
-Public. If a refresh cookie or valid access cookie identifies a session, mark it revoked (`LOGOUT`). Always clear `AASPASS_AT` and `AASPASS_RT`. Returns `200`.
+Public. If a refresh cookie or valid access cookie identifies a session, mark it revoked (`LOGOUT`). Always clear `_sid` and `_rid`. Returns `200`.
 
 **A logged-out session can never be rejoined.** Revocation is permanent and the session id is dead for good:
 - Session ids are random UUIDs generated per login and **never reused**; there is no code path that clears `revoked_at` or "reactivates" a session.
@@ -164,7 +172,7 @@ Values shorter than 4 characters are fully masked.
 |---|---|---|
 | `aaspass.security.jwt-secret` | `AASPASS_JWT_SECRET` | base64, ≥ 32 bytes decoded |
 | `aaspass.security.kyc-key` | `AASPASS_KYC_KEY` | base64, exactly 32 bytes decoded |
-| `aaspass.security.cookie-secure` | — | boolean, default `true` |
+| `aaspass.security.cookie-domain` | `AASPASS_COOKIE_DOMAIN` | optional; empty ⇒ host-only; ignored for localhost/IP hosts |
 | `aaspass.security.access-token-ttl` | — | default `PT15M` |
 | `aaspass.security.refresh-token-ttl` | — | default `P30D` |
 
@@ -289,12 +297,13 @@ One toast system for the whole app, replacing the four hand-rolled toasts (`crea
 ## 8. Testing
 
 ### Backend (JUnit 5 + MockMvc, H2 test profile with fixed test secrets)
-- Login: sets `AASPASS_AT` and `AASPASS_RT` with `HttpOnly`, `SameSite=Strict`, correct `Path` and `Max-Age`; body contains no token.
+- Login: sets `_sid` (`HttpOnly`, `SameSite=Lax`, `Path=/api`, `Max-Age=900`) and `_rid` (`HttpOnly`, `SameSite=Strict`, `Path=/api/auth`); body contains no token.
+- Cookie host rules: request to `localhost` / `127.0.0.1` → no `Secure`, no `Domain`; request to `app.aaspass.in` with `cookie-domain=aaspass.in` → `Secure` and `Domain=aaspass.in`; same host with empty `cookie-domain` → `Secure`, no `Domain`.
 - Wrong password and unknown user both → `401 INVALID_CREDENTIALS`, same message.
 - Protected endpoint without cookie → `401 UNAUTHENTICATED`; with expired JWT → `401 TOKEN_EXPIRED`.
 - Refresh rotates both cookies; reusing the old refresh token → `401 SESSION_REVOKED` and the new token is also dead.
 - Logout revokes session; old access token → `401 SESSION_REVOKED`.
-- **No rejoin after logout:** capture the `AASPASS_AT` and `AASPASS_RT` cookie values, log out, then replay them manually → `GET /api/auth/me` gives `401 SESSION_REVOKED` and `POST /api/auth/refresh` gives `401 SESSION_REVOKED` with no `Set-Cookie` for new tokens.
+- **No rejoin after logout:** capture the `_sid` and `_rid` cookie values, log out, then replay them manually → `GET /api/auth/me` gives `401 SESSION_REVOKED` and `POST /api/auth/refresh` gives `401 SESSION_REVOKED` with no `Set-Cookie` for new tokens.
 - Logging in again after logout yields a **different** `sid` claim and a different refresh token than the revoked session.
 - Ownership: user A `PUT /api/users/{B}` → 403; A updating B's store → 403.
 - CSRF: authenticated `PUT` without `X-XSRF-TOKEN` → 403.
