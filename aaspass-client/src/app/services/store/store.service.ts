@@ -397,10 +397,7 @@ export class StoreService {
         description: s.description || ''
       }));
 
-    const numericUserId = this.getNumericUserId(user);
-
     const payload = {
-      userId: numericUserId,
       storeName: newStore.storeName.trim(),
       ownerName: (newStore.ownerName || user.name || 'Store Owner').trim(),
       tagline: newStore.tagline ? newStore.tagline.trim() : '',

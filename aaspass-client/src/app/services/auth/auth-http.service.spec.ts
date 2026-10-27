@@ -36,7 +36,6 @@ describe('AuthHttpService', () => {
       data: {
         success: true,
         message: 'Login successful',
-        token: 'test-jwt-token',
         user: {
           id: 1,
           name: 'Aman Sharma',
@@ -48,7 +47,6 @@ describe('AuthHttpService', () => {
 
     service.login({ usernameOrEmail: 'aman', password: 'password123' }).subscribe(resp => {
       expect(resp.success).toBe(true);
-      expect(resp.data.token).toBe('test-jwt-token');
       expect(resp.data.user.name).toBe('Aman Sharma');
     });
 
@@ -76,7 +74,6 @@ describe('AuthHttpService', () => {
       data: {
         success: true,
         message: 'User registered successfully',
-        token: 'new-jwt-token',
         user: {
           id: 2,
           name: 'Rohan Gupta',

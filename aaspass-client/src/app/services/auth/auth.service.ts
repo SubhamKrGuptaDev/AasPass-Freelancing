@@ -248,7 +248,7 @@ export class AuthService {
       next: (resp) => {
         if (resp?.data?.user) {
           const mapped = this.mapBackendUserToProfile(resp.data.user);
-          this.saveSession(mapped, resp.data.token);
+          this.saveSession(mapped);
           this.authSuccessMessage.set(`Welcome back, ${mapped.name}!`);
           const targetUrl = this.returnUrl();
           this.isModalOpen.set(false);
@@ -383,7 +383,7 @@ export class AuthService {
       next: (resp) => {
         if (resp?.data?.user) {
           const mapped = this.mapBackendUserToProfile(resp.data.user);
-          this.saveSession(mapped, resp.data.token);
+          this.saveSession(mapped);
           this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
         }
       },
@@ -464,8 +464,6 @@ export class AuthService {
     this.authHttpService.updateUser(numId, {
       name: merged.name,
       phone: merged.phone,
-      aadharNumber: merged.aadharNumber,
-      panNumber: merged.panNumber,
       avatarUrl: merged.avatarUrl,
       city: merged.city,
       area: merged.area,

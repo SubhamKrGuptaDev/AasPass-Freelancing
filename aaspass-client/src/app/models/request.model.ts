@@ -56,8 +56,6 @@ export interface RegisterRequest {
 export interface UserUpdateRequest {
   name?: string;
   phone?: string;
-  aadharNumber?: string;
-  panNumber?: string;
   avatarUrl?: string;
   city?: string;
   area?: string;
@@ -65,6 +63,11 @@ export interface UserUpdateRequest {
   bio?: string;
   userSocialMediaLinks?: UserSocialMediaLinksRequest | Record<string, string | undefined>;
   socialMediaLinks?: SocialMediaLinkRequest[] | Array<{ id?: number | string; name: string; url: string }>;
+}
+
+export interface KycUpdatePayload {
+  aadharNumber?: string;
+  panNumber?: string;
 }
 
 export interface AddressRequest {
@@ -88,7 +91,6 @@ export interface ServiceItemRequest {
 }
 
 export interface StoreCreateRequest {
-  userId: number | string;
   ownerName?: string;
   storeName: string;
   tagline?: string;

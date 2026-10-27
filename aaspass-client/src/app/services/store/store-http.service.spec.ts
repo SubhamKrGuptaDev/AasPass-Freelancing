@@ -82,7 +82,6 @@ describe('StoreHttpService', () => {
 
   it('should call POST /api/stores to create a store', () => {
     const payload = {
-      userId: 101,
       storeName: 'New Store',
       category: 'Web & Tech',
       area: 'Koramangala',
