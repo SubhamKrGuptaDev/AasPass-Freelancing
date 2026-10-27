@@ -1,0 +1,104 @@
+# Keep build output, dependencies, logs and binaries out of Claude's context.
+
+# ---- Dependencies ----
+**/node_modules/
+**/.pnpm-store/
+**/.yarn/
+**/bower_components/
+.mvn/wrapper/maven-wrapper.jar
+**/.mvn/wrapper/*.jar
+
+# ---- Frontend build / cache (aaspass-client) ----
+**/dist/
+**/out-tsc/
+**/tmp/
+**/.angular/
+**/.vite/
+**/.nx/
+**/.sass-cache/
+**/coverage/
+**/__screenshots__/
+**/bazel-out/
+
+# ---- Backend build (aaspass-service-backend) ----
+**/target/
+**/build/
+**/out/
+**/bin/
+**/*.class
+
+# ---- IDE / tooling state ----
+**/.idea/
+**/.vscode/
+**/.history/
+**/.settings/
+**/.sts4-cache/
+**/*.iml
+**/*.iws
+**/*.ipr
+
+# ---- Logs ----
+**/*.log
+**/logs/
+**/log/
+npm-debug.log*
+yarn-error.log*
+testem.log
+
+# ---- Lockfiles (large, machine-generated) ----
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# ---- Archives & binaries ----
+**/*.jar
+**/*.war
+**/*.ear
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.tgz
+**/*.gz
+**/*.7z
+**/*.rar
+**/*.exe
+**/*.dll
+**/*.so
+**/*.dylib
+**/*.bin
+**/*.dat
+**/*.db
+**/*.sqlite
+
+# ---- Media & fonts ----
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.ico
+**/*.bmp
+**/*.mp4
+**/*.mov
+**/*.mp3
+**/*.wav
+**/*.pdf
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.otf
+**/*.eot
+
+# ---- Generated / minified ----
+**/*.min.js
+**/*.min.css
+**/*.map
+
+# ---- Secrets ----
+**/.env
+**/.env.*
+!**/.env.example
+
+# ---- OS files ----
+**/.DS_Store
+**/Thumbs.db
