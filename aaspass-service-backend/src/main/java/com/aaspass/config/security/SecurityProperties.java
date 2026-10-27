@@ -35,6 +35,13 @@ public record SecurityProperties(
         }
     }
 
+    /** Redacts secrets so they never reach logs. */
+    @Override
+    public String toString() {
+        return "SecurityProperties[jwtSecret=***, kycKey=***, cookieDomain=" + cookieDomain
+                + ", accessTokenTtl=" + accessTokenTtl + ", refreshTokenTtl=" + refreshTokenTtl + "]";
+    }
+
     /** @return the base64-decoded JWT signing secret. */
     public byte[] jwtSecretBytes() {
         return decode(jwtSecret, "aaspass.security.jwt-secret");

@@ -1,6 +1,7 @@
 package com.aaspass.config.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,5 +40,15 @@ class SecurityPropertiesTest {
         assertEquals("", p.cookieDomain());
         assertEquals(Duration.ofMinutes(15), p.accessTokenTtl());
         assertEquals(Duration.ofDays(30), p.refreshTokenTtl());
+    }
+
+    @Test
+    void toStringRedactsSecrets() {
+        String jwt = Base64.getEncoder().encodeToString("j".repeat(48).getBytes());
+        String kyc = Base64.getEncoder().encodeToString("k".repeat(32).getBytes());
+        String s = new SecurityProperties(jwt, kyc, "example.com", null, null).toString();
+        assertFalse(s.contains(jwt));
+        assertFalse(s.contains(kyc));
+        assertTrue(s.contains("example.com"));
     }
 }
