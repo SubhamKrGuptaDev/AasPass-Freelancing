@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { StoreService } from './store.service';
 import { AuthService } from '../auth/auth.service';
-import { StoreProfile } from '../../models/store.model';
+import { StoreProfile, StoreReview } from '../../models/store.model';
 
 const fixtureStore1: StoreProfile = {
   id: 'store-1',
@@ -90,6 +90,16 @@ const fixtureStore2: StoreProfile = {
 
 describe('StoreService Reviews & Ratings', () => {
   let service: StoreService;
+  let httpTesting: HttpTestingController;
+
+  /** Submits a review and confirms it with a 200 from the backend; returns the inserted review. */
+  function addReview(storeId: string, data: { rating: number; message: string }): StoreReview {
+    let result: StoreReview | undefined;
+    service.addReview(storeId, data).subscribe(r => (result = r));
+    httpTesting.expectOne(r => r.method === 'POST' && r.url.endsWith('/reviews'))
+      .flush({ success: true, message: 'ok', data: {} });
+    return result!;
+  }
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -99,6 +109,8 @@ describe('StoreService Reviews & Ratings', () => {
       ]
     });
     service = TestBed.inject(StoreService);
+    httpTesting = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthService).setCurrentUser({ ...service.currentUser(), id: 'user-9', name: 'Kavita Menon' });
     // Initialize with clone of test fixture stores
     service.stores.set([
       JSON.parse(JSON.stringify(fixtureStore1)),
@@ -148,9 +160,7 @@ describe('StoreService Reviews & Ratings', () => {
     expect(initialStore.rating).toBe(4.9);
 
     // Add a new 5.0 star review
-    const newRev = service.addReview(storeId, {
-      userName: 'Kavita Menon',
-      rating: 5.0,
+    const newRev = addReview(storeId, { rating: 5.0,
       message: 'Exceptional editing speed!'
     });
 
@@ -171,17 +181,13 @@ describe('StoreService Reviews & Ratings', () => {
     const storeId = 'store-2';
 
     // Attempting rating > 5.0 should be clamped to 5.0
-    const overReview = service.addReview(storeId, {
-      userName: 'Tester A',
-      rating: 9.9,
+    const overReview = addReview(storeId, { rating: 9.9,
       message: 'Way above max'
     });
     expect(overReview.rating).toBe(5.0);
 
     // Attempting rating < 1.0 should be clamped to 1.0
-    const underReview = service.addReview(storeId, {
-      userName: 'Tester B',
-      rating: -2.5,
+    const underReview = addReview(storeId, { rating: -2.5,
       message: 'Below min'
     });
     expect(underReview.rating).toBe(1.0);
@@ -191,8 +197,8 @@ describe('StoreService Reviews & Ratings', () => {
     const storeId = 'store-2';
     // Store 2 currently has 1 review of 5.0, plus the two reviews below:
     // (5.0 + 3.33 + 4.67) / 3 = 4.3333... -> 4.3
-    service.addReview(storeId, { userName: 'U1', rating: 3.33, message: 'Good' });
-    service.addReview(storeId, { userName: 'U2', rating: 4.67, message: 'Great' });
+    addReview(storeId, { rating: 3.33, message: 'Good' });
+    addReview(storeId, { rating: 4.67, message: 'Great' });
 
     const updatedStore = service.getStoreById(storeId)!;
     expect(updatedStore.rating).toBe(4.3);
@@ -201,20 +207,16 @@ describe('StoreService Reviews & Ratings', () => {
 
   it('should prepend newest review at index 0 of reviews array', () => {
     const storeId = 'store-1';
-    service.addReview(storeId, {
-      userName: 'First New User',
-      rating: 4.5,
+    addReview(storeId, { rating: 4.5,
       message: 'First new'
     });
-    service.addReview(storeId, {
-      userName: 'Second New User',
-      rating: 5.0,
+    addReview(storeId, { rating: 5.0,
       message: 'Second new'
     });
 
     const store = service.getStoreById(storeId)!;
-    expect(store.reviews?.[0].userName).toBe('Second New User');
-    expect(store.reviews?.[1].userName).toBe('First New User');
+    expect(store.reviews?.[0].message).toBe('Second new');
+    expect(store.reviews?.[1].message).toBe('First new');
   });
 
   it('should update currentUser store reference if reviewing owned store', () => {
@@ -236,9 +238,7 @@ describe('StoreService Reviews & Ratings', () => {
     service.stores.update(list => [userStore, ...list]);
 
     // Add review to owned store
-    service.addReview(ownedStoreId, {
-      userName: 'Customer C',
-      rating: 3.0,
+    addReview(ownedStoreId, { rating: 3.0,
       message: 'Average delivery'
     });
 

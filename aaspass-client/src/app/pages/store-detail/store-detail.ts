@@ -60,7 +60,6 @@ export class StoreDetailComponent {
   }
 
   // Review Form state
-  reviewUserName: string = this.storeService.currentUser().name;
   reviewRating: number = 5.0;
   reviewMessage: string = '';
   reviewError: string | null = null;
@@ -139,11 +138,6 @@ export class StoreDetailComponent {
     const s = this.store();
     if (!s) return;
 
-    if (!this.reviewUserName || !this.reviewUserName.trim()) {
-      this.reviewError = 'Please provide the Review User Name.';
-      return;
-    }
-
     if (this.reviewRating < 1.0 || this.reviewRating > 5.0) {
       this.reviewError = 'Rating must be between 1.0 (minimum) and 5.0 (maximum).';
       return;
@@ -156,13 +150,17 @@ export class StoreDetailComponent {
 
     this.reviewError = null;
     this.storeService.addReview(s.id, {
-      userName: this.reviewUserName.trim(),
       rating: this.reviewRating,
       message: this.reviewMessage.trim()
+    }).subscribe({
+      next: () => {
+        this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
+        this.reviewMessage = '';
+      },
+      error: () => {
+        // The error interceptor shows the toast; the form keeps the typed message.
+      }
     });
-
-    this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
-    this.reviewMessage = '';
   }
 
   selectService(srv: StoreServiceItem): void {

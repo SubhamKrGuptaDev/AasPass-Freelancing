@@ -1,6 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { API_BASE_URL } from '../../config/api.config';
 import { errorToastInterceptor } from '../../interceptors/error-toast.interceptor';
@@ -16,6 +16,7 @@ const KYC_URL = `${API_BASE_URL}/users/me/kyc`;
 
 describe('ProfileComponent KYC', () => {
   let component: ProfileComponent;
+  let fixture: ComponentFixture<ProfileComponent>;
   let httpTesting: HttpTestingController;
   let toast: ToastService;
 
@@ -30,7 +31,8 @@ describe('ProfileComponent KYC', () => {
     TestBed.inject(AuthService).setCurrentUser(USER);
     httpTesting = TestBed.inject(HttpTestingController);
     toast = TestBed.inject(ToastService);
-    component = TestBed.createComponent(ProfileComponent).componentInstance;
+    fixture = TestBed.createComponent(ProfileComponent);
+    component = fixture.componentInstance;
     // StoreService loads the public store list on construction; drain it so tests only see their own calls.
     httpTesting.match(`${API_BASE_URL}/stores`).forEach(r => r.flush({ success: true, message: 'ok', data: [] }));
   });
@@ -106,5 +108,76 @@ describe('ProfileComponent KYC', () => {
     expect(component.kycInput()).toBe('12');
     const errors = toast.toasts().filter(t => t.type === 'error');
     expect(errors.length).toBe(1);
+  });
+
+  it('KYC success does not close the editor when another field is now being edited', () => {
+    component.startKycEdit('aadhaar');
+    component.kycInput.set('123456781234');
+    component.submitKyc();
+    // While saving, switching fields and cancelling are blocked.
+    component.startKycEdit('pan');
+    expect(component.editingKyc()).toBe('aadhaar');
+    // Force the race the guard protects against: editor moved on before the response arrives.
+    component.editingKyc.set('pan');
+    httpTesting.expectOne(KYC_URL).flush({ success: true, message: 'ok', data: { id: 1, name: 'Aman', username: 'aman', email: 'a@x.com', aadharNumber: 'XXXXXXXX1234' } });
+    expect(component.editingKyc()).toBe('pan');
+  });
+
+  it('moves focus into the KYC input on Update and back to Update on Cancel', async () => {
+    fixture.detectChanges();
+    const root: HTMLElement = fixture.nativeElement;
+    document.body.appendChild(root);
+    root.querySelector<HTMLButtonElement>('#kyc-aadhaar-update')?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement?.id).toBe('kyc-aadhaar-input');
+    expect(document.activeElement?.getAttribute('aria-describedby')).toBe('kyc-aadhaar-hint');
+    expect(root.querySelector('#kyc-aadhaar-hint')?.textContent).toContain('12 digits');
+
+    component.cancelKycEdit();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement?.id).toBe('kyc-aadhaar-update');
+    root.remove();
+  });
+
+  describe('store reviews', () => {
+    const REVIEWS_URL = `${API_BASE_URL}/stores/7/reviews`;
+
+    beforeEach(() => {
+      component.storeService.stores.set([{
+        id: 'store-7', userId: '1', ownerName: 'Aman', storeName: 'S', tagline: '', category: 'C', skills: [],
+        experienceYears: 1, hourlyRate: 1, startingPrice: 1, area: 'A', city: 'B', distanceKm: 1, serviceRadiusKm: 1,
+        socialMediaLinks: [], description: '', services: [], rating: 5, reviewCount: 0, reviews: [],
+        avatarUrl: '', bannerGradient: '', isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
+      }]);
+      component.isAddingReview = true;
+      component.newReviewMessage = 'Great work';
+    });
+
+    it('200 inserts the review under the session user name and shows one success toast', () => {
+      component.submitStoreReview('store-7');
+      expect(toast.toasts().length).toBe(0);
+      expect(component.storeService.getStoreById('store-7')?.reviews?.length).toBe(0);
+
+      const req = httpTesting.expectOne(REVIEWS_URL);
+      expect(Object.keys(req.request.body as object).sort()).toEqual(['message', 'rating']);
+      req.flush({ success: true, message: 'ok', data: {} });
+
+      const reviews = component.storeService.getStoreById('store-7')?.reviews ?? [];
+      expect(reviews.length).toBe(1);
+      expect(reviews[0].userName).toBe('Aman');
+      expect(toast.toasts().filter(t => t.type === 'success').length).toBe(1);
+      expect(component.isAddingReview).toBe(false);
+    });
+
+    it('500 shows no success toast and inserts no review', () => {
+      component.submitStoreReview('store-7');
+      httpTesting.expectOne(REVIEWS_URL).flush({ success: false, message: 'boom' }, { status: 500, statusText: 'Server Error' });
+
+      expect(toast.toasts().some(t => t.type === 'success')).toBe(false);
+      expect(component.storeService.getStoreById('store-7')?.reviews?.length).toBe(0);
+      expect(component.isAddingReview).toBe(true);
+    });
   });
 });

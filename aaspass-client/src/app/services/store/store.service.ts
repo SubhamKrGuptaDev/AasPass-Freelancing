@@ -454,8 +454,10 @@ export class StoreService {
     return Object.assign(request$, newStore);
   }
 
-  // Add customer review for a store owner (rating bounded between 1.0 and 5.0)
-  addReview(storeId: string, reviewData: { userName: string; rating: number; message: string }): StoreReview {
+  // Add a review as the signed-in user (the backend derives the reviewer from the session).
+  // The review is inserted locally only after the backend confirms it; failures propagate to the caller
+  // (the error interceptor shows the toast). Rating is bounded between 1.0 and 5.0.
+  addReview(storeId: string, reviewData: { rating: number; message: string }): Observable<StoreReview> {
     const rawRating = Number(reviewData.rating);
     // Enforce 1.0 min and 5.0 max
     const clampedRating = Math.max(1.0, Math.min(5.0, isNaN(rawRating) ? 5.0 : Math.round(rawRating * 10) / 10));
@@ -463,52 +465,54 @@ export class StoreService {
     const newReview: StoreReview = {
       id: 'rev-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       storeId,
-      userName: reviewData.userName.trim() || 'Verified Neighbor',
+      userName: this.currentUser().name?.trim() || 'Verified Neighbor',
       rating: clampedRating,
       message: reviewData.message.trim(),
       date: 'Just now'
     };
 
-    this.stores.update(list => list.map(store => {
-      if (store.id !== storeId) return store;
-      const existingReviews = store.reviews || [];
-      const updatedReviews = [newReview, ...existingReviews];
-      const totalScore = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
-      const avgRating = Math.round((totalScore / updatedReviews.length) * 10) / 10;
-
-      return {
-        ...store,
-        rating: Math.max(1.0, Math.min(5.0, avgRating)),
-        reviewCount: updatedReviews.length,
-        reviews: updatedReviews
-      };
-    }));
-
-    // If this store belongs to the current user, update currentUser as well
-    const user = this.currentUser();
-    const userStoreIds = (user.stores || (user.store ? [user.store] : [])).map(s => s.id);
-    if (userStoreIds.includes(storeId)) {
-      const updatedStore = this.getStoreById(storeId);
-      if (updatedStore) {
-        this.patchCurrentUser(u => {
-          const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
-          return {
-            ...u,
-            store: u.store?.id === storeId ? updatedStore : u.store,
-            stores: updatedStores
-          };
-        });
-      }
-    }
-
     // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{storeId}/reviews
     const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-    this.storeHttpService.addReview(numId, {
+    return this.storeHttpService.addReview(numId, {
       rating: clampedRating,
       message: newReview.message
-    }).subscribe({ error: () => {} });
+    }).pipe(
+      map(() => {
+        this.stores.update(list => list.map(store => {
+          if (store.id !== storeId) return store;
+          const existingReviews = store.reviews || [];
+          const updatedReviews = [newReview, ...existingReviews];
+          const totalScore = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
+          const avgRating = Math.round((totalScore / updatedReviews.length) * 10) / 10;
 
-    return newReview;
+          return {
+            ...store,
+            rating: Math.max(1.0, Math.min(5.0, avgRating)),
+            reviewCount: updatedReviews.length,
+            reviews: updatedReviews
+          };
+        }));
+
+        // If this store belongs to the current user, update currentUser as well
+        const user = this.currentUser();
+        const userStoreIds = (user.stores || (user.store ? [user.store] : [])).map(s => s.id);
+        if (userStoreIds.includes(storeId)) {
+          const updatedStore = this.getStoreById(storeId);
+          if (updatedStore) {
+            this.patchCurrentUser(u => {
+              const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
+              return {
+                ...u,
+                store: u.store?.id === storeId ? updatedStore : u.store,
+                stores: updatedStores
+              };
+            });
+          }
+        }
+
+        return newReview;
+      })
+    );
   }
 
   // Record view count at store level (increments daily, weekly, monthly, lifetime counters)

@@ -1,5 +1,5 @@
-import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, Injector, afterNextRender } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
@@ -35,6 +35,8 @@ export class ProfileComponent {
   storeService = inject(StoreService);
   authService = inject(AuthService);
   private toast = inject(ToastService);
+  private injector = inject(Injector);
+  private document = inject(DOCUMENT);
 
   // KYC (Aadhaar / PAN): stored values are masked by the backend and shown read-only;
   // a new value is typed into a single inline input and saved through the dedicated KYC endpoint.
@@ -43,13 +45,26 @@ export class ProfileComponent {
   kycSaving = signal(false);
 
   startKycEdit(field: 'aadhaar' | 'pan'): void {
+    if (this.kycSaving()) {
+      return;
+    }
     this.editingKyc.set(field);
     this.kycInput.set('');
+    this.focusAfterRender(`kyc-${field}-input`);
   }
 
   cancelKycEdit(): void {
+    const field = this.editingKyc();
     this.editingKyc.set(null);
     this.kycInput.set('');
+    if (field) {
+      this.focusAfterRender(`kyc-${field}-update`);
+    }
+  }
+
+  /** Moves focus to the element with the given id once the next render has put it in the DOM. */
+  private focusAfterRender(id: string): void {
+    afterNextRender(() => this.document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   /** Stores the typed KYC value; PAN is uppercased as typed. */
@@ -78,7 +93,10 @@ export class ProfileComponent {
     this.authService.updateKyc(payload).subscribe({
       next: () => {
         this.kycSaving.set(false);
-        this.cancelKycEdit();
+        // Only close the editor if it still shows the field that was saved.
+        if (this.editingKyc() === field) {
+          this.cancelKycEdit();
+        }
         this.toast.success(field === 'aadhaar' ? 'Aadhaar updated' : 'PAN updated');
       },
       error: () => {
@@ -182,7 +200,6 @@ export class ProfileComponent {
 
   // Review section for store owner
   isAddingReview = false;
-  newReviewUserName = '';
   newReviewRating = 5.0;
   newReviewMessage = '';
   reviewFormError: string | null = null;
@@ -231,11 +248,6 @@ export class ProfileComponent {
   }
 
   submitStoreReview(storeId: string): void {
-    if (!this.newReviewUserName || !this.newReviewUserName.trim()) {
-      this.reviewFormError = 'Please provide the Review User Name.';
-      return;
-    }
-
     if (this.newReviewRating < 1.0 || this.newReviewRating > 5.0) {
       this.reviewFormError = 'Rating must be between 1.0 (min) and 5.0 (max).';
       return;
@@ -248,16 +260,19 @@ export class ProfileComponent {
 
     this.reviewFormError = null;
     this.storeService.addReview(storeId, {
-      userName: this.newReviewUserName.trim(),
       rating: this.newReviewRating,
       message: this.newReviewMessage.trim()
+    }).subscribe({
+      next: review => {
+        this.toast.success(`Added ${review.rating.toFixed(1)}★ review as "${review.userName}".`);
+        this.newReviewRating = 5.0;
+        this.newReviewMessage = '';
+        this.isAddingReview = false;
+      },
+      error: () => {
+        // The error interceptor shows the toast; the form stays open so the review can be resent.
+      }
     });
-
-    this.toast.success(`Added ${this.newReviewRating.toFixed(1)}★ review from "${this.newReviewUserName.trim()}".`);
-    this.newReviewUserName = '';
-    this.newReviewRating = 5.0;
-    this.newReviewMessage = '';
-    this.isAddingReview = false;
   }
 
   // Engagement tracking state for store owner (Daily, Weekly, Monthly, Lifetime)
