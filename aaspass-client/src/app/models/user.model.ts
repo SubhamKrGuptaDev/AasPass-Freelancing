@@ -23,10 +23,6 @@ export interface UserProfile {
   creationDateTime: string;
   lastUpdateDateTime: string;
 }
-export interface UserAccount extends UserProfile {
-  username: string;
-  password?: string;
-}
 
 export type { AuthCredentials, SignupRequest } from './request.model';
 
@@ -40,10 +36,4 @@ export function getRandomAvatarUrl(seed?: string): string {
     : '';
   const finalSeed = clean.length > 0 ? clean : 'user-' + Math.random().toString(36).substring(2, 8);
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalSeed)}`;
-}
-
-export interface AuthResult {
-  success: boolean;
-  message?: string;
-  user?: UserProfile;
 }

@@ -60,19 +60,11 @@
         </button>
       </div>
 
-      <!-- Error Alert -->
-      @if (authService.authError()) {
-        <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold mb-5 flex items-center gap-2">
-          <span>⚠️</span>
-          <span>{{ authService.authError() }}</span>
-        </div>
-      }
-
-      <!-- Success Alert -->
-      @if (authService.authSuccessMessage()) {
-        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-5 flex items-center gap-2">
-          <span>✓</span>
-          <span>{{ authService.authSuccessMessage() }}</span>
+      <!-- Client-side validation message (server errors arrive as toasts) -->
+      @if (formError(); as error) {
+        <div role="alert" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold mb-5 flex items-center gap-2">
+          <span aria-hidden="true">⚠️</span>
+          <span>{{ error }}</span>
         </div>
       }
 
@@ -131,7 +123,8 @@
 
           <button 
             type="submit"
-            class="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-2"
+            [disabled]="isSubmitting()"
+            class="w-full py-3 px-4 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-2"
           >
             Sign In
           </button>
@@ -299,7 +292,8 @@
 
           <button 
             type="submit"
-            class="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-3"
+            [disabled]="isSubmitting()"
+            class="w-full py-3 px-4 disabled:opacity-60 disabled:cursor-not-allowed rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 hover:shadow-lg transition transform active:scale-98 cursor-pointer mt-3"
           >
             Create Account & Sign In
           </button>

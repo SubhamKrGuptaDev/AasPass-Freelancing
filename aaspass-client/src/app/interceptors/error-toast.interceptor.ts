@@ -25,7 +25,8 @@ function serverMessage(err: HttpErrorResponse): string | null {
   return typeof message === 'string' && message.trim().length > 0 ? message : null;
 }
 
-function errorCode(err: HttpErrorResponse): string | null {
+/** Reads the ApiResponse error `code` from a failed response body, or null when absent. */
+export function errorCode(err: HttpErrorResponse): string | null {
   const body: unknown = err.error;
   if (body === null || typeof body !== 'object') {
     return null;

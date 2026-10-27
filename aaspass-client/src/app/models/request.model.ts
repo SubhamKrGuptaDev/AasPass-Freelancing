@@ -1,4 +1,4 @@
-import type { HttpHeaders, HttpParams } from '@angular/common/http';
+import type { HttpContext, HttpHeaders, HttpParams } from '@angular/common/http';
 
 /**
  * Backend API request interfaces mapping Spring Boot REST DTOs and HTTP payloads.
@@ -8,6 +8,7 @@ import type { HttpHeaders, HttpParams } from '@angular/common/http';
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
   params?: HttpParams | Record<string, string | number | boolean | readonly (string | number | boolean)[]>;
+  context?: HttpContext;
 }
 
 export interface SocialMediaLinkRequest {

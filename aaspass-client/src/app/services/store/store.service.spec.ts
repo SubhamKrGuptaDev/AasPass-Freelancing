@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { StoreService } from './store.service';
+import { AuthService } from '../auth/auth.service';
 import { StoreProfile } from '../../models/store.model';
 
 const fixtureStore1: StoreProfile = {
@@ -231,7 +232,7 @@ describe('StoreService Reviews & Ratings', () => {
     };
 
     // Set user to own this store
-    service.currentUser.update(u => ({ ...u, hasStore: true, store: userStore, stores: [userStore] }));
+    TestBed.inject(AuthService).setCurrentUser({ ...service.currentUser(), hasStore: true, store: userStore, stores: [userStore] });
     service.stores.update(list => [userStore, ...list]);
 
     // Add review to owned store
@@ -354,7 +355,7 @@ describe('StoreService Reviews & Ratings', () => {
         viewHistory: []
       };
 
-      service.currentUser.update(u => ({ ...u, hasStore: true, store: myStore, stores: [myStore] }));
+      TestBed.inject(AuthService).setCurrentUser({ ...service.currentUser(), hasStore: true, store: myStore, stores: [myStore] });
       service.stores.update(list => [myStore, ...list]);
 
       service.recordStoreView(ownedStoreId, 'client-456');

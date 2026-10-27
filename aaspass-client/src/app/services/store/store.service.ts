@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { BackendStoreResponse } from '../../models/response.model';
@@ -45,8 +45,9 @@ export class StoreService {
   readonly authService = inject(AuthService);
   private storeHttpService = inject(StoreHttpService);
 
-  // Current user (Option A: Unified Account - only populated from authenticated session)
-  readonly currentUser = signal<UserProfile>(this.authService.currentUser() || EMPTY_USER_PROFILE);
+  // Current user (Option A: Unified Account), derived from AuthService - the single source of truth.
+  // Guests see EMPTY_USER_PROFILE; changes go through patchCurrentUser() -> authService.setCurrentUser().
+  readonly currentUser = computed<UserProfile>(() => this.authService.currentUser() ?? EMPTY_USER_PROFILE);
 
   // User's owned stores (Option A: 1 user can have multiple stores)
   readonly userStores = computed(() => {
@@ -60,17 +61,15 @@ export class StoreService {
   });
 
   constructor() {
-    const activeAuthUser = this.authService.currentUser();
-    if (activeAuthUser) {
-      this.currentUser.set(activeAuthUser);
-    }
-
-    effect(() => {
-      const authUser = this.authService.currentUser();
-      this.currentUser.set(authUser || EMPTY_USER_PROFILE);
-    });
-
     this.loadStoresFromApi();
+  }
+
+  /** Applies a change to the signed-in user via AuthService; a no-op for guests. */
+  private patchCurrentUser(change: (user: UserProfile) => UserProfile): void {
+    const user = this.authService.currentUser();
+    if (user) {
+      this.authService.setCurrentUser(change(user));
+    }
   }
 
   // Master list of available nearby stores / freelancers loaded dynamically from backend API
@@ -430,8 +429,8 @@ export class StoreService {
           ...list.filter(s => String(s.id) !== String(backendMapped.id) && s.id !== newStoreId)
         ]);
 
-        // Update currentUser and persist to localStorage session so reload keeps store
-        this.currentUser.update(u => {
+        // Update the signed-in user so the navbar and profile pick up the new store
+        this.patchCurrentUser(u => {
           const existingStores = u.stores || (u.store ? [u.store] : []);
           const updatedStores = [
             backendMapped,
@@ -444,7 +443,6 @@ export class StoreService {
             stores: updatedStores,
             lastUpdateDateTime: nowIso
           };
-          this.authService.saveSession(updatedUser);
           return updatedUser;
         });
 
@@ -492,7 +490,7 @@ export class StoreService {
     if (userStoreIds.includes(storeId)) {
       const updatedStore = this.getStoreById(storeId);
       if (updatedStore) {
-        this.currentUser.update(u => {
+        this.patchCurrentUser(u => {
           const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
           return {
             ...u,
@@ -558,7 +556,7 @@ export class StoreService {
     if (userStoreIds.includes(storeId)) {
       const updatedStore = this.getStoreById(storeId);
       if (updatedStore) {
-        this.currentUser.update(u => {
+        this.patchCurrentUser(u => {
           const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
           return {
             ...u,
@@ -624,7 +622,7 @@ export class StoreService {
       return throwError(() => new Error('Store profile could not be resolved'));
     }
 
-    this.currentUser.update(u => {
+    this.patchCurrentUser(u => {
       const currentStores = u.stores || (u.store ? [u.store] : []);
       const existsInUser = currentStores.some(s => s.id === targetStoreId);
       const updatedStores = existsInUser
@@ -638,7 +636,6 @@ export class StoreService {
         stores: updatedStores,
         lastUpdateDateTime: nowIso
       };
-      this.authService.saveSession(updatedUser);
       return updatedUser;
     });
 
@@ -676,13 +673,12 @@ export class StoreService {
           const backendMapped = this.mapBackendStoreToProfile(res.data);
           this.stores.update(list => list.map(s => String(s.id) === String(targetStoreId) ? backendMapped : s));
           // Keep the user's session copy in sync too, so store links pick up the new name after a rename
-          this.currentUser.update(u => {
+          this.patchCurrentUser(u => {
             const syncedUser: UserProfile = {
               ...u,
               store: u.store && String(u.store.id) === String(targetStoreId) ? backendMapped : u.store,
               stores: (u.stores || []).map(s => String(s.id) === String(targetStoreId) ? backendMapped : s)
             };
-            this.authService.saveSession(syncedUser);
             return syncedUser;
           });
           return backendMapped;
@@ -697,7 +693,7 @@ export class StoreService {
     const nowIso = new Date().toISOString();
     this.stores.update(list => list.filter(s => s.id !== storeId));
 
-    this.currentUser.update(u => {
+    this.patchCurrentUser(u => {
       const currentStores = (u.stores || (u.store ? [u.store] : [])).filter(s => s.id !== storeId);
       const hasAny = currentStores.length > 0;
       return {
@@ -733,16 +729,22 @@ export class StoreService {
       avatarUrl: currentAvatar
     };
 
-    this.currentUser.update(u => ({
-      ...u,
-      ...finalUpdated,
-      socialMediaLinks: normalizedUserSocial ?? finalUpdated.socialMediaLinks ?? u.socialMediaLinks,
-      userSocialMediaLinks: userSocialMediaLinks ?? finalUpdated.userSocialMediaLinks ?? u.userSocialMediaLinks,
-      userSocialLinks: userSocialMediaLinks ?? finalUpdated.userSocialLinks ?? u.userSocialLinks,
-      lastUpdateDateTime: new Date().toISOString()
-    }));
+    // The signed-in user is replaced with the backend response (AuthService); nothing is applied optimistically.
+    // Only keys that carry a value are sent, so omitted fields keep their current server value.
+    const profileChanges: Partial<UserProfile> = { ...finalUpdated };
+    if (normalizedUserSocial) {
+      profileChanges.socialMediaLinks = normalizedUserSocial;
+    }
+    if (userSocialMediaLinks) {
+      profileChanges.userSocialMediaLinks = userSocialMediaLinks;
+      profileChanges.userSocialLinks = userSocialMediaLinks;
+    }
     if (this.authService.isLoggedIn()) {
-      this.authService.updateUserProfile(finalUpdated);
+      this.authService.updateUserProfile(profileChanges).subscribe({
+        error: () => {
+          // Failures are surfaced as toasts by the error interceptor; the profile keeps the server state.
+        }
+      });
     }
   }
 

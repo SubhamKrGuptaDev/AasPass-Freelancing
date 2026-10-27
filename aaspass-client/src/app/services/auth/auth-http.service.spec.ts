@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { AuthHttpService } from './auth-http.service';
 import { API_BASE_URL } from '../../config/api.config';
+import { SKIP_AUTH_REFRESH, SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import { ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../models/response.model';
 
 describe('AuthHttpService', () => {
@@ -140,6 +141,46 @@ describe('AuthHttpService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({});
     req.flush(mockResponse);
+  });
+
+  it('should mark background session calls to skip toasts and refresh as specified', () => {
+    service.refresh().subscribe();
+    service.me().subscribe();
+    service.logout().subscribe();
+    service.login({ usernameOrEmail: 'aman', password: 'x' }).subscribe();
+    service.register({ name: 'A', username: 'a', email: 'a@x.in', password: 'secret1' }).subscribe();
+
+    const refresh = httpTesting.expectOne(`${API_BASE_URL}/auth/refresh`);
+    expect(refresh.request.method).toBe('POST');
+    expect(refresh.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
+    expect(refresh.request.context.get(SKIP_AUTH_REFRESH)).toBe(true);
+
+    const me = httpTesting.expectOne(`${API_BASE_URL}/auth/me`);
+    expect(me.request.method).toBe('GET');
+    expect(me.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
+    expect(me.request.context.get(SKIP_AUTH_REFRESH)).toBe(false);
+
+    const logout = httpTesting.expectOne(`${API_BASE_URL}/auth/logout`);
+    expect(logout.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
+    expect(logout.request.context.get(SKIP_AUTH_REFRESH)).toBe(true);
+
+    for (const url of ['/auth/login', '/auth/register']) {
+      const req = httpTesting.expectOne(`${API_BASE_URL}${url}`);
+      expect(req.request.context.get(SKIP_AUTH_REFRESH)).toBe(true);
+      expect(req.request.context.get(SKIP_ERROR_TOAST)).toBe(false);
+      req.flush({});
+    }
+    refresh.flush({});
+    me.flush({});
+    logout.flush({});
+  });
+
+  it('should call PUT /api/users/me/kyc', () => {
+    service.updateKyc({ aadharNumber: '123412341234' }).subscribe();
+    const req = httpTesting.expectOne(`${API_BASE_URL}/users/me/kyc`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ aadharNumber: '123412341234' });
+    req.flush({ success: true, message: 'ok', data: { id: 1, name: 'A', username: 'a', email: 'a@x.in' } });
   });
 
   it('should support generic GET, POST, PUT, DELETE operations', () => {
