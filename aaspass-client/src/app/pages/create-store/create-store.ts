@@ -1,8 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
@@ -29,6 +31,7 @@ export class CreateStoreComponent implements OnInit {
   storeService = inject(StoreService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private toast = inject(ToastService);
 
   availableCategories = [
     'Video & Editing',
@@ -45,25 +48,6 @@ export class CreateStoreComponent implements OnInit {
   editingStoreId = '';
 
   isSubmitting = signal<boolean>(false);
-  errorMessage = signal<string | null>(null);
-  private errorToastTimer: any = null;
-
-  showErrorToast(msg: string): void {
-    this.errorMessage.set(msg);
-    if (this.errorToastTimer) {
-      clearTimeout(this.errorToastTimer);
-    }
-    this.errorToastTimer = setTimeout(() => {
-      this.errorMessage.set(null);
-    }, 8000);
-  }
-
-  dismissError(): void {
-    if (this.errorToastTimer) {
-      clearTimeout(this.errorToastTimer);
-    }
-    this.errorMessage.set(null);
-  }
 
   formData = {
     storeName: 'QuickEdits Bangalore',
@@ -195,7 +179,6 @@ export class CreateStoreComponent implements OnInit {
 
     if (this.isEditing && this.editingStoreId) {
       this.isSubmitting.set(true);
-      this.errorMessage.set(null);
 
       this.storeService.updateStore({
         storeName: this.formData.storeName,
@@ -218,10 +201,9 @@ export class CreateStoreComponent implements OnInit {
           // Use the returned store so a rename navigates to the updated name-id URL
           this.router.navigate(['/stores', this.storeService.getStoreUrlKey(savedStore) || this.editingStoreId]);
         },
-        error: (err) => {
+        error: (err: unknown) => {
           this.isSubmitting.set(false);
-          const msg = err?.error?.message || err?.message || 'Failed to update store details in database. Please try again.';
-          this.showErrorToast(msg);
+          this.reportSaveError(err, 'Failed to update store details. Please try again.');
         }
       });
       return;
@@ -245,7 +227,6 @@ export class CreateStoreComponent implements OnInit {
     ];
 
     this.isSubmitting.set(true);
-    this.errorMessage.set(null);
 
     this.storeService.createStore({
       ownerName: this.storeService.currentUser().name,
@@ -274,11 +255,18 @@ export class CreateStoreComponent implements OnInit {
         // Navigate directly to the verified persisted store detail page!
         this.router.navigate(['/stores', this.storeService.getStoreUrlKey(persistedStore)]);
       },
-      error: (err) => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
-        const msg = err?.error?.message || err?.message || 'Failed to save store to the database. Please ensure backend service is running and try again.';
-        this.showErrorToast(msg);
+        this.reportSaveError(err, 'Failed to save store. Please try again.');
       }
     });
+  }
+
+  /** HTTP failures are already toasted by the error interceptor; only non-HTTP failures need a toast here. */
+  private reportSaveError(err: unknown, fallback: string): void {
+    if (err instanceof HttpErrorResponse) {
+      return;
+    }
+    this.toast.error(err instanceof Error && err.message ? err.message : fallback);
   }
 }

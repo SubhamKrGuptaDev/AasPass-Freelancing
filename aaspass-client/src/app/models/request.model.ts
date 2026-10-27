@@ -132,8 +132,6 @@ export interface StoreUpdateRequest {
 }
 
 export interface StoreReviewRequest {
-  userName: string;
-  userAvatar?: string;
   rating: number;
   message: string;
 }

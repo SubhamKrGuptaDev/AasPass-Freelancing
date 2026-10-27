@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { 
   StoreProfile, 
@@ -32,7 +33,7 @@ export class StoreDetailComponent {
   private routeParamMap = toSignal(this.route.paramMap);
   storeService = inject(StoreService);
 
-  notificationMessage: string | null = null;
+  private toast = inject(ToastService);
 
   formatUrl = formatSocialUrl;
   authService = inject(AuthService);
@@ -160,32 +161,25 @@ export class StoreDetailComponent {
       message: this.reviewMessage.trim()
     });
 
-    this.showToast(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
+    this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
     this.reviewMessage = '';
   }
 
   selectService(srv: StoreServiceItem): void {
-    this.showToast(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
+    this.toast.success(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
   }
 
   triggerInquiry(): void {
     const s = this.store();
     if (s) {
-      this.showToast(`Direct message sent to ${s.ownerName}! You can now coordinate nearby.`);
+      this.toast.success(`Direct message sent to ${s.ownerName}! You can now coordinate nearby.`);
     }
   }
 
   triggerCall(): void {
     const s = this.store();
     if (s) {
-      this.showToast(`Phone callback request shared with ${s.ownerName}.`);
+      this.toast.success(`Phone callback request shared with ${s.ownerName}.`);
     }
-  }
-
-  private showToast(msg: string): void {
-    this.notificationMessage = msg;
-    setTimeout(() => {
-      this.notificationMessage = null;
-    }, 4000);
   }
 }

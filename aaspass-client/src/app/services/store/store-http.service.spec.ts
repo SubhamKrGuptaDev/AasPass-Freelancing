@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { StoreHttpService } from './store-http.service';
 import { API_BASE_URL } from '../../config/api.config';
+import { SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import { ApiResponse, BackendStoreResponse } from '../../models/response.model';
 
 describe('StoreHttpService', () => {
@@ -160,7 +161,6 @@ describe('StoreHttpService', () => {
 
   it('should call POST /api/stores/{id}/reviews to add a review', () => {
     const reviewPayload = {
-      userName: 'Reviewer',
       rating: 5,
       message: 'Great service'
     };
@@ -175,14 +175,26 @@ describe('StoreHttpService', () => {
     req.flush({ success: true, message: 'Review added', data: {} });
   });
 
-  it('should call POST /api/stores/{id}/views to record a store view', () => {
-    service.recordStoreView(1, 'guest').subscribe(resp => {
+  it('recordStoreViewHasNoViewerParam', () => {
+    service.recordStoreView(5).subscribe(resp => {
       expect(resp.success).toBe(true);
     });
 
-    const req = httpTesting.expectOne(`${API_BASE_URL}/stores/1/views?viewerId=guest`);
+    const req = httpTesting.expectOne(r => r.url === `${API_BASE_URL}/stores/5/views`);
     expect(req.request.method).toBe('POST');
+    expect(req.request.params.keys().length).toBe(0);
+    expect(req.request.urlWithParams).toBe(`${API_BASE_URL}/stores/5/views`);
     expect(req.request.body).toEqual({});
+    expect(req.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
     req.flush({ success: true, message: 'View recorded', data: {} });
+  });
+
+  it('createStorePayloadHasNoUserId', () => {
+    service.createStore({ storeName: 'S', category: 'C', area: 'A', city: 'B' }).subscribe();
+
+    const req = httpTesting.expectOne(`${API_BASE_URL}/stores`);
+    expect(req.request.method).toBe('POST');
+    expect(Object.keys(req.request.body as object)).not.toContain('userId');
+    req.flush({ success: true, message: 'ok', data: {} });
   });
 });

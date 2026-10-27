@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
+import { SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import { ApiResponse, BackendStoreResponse } from '../../models/response.model';
 import { CreateStorePayload, UpdateStorePayload, StoreReviewPayload, RequestOptions } from '../../models/request.model';
 
@@ -72,8 +73,9 @@ export class StoreHttpService {
     return this.post<any>(`/stores/${cleanId}/reviews`, payload);
   }
 
-  recordStoreView(storeId: number | string, viewerId?: string): Observable<ApiResponse<BackendStoreResponse>> {
+  /** Records a view; the backend derives the viewer from the session. Failures are silent (no error toast). */
+  recordStoreView(storeId: number | string): Observable<ApiResponse<BackendStoreResponse>> {
     const cleanId = typeof storeId === 'number' ? storeId : parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-    return this.post<BackendStoreResponse>(`/stores/${cleanId}/views?viewerId=${encodeURIComponent(viewerId || 'guest')}`, {});
+    return this.post<BackendStoreResponse>(`/stores/${cleanId}/views`, {}, { context: new HttpContext().set(SKIP_ERROR_TOAST, true) });
   }
 }

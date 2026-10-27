@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
@@ -33,13 +34,64 @@ import { getRandomAvatarUrl } from '../../models/user.model';
 export class ProfileComponent {
   storeService = inject(StoreService);
   authService = inject(AuthService);
+  private toast = inject(ToastService);
+
+  // KYC (Aadhaar / PAN): stored values are masked by the backend and shown read-only;
+  // a new value is typed into a single inline input and saved through the dedicated KYC endpoint.
+  editingKyc = signal<'aadhaar' | 'pan' | null>(null);
+  kycInput = signal('');
+  kycSaving = signal(false);
+
+  startKycEdit(field: 'aadhaar' | 'pan'): void {
+    this.editingKyc.set(field);
+    this.kycInput.set('');
+  }
+
+  cancelKycEdit(): void {
+    this.editingKyc.set(null);
+    this.kycInput.set('');
+  }
+
+  /** Stores the typed KYC value; PAN is uppercased as typed. */
+  setKycInput(value: string): void {
+    this.kycInput.set(this.editingKyc() === 'pan' ? value.toUpperCase() : value);
+  }
+
+  onKycInput(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) {
+      this.setKycInput(target.value);
+      if (target.value !== this.kycInput()) {
+        target.value = this.kycInput();
+      }
+    }
+  }
+
+  submitKyc(): void {
+    const field = this.editingKyc();
+    const value = this.kycInput().trim();
+    if (!field || !value || this.kycSaving()) {
+      return;
+    }
+    const payload = field === 'aadhaar' ? { aadharNumber: value } : { panNumber: value };
+    this.kycSaving.set(true);
+    this.authService.updateKyc(payload).subscribe({
+      next: () => {
+        this.kycSaving.set(false);
+        this.cancelKycEdit();
+        this.toast.success(field === 'aadhaar' ? 'Aadhaar updated' : 'PAN updated');
+      },
+      error: () => {
+        // The error interceptor shows the toast; the editor stays open so the value can be corrected.
+        this.kycSaving.set(false);
+      }
+    });
+  }
 
   isEditingUser = false;
   editName = this.storeService.currentUser().name;
   editUsername = this.storeService.currentUser().username || '';
   editPhone = this.storeService.currentUser().phone;
-  editAadhar = this.storeService.currentUser().aadharNumber || '';
-  editPan = this.storeService.currentUser().panNumber || '';
   editArea = this.storeService.currentUser().area;
   editCity = this.storeService.currentUser().city;
   editCountry = this.storeService.currentUser().country || 'India';
@@ -71,8 +123,6 @@ export class ProfileComponent {
     this.editName = user.name;
     this.editUsername = user.username || '';
     this.editPhone = user.phone;
-    this.editAadhar = user.aadharNumber || '';
-    this.editPan = user.panNumber || '';
     this.editArea = user.area;
     this.editCity = user.city;
     this.editCountry = user.country || 'India';
@@ -114,7 +164,6 @@ export class ProfileComponent {
     this.selectedStoreId.set(id);
     this.isAddingReview = false;
     this.reviewFormError = null;
-    this.reviewSuccessMessage = null;
   }
 
   deleteStore(storeId: string): void {
@@ -137,7 +186,6 @@ export class ProfileComponent {
   newReviewRating = 5.0;
   newReviewMessage = '';
   reviewFormError: string | null = null;
-  reviewSuccessMessage: string | null = null;
 
   saveUserDetails(): void {
     const validSocial = this.editUserSocialLinks
@@ -160,8 +208,6 @@ export class ProfileComponent {
     this.storeService.updateUserProfile({
       name: this.editName,
       phone: this.editPhone,
-      aadharNumber: this.editAadhar,
-      panNumber: this.editPan ? this.editPan.toUpperCase() : '',
       area: this.editArea,
       city: this.editCity,
       country: this.editCountry,
@@ -207,15 +253,11 @@ export class ProfileComponent {
       message: this.newReviewMessage.trim()
     });
 
-    this.reviewSuccessMessage = `Added ${this.newReviewRating.toFixed(1)}★ review from "${this.newReviewUserName.trim()}".`;
+    this.toast.success(`Added ${this.newReviewRating.toFixed(1)}★ review from "${this.newReviewUserName.trim()}".`);
     this.newReviewUserName = '';
     this.newReviewRating = 5.0;
     this.newReviewMessage = '';
     this.isAddingReview = false;
-
-    setTimeout(() => {
-      this.reviewSuccessMessage = null;
-    }, 4000);
   }
 
   // Engagement tracking state for store owner (Daily, Weekly, Monthly, Lifetime)
@@ -223,7 +265,6 @@ export class ProfileComponent {
   selectedEngagementType = signal<EngagementViewType>(DEFAULT_ENGAGEMENT_TYPE);
   engagementOptions = ENABLED_ENGAGEMENT_TYPE_OPTIONS;
   readonly showViewSimulation = FEATURE_FLAGS.showViewSimulation;
-  viewSimulationToast: string | null = null;
 
   selectedEngagementOption = computed<EngagementTypeOption>(() => {
     const t = this.selectedEngagementType();
@@ -247,9 +288,6 @@ export class ProfileComponent {
     this.storeService.recordStoreView(storeId);
     const store = this.storeService.getStoreById(storeId);
     const storeName = store?.storeName || 'Store';
-    this.viewSimulationToast = `Recorded 1 new view for "${storeName}". Daily, weekly, monthly & lifetime updated!`;
-    setTimeout(() => {
-      this.viewSimulationToast = null;
-    }, 4000);
+    this.toast.info(`Recorded 1 new view for "${storeName}". Daily, weekly, monthly & lifetime updated!`);
   }
 }

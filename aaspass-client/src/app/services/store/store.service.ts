@@ -504,8 +504,6 @@ export class StoreService {
     // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{storeId}/reviews
     const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
     this.storeHttpService.addReview(numId, {
-      userName: newReview.userName,
-      userAvatar: this.currentUser().avatarUrl,
       rating: clampedRating,
       message: newReview.message
     }).subscribe({ error: () => {} });
@@ -569,7 +567,7 @@ export class StoreService {
 
     // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{id}/views
     const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-    this.storeHttpService.recordStoreView(numId, viewerId).subscribe({ error: () => {} });
+    this.storeHttpService.recordStoreView(numId).subscribe({ error: () => {} });
   }
 
   // Get view metrics for a specific store
