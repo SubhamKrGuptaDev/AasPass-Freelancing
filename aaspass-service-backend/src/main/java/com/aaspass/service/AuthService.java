@@ -13,6 +13,7 @@ import com.aaspass.service.mapper.DtoMapper;
 import com.aaspass.util.AvatarGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +31,15 @@ public class AuthService {
 
     private final UserRepository userRepository;
 
-    public AuthService(UserRepository userRepository) {
+    private final PasswordEncoder passwordEncoder;
+
+    /** Valid BCrypt hash compared against for unknown users so response time does not reveal existence. */
+    private final String dummyHash;
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.dummyHash = passwordEncoder.encode("aaspass-timing-equaliser");
     }
 
     /**
@@ -45,14 +53,17 @@ public class AuthService {
         String identifier = request.usernameOrEmail() != null ? request.usernameOrEmail().trim() : "";
         log.info("[AUTH LOGIN ATTEMPT] Identifying user by: '{}'", identifier);
 
-        User user = userRepository.findByUsernameOrEmail(identifier)
-                .orElseThrow(() -> {
-                    log.warn("[AUTH LOGIN FAILED] No user found matching identifier: '{}'", identifier);
-                    return new UnauthorizedException("Invalid username or password");
-                });
+        User user = userRepository.findByUsernameOrEmail(identifier).orElse(null);
+        String rawPassword = request.password() != null ? request.password() : "";
 
-        // Basic password check
-        if (!user.getPassword().equals(request.password())) {
+        if (user == null) {
+            // Dummy compare keeps timing similar to the wrong-password path.
+            passwordEncoder.matches(rawPassword, dummyHash);
+            log.warn("[AUTH LOGIN FAILED] No user found matching identifier: '{}'", identifier);
+            throw new UnauthorizedException("Invalid username or password");
+        }
+
+        if (user.getPassword() == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
             log.warn("[AUTH LOGIN FAILED] Password mismatch for user ID: {} (username: '{}')", user.getId(), user.getUsername());
             throw new UnauthorizedException("Invalid username or password");
         }
@@ -101,7 +112,7 @@ public class AuthService {
                 .name(request.name().trim())
                 .username(request.username().trim().toLowerCase())
                 .email(request.email().trim().toLowerCase())
-                .password(request.password()) // Store credentials for user
+                .password(passwordEncoder.encode(request.password()))
                 .phone(request.phone())
                 .city(request.city() != null ? request.city() : "Bengaluru")
                 .area(request.area() != null ? request.area() : "Indiranagar")

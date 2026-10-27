@@ -1,10 +1,12 @@
 package com.aaspass.entity;
 
 import com.aaspass.entity.base.BaseAuditEntity;
+import com.aaspass.security.crypto.KycEncryptedConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
@@ -49,10 +51,12 @@ public class User extends BaseAuditEntity {
     @Column(name = "phone", length = 25)
     private String phone;
 
-    @Column(name = "aadhar_number", length = 20)
+    @Convert(converter = KycEncryptedConverter.class)
+    @Column(name = "aadhar_number", length = 255)
     private String aadharNumber;
 
-    @Column(name = "pan_number", length = 15)
+    @Convert(converter = KycEncryptedConverter.class)
+    @Column(name = "pan_number", length = 255)
     private String panNumber;
 
     @Column(name = "avatar_url", length = 500)

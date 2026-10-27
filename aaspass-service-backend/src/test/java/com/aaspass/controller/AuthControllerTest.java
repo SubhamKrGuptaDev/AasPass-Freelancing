@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import com.aaspass.repository.UserRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -30,6 +31,32 @@ public class AuthControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    @DisplayName("Seeded passwords are stored as BCrypt hashes")
+    public void seededPasswordIsHashed() {
+        String stored = userRepository.findByUsername("aman").orElseThrow().getPassword();
+        org.junit.jupiter.api.Assertions.assertTrue(stored.startsWith("$2"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login - KYC fields are masked in the response")
+    public void loginResponseMasksKyc() throws Exception {
+        LoginRequest request = LoginRequest.builder()
+                .usernameOrEmail("aman")
+                .password("password123")
+                .build();
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.aadharNumber", is("XXXXXXXX7777")))
+                .andExpect(jsonPath("$.data.user.panNumber", is("XXXXXX234F")));
+    }
 
     @Test
     @DisplayName("POST /api/auth/login - Should succeed with valid username credentials")

@@ -110,7 +110,7 @@ public class StoreAndUserControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.bio", containsString("Updated bio")))
                 .andExpect(jsonPath("$.data.country", is("India")))
-                .andExpect(jsonPath("$.data.panNumber", is("NEWPN1234M")));
+                .andExpect(jsonPath("$.data.panNumber", is("XXXXXX234M")));
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.aaspass.entity.Store;
 import com.aaspass.entity.StoreReview;
 import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.User;
+import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
 
 import java.util.Collections;
@@ -49,8 +50,8 @@ public final class DtoMapper {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .aadharNumber(user.getAadharNumber())
-                .panNumber(user.getPanNumber())
+                .aadharNumber(KycMasking.maskAadhaar(user.getAadharNumber()))
+                .panNumber(KycMasking.maskPan(user.getPanNumber()))
                 .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
                 .city(user.getCity())
                 .area(user.getArea())

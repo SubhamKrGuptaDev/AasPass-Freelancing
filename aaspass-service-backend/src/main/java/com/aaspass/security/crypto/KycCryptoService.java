@@ -9,6 +9,7 @@ import java.util.Base64;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,6 +30,12 @@ public class KycCryptoService {
 
     public KycCryptoService(SecurityProperties properties) {
         this.key = new SecretKeySpec(properties.kycKeyBytes(), "AES");
+    }
+
+    /** Registers this service with the JPA converter, which Hibernate instantiates outside Spring. */
+    @PostConstruct
+    void registerWithConverter() {
+        KycEncryptedConverter.init(this);
     }
 
     /** @return the encrypted form of {@code plain}, or {@code null} when it is null/blank. */
