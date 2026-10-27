@@ -43,7 +43,13 @@ export class ToastService {
   show(type: ToastType, message: string, title?: string): void {
     const existing = this._toasts().find((t) => t.type === type && t.message === message);
     if (existing) {
-      this.startTimer(existing.id, existing.durationMs);
+      const state = this.timers.get(existing.id);
+      if (state && state.handle === null) {
+        // Paused (hovered/focused): refill the time but stay paused until resume().
+        state.remainingMs = existing.durationMs;
+      } else {
+        this.startTimer(existing.id, existing.durationMs);
+      }
       return;
     }
 

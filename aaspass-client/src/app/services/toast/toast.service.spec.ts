@@ -70,6 +70,21 @@ describe('ToastService', () => {
     expect(service.toasts().length).toBe(0);
   });
 
+  it('duplicateWhilePausedStaysPausedWithFullTime', () => {
+    service.error('Same');
+    const id = service.toasts()[0].id;
+    vi.advanceTimersByTime(1000);
+    service.pause(id);
+    service.error('Same');
+    vi.advanceTimersByTime(10000);
+    expect(service.toasts().length).toBe(1);
+    service.resume(id);
+    vi.advanceTimersByTime(5999);
+    expect(service.toasts().length).toBe(1);
+    vi.advanceTimersByTime(1);
+    expect(service.toasts().length).toBe(0);
+  });
+
   it('dismissRemoves', () => {
     service.warning('Careful');
     service.dismiss(service.toasts()[0].id);

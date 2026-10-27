@@ -39,6 +39,31 @@ describe('ToasterComponent', () => {
     expect(el.querySelector('[data-testid="toast"]')).toBeNull();
   });
 
+  it('focusThenHoverLeaveStaysPaused, and focusout to outside resumes', async () => {
+    vi.useFakeTimers();
+    try {
+      service.success('Hold');
+      fixture.detectChanges();
+      const toast = el.querySelector<HTMLElement>('[data-testid="toast"]');
+      toast?.dispatchEvent(new FocusEvent('focusin'));
+      toast?.dispatchEvent(new MouseEvent('mouseenter'));
+      toast?.dispatchEvent(new MouseEvent('mouseleave'));
+      vi.advanceTimersByTime(10000);
+      expect(service.toasts().length).toBe(1);
+
+      const inner = el.querySelector<HTMLElement>('button');
+      toast?.dispatchEvent(new FocusEvent('focusout', { relatedTarget: inner }));
+      vi.advanceTimersByTime(10000);
+      expect(service.toasts().length).toBe(1);
+
+      toast?.dispatchEvent(new FocusEvent('focusout', { relatedTarget: document.body }));
+      vi.advanceTimersByTime(4000);
+      expect(service.toasts().length).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('escapeDismissesFocusedToast', async () => {
     service.warning('Heads up');
     await fixture.whenStable();

@@ -43,6 +43,49 @@ export class ToasterComponent {
     info: 'Information',
   };
 
+  /** Active pause reasons per toast id; the timer runs only when a toast has none. */
+  private readonly pauseReasons = new Map<number, Set<'hover' | 'focus'>>();
+
+  onPointerEnter(id: number): void {
+    this.addReason(id, 'hover');
+  }
+
+  onPointerLeave(id: number): void {
+    this.removeReason(id, 'hover');
+  }
+
+  onFocusIn(id: number): void {
+    this.addReason(id, 'focus');
+  }
+
+  onFocusOut(id: number, event: FocusEvent): void {
+    const host = event.currentTarget as Node | null;
+    const next = event.relatedTarget as Node | null;
+    if (host && next && host.contains(next)) {
+      return; // focus moved between the toast's own children
+    }
+    this.removeReason(id, 'focus');
+  }
+
+  private addReason(id: number, reason: 'hover' | 'focus'): void {
+    const reasons = this.pauseReasons.get(id) ?? new Set<'hover' | 'focus'>();
+    reasons.add(reason);
+    this.pauseReasons.set(id, reasons);
+    this.toastService.pause(id);
+  }
+
+  private removeReason(id: number, reason: 'hover' | 'focus'): void {
+    const reasons = this.pauseReasons.get(id);
+    if (!reasons) {
+      return;
+    }
+    reasons.delete(reason);
+    if (reasons.size === 0) {
+      this.pauseReasons.delete(id);
+      this.toastService.resume(id);
+    }
+  }
+
   styleFor(toast: Toast): string {
     return ToasterComponent.STYLES[toast.type] ?? ToasterComponent.STYLES.info;
   }

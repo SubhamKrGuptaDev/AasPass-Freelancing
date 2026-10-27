@@ -3,10 +3,10 @@
     class="pointer-events-auto flex items-start gap-3 rounded-xl border p-3 shadow-lg motion-safe:transition motion-safe:duration-200 {{ styleFor(toast) }}"
     data-testid="toast"
     tabindex="-1"
-    (mouseenter)="toastService.pause(toast.id)"
-    (mouseleave)="toastService.resume(toast.id)"
-    (focusin)="toastService.pause(toast.id)"
-    (focusout)="toastService.resume(toast.id)"
+    (mouseenter)="onPointerEnter(toast.id)"
+    (mouseleave)="onPointerLeave(toast.id)"
+    (focusin)="onFocusIn(toast.id)"
+    (focusout)="onFocusOut(toast.id, $event)"
     (keydown.escape)="toastService.dismiss(toast.id)"
   >
     <span
@@ -40,7 +40,7 @@
       <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
     }
   </div>
-  <div role="alert" aria-live="assertive" class="flex flex-col gap-2">
+  <div role="alert" aria-live="assertive" aria-atomic="false" class="flex flex-col gap-2">
     @for (toast of alertToasts(); track toast.id) {
       <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
     }
