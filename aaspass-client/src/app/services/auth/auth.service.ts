@@ -10,6 +10,9 @@ import { AuthHttpService } from './auth-http.service';
 /** Upper bound for the startup session check so a hung backend never blocks bootstrap. */
 const RESTORE_TIMEOUT_MS = 10_000;
 
+/** localStorage keys used by builds before cookie auth; purged on startup. */
+const LEGACY_STORAGE_KEYS = ['aaspass_auth_user', 'aaspass_auth_token', 'aaspass_registered_accounts'] as const;
+
 /**
  * Holds the signed-in user. Auth state comes only from backend responses: the session itself lives in
  * HttpOnly cookies, so nothing is persisted client-side. On startup {@link restoreSession} asks
@@ -46,6 +49,7 @@ export class AuthService {
    */
   restoreSession(): Promise<void> {
     if (!this.restorePromise) {
+      this.purgeLegacyStorage();
       this.restorePromise = firstValueFrom(
         this.authHttpService.me().pipe(timeout({ first: RESTORE_TIMEOUT_MS })),
         { defaultValue: null }
@@ -251,6 +255,23 @@ export class AuthService {
       return;
     }
     void this.router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
+  }
+
+  /**
+   * Removes auth data written by older builds (cached user, token and a local account list that held
+   * plaintext passwords). Auth state now lives only in HttpOnly cookies.
+   */
+  private purgeLegacyStorage(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    try {
+      for (const key of LEGACY_STORAGE_KEYS) {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // Storage can be unavailable (privacy mode, blocked site data); nothing to purge then.
+    }
   }
 
   private profileFromAuthResponse(user: BackendUserResponse | null | undefined): UserProfile {

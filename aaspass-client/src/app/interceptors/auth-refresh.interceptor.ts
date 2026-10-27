@@ -33,10 +33,19 @@ function shouldRefresh(err: unknown, authService: AuthService): boolean {
   return code === 'TOKEN_EXPIRED' || (code === 'UNAUTHENTICATED' && authService.isLoggedIn());
 }
 
+function isRevokedWhileLoggedIn(err: unknown, authService: AuthService): boolean {
+  return err instanceof HttpErrorResponse
+    && err.status === 401
+    && errorCode(err) === 'SESSION_REVOKED'
+    && authService.isLoggedIn();
+}
+
 /**
  * Silently renews the access cookie: on a 401 TOKEN_EXPIRED (or UNAUTHENTICATED while a user is
  * believed logged in) it runs one shared POST /auth/refresh and retries the original request once.
- * If the refresh fails the session is ended and the original error is re-thrown. Registered after
+ * If the refresh is rejected with 401 the session is ended and the original error is re-thrown; any
+ * other refresh failure keeps the user and re-throws the refresh error. A 401 SESSION_REVOKED while
+ * logged in ends the session without a refresh attempt. Registered after
  * the error-toast interceptor so that interceptor only sees the final outcome.
  */
 export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
@@ -48,13 +57,23 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((err: unknown) => {
+      if (isRevokedWhileLoggedIn(err, authService)) {
+        // The server killed the session (logout elsewhere, reuse detection): refreshing cannot help.
+        authService.handleSessionEnded();
+        return throwError(() => err);
+      }
       if (!shouldRefresh(err, authService)) {
         return throwError(() => err);
       }
       return sharedRefresh(authHttp).pipe(
-        catchError(() => {
-          authService.handleSessionEnded();
-          return throwError(() => err);
+        catchError((refreshErr: unknown) => {
+          if (refreshErr instanceof HttpErrorResponse && refreshErr.status === 401) {
+            authService.handleSessionEnded();
+            return throwError(() => err);
+          }
+          // Network / server failure: the session may still be valid, so keep the user and surface the
+          // refresh error so the error-toast interceptor shows the connection or server message.
+          return throwError(() => refreshErr);
         }),
         switchMap(() => next(req))
       );

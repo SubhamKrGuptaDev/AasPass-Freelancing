@@ -143,6 +143,23 @@ describe('AuthService', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('restoreSessionPurgesLegacyStorage', async () => {
+    localStorage.setItem('aaspass_auth_user', '{"name":"Aman"}');
+    localStorage.setItem('aaspass_auth_token', 'legacy-token');
+    localStorage.setItem('aaspass_registered_accounts', '[{"username":"aman","password":"password123"}]');
+    localStorage.setItem('unrelated_key', 'keep');
+
+    const restore = authService.restoreSession();
+    expect(localStorage.getItem('aaspass_auth_user')).toBeNull();
+    expect(localStorage.getItem('aaspass_auth_token')).toBeNull();
+    expect(localStorage.getItem('aaspass_registered_accounts')).toBeNull();
+    expect(localStorage.getItem('unrelated_key')).toBe('keep');
+
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    await restore;
+  });
+
   it('restoreSessionIsMemoised', async () => {
     const first = authService.restoreSession();
     const second = authService.restoreSession();

@@ -23,7 +23,7 @@ describe('authRefreshInterceptor', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'login', children: [] }]),
         provideHttpClient(withInterceptors([errorToastInterceptor, authRefreshInterceptor])),
         provideHttpClientTesting()
       ]
@@ -59,6 +59,7 @@ describe('authRefreshInterceptor', () => {
   });
 
   it('retriesOnlyOnce', () => {
+    const ended = vi.spyOn(authService, 'handleSessionEnded');
     let error: HttpErrorResponse | null = null;
     http.get(`${API_BASE_URL}/a`).subscribe({ error: (e: HttpErrorResponse) => (error = e) });
 
@@ -69,6 +70,54 @@ describe('authRefreshInterceptor', () => {
     httpTesting.expectNone(REFRESH_URL);
     expect(error).not.toBeNull();
     expect(error!.status).toBe(401);
+    expect(ended).not.toHaveBeenCalled();
+  });
+
+  it('refreshServerErrorKeepsUser', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(USER));
+    const ended = vi.spyOn(authService, 'handleSessionEnded');
+    let error: HttpErrorResponse | null = null;
+    http.get(`${API_BASE_URL}/a`).subscribe({ error: (e: HttpErrorResponse) => (error = e) });
+
+    httpTesting.expectOne(`${API_BASE_URL}/a`).flush(TOKEN_EXPIRED, { status: 401, statusText: 'Unauthorized' });
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'down' }, { status: 503, statusText: 'Service Unavailable' });
+
+    expect(ended).not.toHaveBeenCalled();
+    expect(authService.currentUser()?.username).toBe('aman');
+    expect(error!.status).toBe(503);
+    expect(toast.toasts().map(t => t.message)).toEqual(['Something went wrong on our side. Please try again.']);
+  });
+
+  it('refreshNetworkErrorKeepsUser', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(USER));
+    const ended = vi.spyOn(authService, 'handleSessionEnded');
+    let error: HttpErrorResponse | null = null;
+    http.get(`${API_BASE_URL}/a`).subscribe({ error: (e: HttpErrorResponse) => (error = e) });
+
+    httpTesting.expectOne(`${API_BASE_URL}/a`).flush(TOKEN_EXPIRED, { status: 401, statusText: 'Unauthorized' });
+    httpTesting.expectOne(REFRESH_URL).error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+
+    expect(ended).not.toHaveBeenCalled();
+    expect(authService.currentUser()?.username).toBe('aman');
+    expect(error!.status).toBe(0);
+    expect(toast.toasts().map(t => t.message)).toEqual(["Can't reach AasPass right now. Check your connection."]);
+  });
+
+  it('sessionRevokedWhileLoggedInEndsSessionWithoutRefresh', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(USER));
+    const ended = vi.spyOn(authService, 'handleSessionEnded');
+    let error: HttpErrorResponse | null = null;
+    http.get(`${API_BASE_URL}/users/me`).subscribe({ error: (e: HttpErrorResponse) => (error = e) });
+
+    httpTesting.expectOne(`${API_BASE_URL}/users/me`)
+      .flush({ success: false, message: 'revoked', code: 'SESSION_REVOKED' }, { status: 401, statusText: 'Unauthorized' });
+
+    httpTesting.expectNone(REFRESH_URL);
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(authService.currentUser()).toBeNull();
+    expect(error!.status).toBe(401);
+    expect((error!.error as { code?: string }).code).toBe('SESSION_REVOKED');
   });
 
   it('doesNotRefreshAuthEndpoints', () => {
