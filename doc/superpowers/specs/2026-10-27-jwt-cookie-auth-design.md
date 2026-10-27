@@ -233,7 +233,7 @@ Logging: user id and session id only. Never tokens, passwords, raw/encrypted KYC
 ## 7. Frontend changes (`aaspass-client`)
 
 - `proxy.conf.json` + `angular.json` `proxyConfig`; `API_BASE_URL = '/api'`.
-- `app.config.ts`: `provideHttpClient(withFetch(), withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }), withInterceptors([authRefreshInterceptor]))`; `provideAppInitializer(() => inject(AuthService).restoreSession())`.
+- `app.config.ts`: `provideHttpClient(withFetch(), withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }), withInterceptors([errorToastInterceptor, authRefreshInterceptor]))`; `provideAppInitializer(() => inject(AuthService).restoreSession())`. Order matters: `errorToastInterceptor` is outermost, so it only sees the *final* error after any refresh-and-retry.
 - `interceptors/auth-refresh.interceptor.ts`: on `401` with `code === 'TOKEN_EXPIRED'` (or `UNAUTHENTICATED` when a user is believed logged in), call `/auth/refresh` through a single shared in-flight observable, then retry the original request once. Never intercepts `/auth/refresh`, `/auth/login`, `/auth/logout`. On refresh failure: clear `currentUser`, navigate to `/login?returnUrl=<current>`.
 - `AuthService` rewrite:
   - Remove `STORAGE_KEY_*`, `getRegisteredAccounts`, local login/signup fallback, `saveSession` token persistence, `demoAccounts` with passwords, `quickLogin`.
@@ -245,6 +245,44 @@ Logging: user id and session id only. Never tokens, passwords, raw/encrypted KYC
 - `profile` page: masked Aadhaar/PAN displayed read-only; "Update" opens an empty input bound to `updateKyc`; KYC removed from general profile save.
 - Models: remove `token`/`tokenType` from `BackendAuthResponse`; remove KYC from `UpdateUserPayload`; add `KycUpdatePayload`; `ApiResponse` gets optional `code`.
 - `StoreService` / `StoreHttpService`: drop client-supplied `userId`/`viewerId` where the backend now derives it.
+
+### 7.1 Shared toaster
+
+One toast system for the whole app, replacing the four hand-rolled toasts (`create-store` error toast, `store-detail` notification, `profile` simulation toast and success alert), each of which has its own timer and markup today.
+
+**`services/toast/toast.service.ts`** (singleton, signal-based)
+- `toasts = signal<Toast[]>([])` — `Toast { id, type: 'success' | 'error' | 'warning' | 'info', message, title?, durationMs }`. Updated immutably (`update`, never mutate).
+- `success()`, `error()`, `warning()`, `info()`, `show(toast)`, `dismiss(id)`, `clear()`.
+- Auto-dismiss: 4 s for success/info, 6 s for warning/error; timer paused while hovered or focused.
+- At most 4 visible; oldest dropped first. An identical `type + message` already visible is not duplicated (its timer restarts instead).
+
+**`components/toaster/toaster.ts`** (`<app-toaster>`, rendered once in the app shell `app.html`)
+- Stacked top-right on desktop, top-centre full-width (16px gutter) on mobile; Tailwind, colour + icon per type.
+- Accessibility (AXE / WCAG AA): container `aria-live="polite"` for success/info and a separate `role="alert"` / `aria-live="assertive"` region for error/warning; each toast has a close button with `aria-label="Dismiss notification"`; dismissible with `Esc` when focused; colour is never the only signal (icon + text); contrast ≥ 4.5:1; enter/exit animation disabled under `prefers-reduced-motion`.
+
+**`interceptors/error-toast.interceptor.ts`** — turns API failures into user-friendly toasts:
+
+| Condition | Toast | Type |
+|---|---|---|
+| `401 TOKEN_EXPIRED` | none (refresh handles it; only reached if refresh logic is bypassed) | — |
+| `401 SESSION_REVOKED` | "Your session has ended. Please log in again." | warning |
+| `401 UNAUTHENTICATED` | "Please log in to continue." | warning |
+| `401 INVALID_CREDENTIALS` | "Invalid username or password." | error |
+| `403 FORBIDDEN` | "You don't have permission to do that." | error |
+| `403 CSRF_INVALID` | "Security check failed. Please refresh the page and try again." | error |
+| `400` / `409` with server `message` | server `message` (validation / duplicate username etc.) | error |
+| `404` | server `message` or "We couldn't find what you were looking for." | error |
+| status `0` (network) | "Can't reach AasPass right now. Check your connection." | error |
+| `5xx` | "Something went wrong on our side. Please try again." | error |
+
+- Never shows stack traces, raw JSON, or technical exception text; server `message` is used only for 4xx where the backend writes user-facing messages.
+- Opt-out via `HttpContextToken<boolean> SKIP_ERROR_TOAST` for background calls whose failure is expected: startup `restoreSession()` (`GET /auth/me` as a guest), `POST /auth/refresh`, `POST /auth/logout`, and `POST /stores/{id}/views`.
+- The error is re-thrown after toasting so callers can still react (e.g. stop a spinner).
+
+**Migration of existing feedback**
+- `create-store`, `store-detail`, `profile`: remove local `showToast` / `showErrorToast` / `notificationMessage` / `viewSimulationToast` state, timers and markup; call `ToastService` instead (success messages such as "review posted" become `success` toasts).
+- `auth-page` / login modal: server errors (invalid credentials, duplicate username/email) come from the interceptor toast; the `authError` signal and its inline banner are removed. Client-side field validation (e.g. "Passwords do not match") stays inline next to the field, since it belongs to the field, not the request.
+- Logout and successful login/signup show a `success` toast ("Welcome back, {name}!", "You've been logged out.").
 
 ---
 
@@ -270,6 +308,9 @@ Logging: user id and session id only. Never tokens, passwords, raw/encrypted KYC
 - Refresh interceptor: concurrent 401s trigger exactly one refresh; original request retried once; refresh failure clears user and redirects.
 - `authGuard` waits for `restoreSession`.
 - `AuthService.login` sets `currentUser` from backend response only.
+- `ToastService`: add/dismiss; auto-dismiss timings (fake timers); max 4 visible; duplicate suppression.
+- `errorToastInterceptor`: each row of the §7.1 mapping table; `SKIP_ERROR_TOAST` suppresses; `TOKEN_EXPIRED` that is then refreshed successfully produces **no** toast; error is re-thrown.
+- `Toaster` component: renders per type, close button dismisses, error toasts land in the `role="alert"` region.
 
 ### Build verification (AGENTS.md)
 `.\mvnw.cmd test-compile`, `.\mvnw.cmd test`, `npm run build`.
