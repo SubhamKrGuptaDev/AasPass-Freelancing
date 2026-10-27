@@ -104,6 +104,13 @@ Rotation runs in a transaction with a pessimistic write lock on the session row 
 ### 3.5 Logout — `POST /api/auth/logout`
 Public. If a refresh cookie or valid access cookie identifies a session, mark it revoked (`LOGOUT`). Always clear `AASPASS_AT` and `AASPASS_RT`. Returns `200`.
 
+**A logged-out session can never be rejoined.** Revocation is permanent and the session id is dead for good:
+- Session ids are random UUIDs generated per login and **never reused**; there is no code path that clears `revoked_at` or "reactivates" a session.
+- Any request carrying an access JWT whose `sid` is revoked → `401 SESSION_REVOKED`, even if the JWT's own `exp` is still in the future (enforced by `ActiveSessionValidator` on every request).
+- `POST /api/auth/refresh` with the session's current **or any previous** refresh token → `401 SESSION_REVOKED`; no new cookies are issued.
+- A new login always creates a **new** `UserSession` with a new `session_id` and a new refresh token; it never reuses or reattaches to an old session, even for the same user on the same device.
+- This holds even if the client kept copies of the old cookies (e.g. copied out of DevTools before logout) — the server-side revocation, not cookie deletion, is what enforces it.
+
 ### 3.6 Current user — `GET /api/auth/me`
 Authenticated. `?userId=` parameter removed; returns the token user's `UserResponse`.
 
@@ -249,6 +256,8 @@ Logging: user id and session id only. Never tokens, passwords, raw/encrypted KYC
 - Protected endpoint without cookie → `401 UNAUTHENTICATED`; with expired JWT → `401 TOKEN_EXPIRED`.
 - Refresh rotates both cookies; reusing the old refresh token → `401 SESSION_REVOKED` and the new token is also dead.
 - Logout revokes session; old access token → `401 SESSION_REVOKED`.
+- **No rejoin after logout:** capture the `AASPASS_AT` and `AASPASS_RT` cookie values, log out, then replay them manually → `GET /api/auth/me` gives `401 SESSION_REVOKED` and `POST /api/auth/refresh` gives `401 SESSION_REVOKED` with no `Set-Cookie` for new tokens.
+- Logging in again after logout yields a **different** `sid` claim and a different refresh token than the revoked session.
 - Ownership: user A `PUT /api/users/{B}` → 403; A updating B's store → 403.
 - CSRF: authenticated `PUT` without `X-XSRF-TOKEN` → 403.
 - `KycCryptoService`: round-trip; same plaintext ⇒ different ciphertext; tampered ciphertext throws.
