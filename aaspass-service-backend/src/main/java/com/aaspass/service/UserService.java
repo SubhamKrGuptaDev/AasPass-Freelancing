@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -42,14 +43,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserById(Long id, boolean includeKyc) {
+    public UserResponse getUserById(Long id, boolean isSelf) {
         log.info("[USER SERVICE] Fetching user by ID: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("[USER SERVICE] User not found with ID: {}", id);
                     return new ResourceNotFoundException("User", "id", id);
                 });
-        return DtoMapper.toUserResponse(user, true, true, includeKyc);
+        return DtoMapper.toUserResponse(user, true, isSelf, isSelf);
     }
 
     @Transactional
@@ -100,7 +101,7 @@ public class UserService {
             user.setAadharNumber(aadhaar);
         }
         if (request != null && request.panNumber() != null) {
-            String pan = request.panNumber().trim().toUpperCase();
+            String pan = request.panNumber().trim().toUpperCase(Locale.ROOT);
             if (!PAN_PATTERN.matcher(pan).matches()) {
                 throw new BadRequestException("PAN must look like ABCDE1234F");
             }

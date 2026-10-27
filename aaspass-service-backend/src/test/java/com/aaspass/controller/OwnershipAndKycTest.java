@@ -184,4 +184,16 @@ class OwnershipAndKycTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.aadharNumber", is("XXXXXXXX7777")));
     }
+
+    @Test
+    @DisplayName("Public profile hides addresses; own profile shows them")
+    void publicProfileHidesAddresses() throws Exception {
+        Long amanId = id("aman");
+        mockMvc.perform(get("/api/users/" + amanId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.addresses", org.hamcrest.Matchers.empty()));
+        mockMvc.perform(get("/api/users/" + amanId).cookie(login("aman")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.addresses", org.hamcrest.Matchers.not(org.hamcrest.Matchers.empty())));
+    }
 }
