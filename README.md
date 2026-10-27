@@ -54,8 +54,8 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
 ### 4. Comprehensive User Profile & Verification
 * **Personal Details:** Name, email, phone, neighborhood area, city, and bio (with inline editing).
 * **Government ID & KYC:**
-  * **Aadhaar Card:** 12-digit identity verification with masked security display (`XXXX-XXXX-8921`) and verified badges.
-  * **PAN Card:** 10-character tax and payout identification for secure earnings.
+  * **Aadhaar Card:** 12-digit identity verification stored AES-256-GCM encrypted and shown masked (`XXXXXXXX1234`) with verified badges.
+  * **PAN Card:** 10-character tax and payout identification, encrypted at rest and shown masked (`XXXXXX234F`).
 * **Store Management Dashboard:** View store performance, quick edit shortcut, and toggle availability (**Open For Gigs** vs. **Paused**).
 
 ---
@@ -67,6 +67,7 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
 | **Frontend** | Angular 22 | Modern Standalone Components, Signal-based reactive state |
 | **Styling** | Tailwind CSS v4 | Responsive utility-first design, modern gradients & micro-interactions |
 | **Backend** | Spring Boot 4.x / Java 17 | REST APIs, Spring Data JPA, Hibernate, Java 17 Records, Maven |
+| **Security** | Spring Security, JWT in HttpOnly cookies | Access/refresh cookie sessions, CSRF protection, BCrypt(12), AES-256-GCM encrypted KYC |
 | **Database** | MySQL 8.x | Relational persistence, connection pooling |
 | **Documentation** | Markdown Dossiers | `doc/PROJECT_DETAILS.md` (Master Spec) & `doc/AI-doc/CHANGELOG.md` |
 
@@ -79,7 +80,7 @@ AasPass-Freelancing/
 ├── aaspass-client/               # Angular 22 Frontend Application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── components/       # Shared UI components (Navbar, AuthModal, SocialLinks)
+│   │   │   ├── components/       # Shared UI components (Navbar, Toaster, SocialLinks)
 │   │   │   ├── config/           # API configuration (api.config.ts)
 │   │   │   ├── guards/           # Functional route guards (authGuard)
 │   │   │   ├── models/           # TypeScript interfaces (User, Store, Requests, Responses)
@@ -89,7 +90,7 @@ AasPass-Freelancing/
 │   └── package.json
 ├── aaspass-service-backend/      # Spring Boot Java 17 Backend Application
 │   ├── src/main/java/com/aaspass/
-│   │   ├── config/               # WebMvcConfig (CORS), DataInitializer, Logging filters
+│   │   ├── config/               # SecurityConfig (CORS, CSRF, JWT cookies), DataInitializer, Logging filters
 │   │   ├── controller/           # REST Controllers (Auth, Store, User, Reviews, Services)
 │   │   ├── dto/                  # Java 17 Records (Request, Response, Common)
 │   │   ├── entity/               # JPA Entities (User, Store, Address, Reviews, etc.)
@@ -97,6 +98,7 @@ AasPass-Freelancing/
 │   │   ├── repository/           # Spring Data JPA Repositories
 │   │   ├── service/              # Business Service layer & DtoMapper
 │   │   └── util/                 # Helper utilities (AvatarGenerator)
+│   │   ├── security/             # Cookie/JWT token, session and KYC crypto services
 │   ├── src/main/resources/       # application.properties (Datasource & JPA)
 │   └── pom.xml
 ├── doc/
@@ -138,6 +140,8 @@ npm start
 ```
 Navigate to `http://localhost:4200` to access the application.
 
+`npm start` runs the Angular dev server with a proxy (`proxy.conf.json`) that forwards `/api` to `http://localhost:8080`, so the browser talks to a single origin and the auth cookies work without CORS. API errors and confirmations (login, logout, KYC saved, review posted, ...) are shown through a shared toaster.
+
 ---
 
 ### 🔑 Default Demo Accounts
@@ -148,7 +152,56 @@ Navigate to `http://localhost:4200` to access the application.
 | `priya` | `priya.nair@example.com` | `password123` | Store Owner: PixelCraft Studios (Video Editing) |
 | `rohan` | `rohan.gupta@example.com` | `password123` | Store Owner: FullStack Craft (Web & Tech) |
 
-*(Quick 1-click login buttons are also available inside the frontend login popup modal).*
+Passwords are stored as BCrypt (cost 12) hashes; the seeded demo accounts all use `password123`.
+
+---
+
+### Authentication & Security Model
+
+* **Cookie-based JWT sessions.** Tokens are never exposed to JavaScript or stored in `localStorage`.
+
+  | Cookie | Purpose | Lifetime | Flags |
+  | :--- | :--- | :--- | :--- |
+  | `_sid` | Access JWT | 15 minutes | HttpOnly, SameSite=Lax, Path `/api` |
+  | `_rid` | Refresh token | 30-day absolute session | HttpOnly, SameSite=Strict, Path `/api/auth` |
+
+* `Secure` is applied automatically on every host except `localhost`, `127.0.0.1` and `::1`. `Domain` is never set on localhost/IP hosts; elsewhere it is set only when `AASPASS_COOKIE_DOMAIN` is provided.
+* **CSRF:** the backend issues an `XSRF-TOKEN` cookie and requires its value in the `X-XSRF-TOKEN` header on state-changing requests (the Angular client does this automatically).
+* **Refresh-token rotation with reuse detection:** every `POST /api/auth/refresh` issues a new `_rid`. Replaying an already-rotated refresh token revokes the whole session. A logged-out or revoked session can never be rejoined. The client silently refreshes on a 401 and ends the session only when the refresh itself is rejected.
+* **Passwords** are hashed with BCrypt (cost 12). Legacy plaintext passwords are migrated at startup.
+* **KYC data:** Aadhaar and PAN are encrypted at rest with AES-256-GCM and only ever returned masked (`XXXXXXXX1234`, `XXXXXX234F`). They are updated through `PUT /api/users/me/kyc`.
+* **Authorization:** catalog reads (stores, reviews, services, public user profiles) and login/register/refresh/logout are public. Everything else requires a valid session, and writes are owner-only (a user can only modify their own profile, addresses and stores, and cannot review their own store).
+
+### Configuration, Secrets & Production
+
+The backend resolves its secrets from environment variables:
+
+| Variable | Required in production | Format |
+| :--- | :--- | :--- |
+| `SPRING_PROFILES_ACTIVE` | Yes (set to anything other than `dev`, e.g. `prod`) | profile name |
+| `AASPASS_JWT_SECRET` | Yes | base64, at least 32 bytes |
+| `AASPASS_KYC_KEY` | Yes | base64, exactly 32 bytes |
+| `AASPASS_COOKIE_DOMAIN` | Optional | cookie `Domain` for real hostnames |
+
+Generate keys with:
+```bash
+openssl rand -base64 48   # AASPASS_JWT_SECRET
+openssl rand -base64 32   # AASPASS_KYC_KEY
+```
+
+> **Warning:** the `dev` profile is the default (`spring.profiles.default=dev`) and its committed JWT/KYC keys in `application-dev.properties` are **DEV ONLY**. Never run production on them. Environment variables always override the dev keys. Rotating `AASPASS_KYC_KEY` makes existing encrypted KYC values unreadable, so back it up.
+
+### Verifying the Auth Flow Locally
+
+With MySQL running, start the backend (`.\mvnw.cmd spring-boot:run`; the first start migrates existing plaintext passwords/KYC data in your local database, so back it up if it matters) and the client (`npm start`), then:
+
+1. Log in as `aman` / `password123`. In DevTools > Application > Cookies, `_sid` and `_rid` are HttpOnly, and `localStorage` holds no tokens or user data.
+2. Open Profile: Aadhaar shows `XXXXXXXX7777`.
+3. Reload the page: you stay logged in (session restored from the cookie).
+4. Delete only the `_sid` cookie and perform any action: the client silently refreshes and the action succeeds.
+5. Log in with a wrong password: an error toast is shown.
+6. Log out: a toast confirms it, and opening a protected page redirects to login.
+7. In MySQL: `users.aadhar_number` starts with `enc:v1:` and `users.password` starts with `$2`.
 
 ---
 
@@ -172,12 +225,15 @@ Navigate to `http://localhost:4200` to access the application.
   - [x] End-to-end API call logging (`ApiLoggingFilter`) and Global Exception Handling.
 - [x] **Phase 4: Authentication & Client Integration**
   - [x] Username/email & password authentication with pre-seeded demo accounts.
+  - [x] JWT authentication in HttpOnly cookies with rotating refresh tokens, CSRF protection and server-side sessions.
+  - [x] Encrypted Aadhaar/PAN storage with masked display, owner-only writes and BCrypt(12) passwords.
+  - [x] Dev proxy and shared toaster for API errors and confirmations.
   - [x] Context-aware login popup modal with route interception via `authGuard`.
   - [x] Full-stack REST integration connecting Angular client to Spring Boot endpoints.
   - [x] Aadhaar and PAN KYC tracking with masked security formatting.
 - [ ] **Phase 5: Spatial Indexing & Neighborhood Escrow**
   - [ ] Geolocation / spatial indexing (MySQL GIS `ST_Distance_Sphere`) for coordinate queries.
-  - [ ] Phone OTP / JWT-based stateless authentication.
+  - [ ] Phone OTP login.
   - [ ] In-app direct chat (WebSocket / STOMP).
   - [ ] Milestone-based payment escrow for gig completion.
 

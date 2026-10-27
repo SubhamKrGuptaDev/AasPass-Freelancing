@@ -6,6 +6,22 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-28 10:30:00 IST] - Cookie-Based JWT Auth, Encrypted KYC, Owner-Only Writes and Shared Toaster
+* **What Changed:**
+  * **Backend:** Spring Security with stateless JWT auth. Access JWT in HttpOnly `_sid` cookie (15 min, SameSite=Lax, Path `/api`); rotating refresh token in HttpOnly `_rid` cookie (30-day absolute session, SameSite=Strict, Path `/api/auth`) backed by a new `user_sessions` table with reuse detection and non-rejoinable revoked sessions. New `POST /api/auth/refresh`; `GET /api/auth/me` now reads the caller from the cookie. CSRF via `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header. `Secure` is automatic except on localhost; `Domain` only via `AASPASS_COOKIE_DOMAIN`.
+  * **Data protection:** BCrypt(12) password hashing and AES-256-GCM encrypted Aadhaar/PAN (masked `XXXXXXXX1234` / `XXXXXX234F` in responses), new `PUT /api/users/me/kyc`, startup `SecurityDataMigration` for legacy plaintext data. Secrets via `AASPASS_JWT_SECRET` / `AASPASS_KYC_KEY`; the default `dev` profile holds DEV ONLY keys.
+  * **Authorization:** public catalog reads and auth endpoints; all other endpoints authenticated, with owner-only writes (profile, addresses, stores, services).
+  * **Frontend:** backend-only auth state (no `localStorage`), cookie session restore on load, silent token refresh, session ended only on a rejected refresh, Angular dev proxy for `/api`, XSRF config, masked KYC editing, shared `ToastService`/`Toaster` for API errors and confirmations; demo quick-login removed.
+  * **Docs:** Updated `README.md` (auth model, production secrets, local verification checklist) and `doc/PROJECT_DETAILS.md` (security architecture, API tables, `USER_SESSIONS` ER entity, roadmap).
+  * **Verification:** backend 84 tests and frontend 104 tests pass; `npm run build` succeeds (initial bundle 587.23 kB against a 500 kB warning budget that is unchanged from the base commit).
+* **Why Changed:** Replace client-held credentials with server-managed, XSS-resistant cookie sessions, protect KYC/PII at rest, enforce per-user authorization, and give users consistent feedback.
+* **Files Modified:**
+  * `README.md`
+  * `doc/PROJECT_DETAILS.md`
+  * `doc/AI-doc/CHANGELOG.md`
+  * (feature code: see commits on branch `feature/jwt-cookie-auth`)
+
+
 ### [2026-10-24 20:55:00 IST] - Corrected Backend Service References and Alignment in README.md
 * **What Changed:**
   * Updated [`README.md`](file:///c:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/README.md) to fix inaccurate backend references and outdated execution guides:

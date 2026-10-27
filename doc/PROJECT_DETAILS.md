@@ -101,6 +101,7 @@ AasPass is built upon the **Unified Account Model (Option A)**, mirroring the mo
 * **API Architecture:** RESTful MVC pattern with standardized JSON envelope (`ApiResponse<T>`)
 * **Data Transfer Contracts:** Java 17 `record`s with Lombok `@Builder` and compact defensive constructors
 * **Input Validation:** Jakarta Bean Validation (`@NotBlank`, `@Size`, `@DecimalMin`, `@DecimalMax`, `@Email`)
+* **Security:** Spring Security (stateless, `oauth2-resource-server` JWT), HttpOnly cookie sessions, CSRF via `XSRF-TOKEN`/`X-XSRF-TOKEN`, BCrypt(12) password hashing, AES-256-GCM encrypted KYC fields
 * **Logging & Observability:** Custom `ApiLoggingFilter` (`OncePerRequestFilter`) with SLF4J / Logback tracing request ID, duration, client IP, and HTTP status codes
 * **Build System:** Apache Maven (`mvnw` wrapper)
 
@@ -109,10 +110,11 @@ AasPass is built upon the **Unified Account Model (Option A)**, mirroring the mo
 * **Language:** TypeScript 6.0 with strict type checking
 * **State Management:** Fine-grained Angular Signals (`signal`, `computed`, `effect`, `toSignal`)
 * **Styling Framework:** Tailwind CSS v4 with PostCSS plugins
-* **HTTP Client:** Angular `provideHttpClient(withFetch())` communicating with Spring Boot REST endpoints
+* **HTTP Client:** Angular `provideHttpClient(withFetch())` with credentialed requests, XSRF handling and a dev proxy (`npm start` forwards `/api` to `:8080`)
 * **Routing & Guards:** Angular Router with functional `authGuard` providing contextual login interception
 * **Avatar Generation:** Integrated Dicebear Avataaars SVG engine for automated fallback avatar generation
 * **Build & Dev Server:** Vite build engine with Hot Module Replacement (HMR)
+* **Notifications:** Shared `ToastService` + `Toaster` component for API errors and confirmations
 * **Unit Testing:** Vitest with JSDOM environment
 
 ---
@@ -134,9 +136,10 @@ flowchart TD
     end
 
     subgraph Gateway["API Gateway / Security Filter"]
-        CORS["WebMvcConfig (CORS Filter)"]
+        CORS["CORS + CSRF (XSRF-TOKEN cookie)"]
+        JwtAuth["Cookie bearer resolver: _sid access JWT"]
         Logging["ApiLoggingFilter (Request Tracing & Metrics)"]
-        CORS --> Logging
+        CORS --> JwtAuth --> Logging
     end
 
     subgraph Backend["Spring Boot 4.x MVC Backend Layer"]
@@ -206,6 +209,7 @@ sequenceDiagram
 erDiagram
     USERS ||--o{ STORES : "owns (1 to N)"
     USERS ||--o{ ADDRESSES : "maintains (1 to N)"
+    USERS ||--o{ USER_SESSIONS : "signs in (1 to N)"
     STORES ||--o{ STORE_SERVICES : "offers (1 to N)"
     STORES ||--o{ STORE_REVIEWS : "receives (1 to N)"
     STORES ||--o{ STORE_SOCIAL_LINKS : "publishes (1 to N)"
@@ -215,12 +219,12 @@ erDiagram
         bigint id PK
         varchar username UK
         varchar email UK
-        varchar password
+        varchar password "BCrypt(12) hash"
         varchar full_name
         varchar phone
-        varchar aadhar_number
+        varchar aadhar_number "AES-256-GCM, enc:v1: prefix"
         boolean is_aadhar_verified
-        varchar pan_number
+        varchar pan_number "AES-256-GCM, enc:v1: prefix"
         boolean is_pan_verified
         varchar avatar_url
         varchar city
@@ -233,6 +237,22 @@ erDiagram
         varchar user_social_portfolio
         varchar user_social_twitter
         varchar user_social_youtube
+        datetime creation_date_time
+        datetime last_updated_date_time
+    }
+
+    USER_SESSIONS {
+        bigint id PK
+        bigint user_id FK
+        varchar session_id UK
+        varchar refresh_token_hash UK
+        varchar previous_refresh_token_hash
+        varchar user_agent
+        varchar ip_address
+        datetime expires_at
+        datetime last_used_at
+        datetime revoked_at
+        varchar revoke_reason
         datetime creation_date_time
         datetime last_updated_date_time
     }
@@ -330,6 +350,11 @@ erDiagram
     }
 ```
 
+### Sensitive Data & Sessions
+* **`users.password`** holds a BCrypt (cost 12) hash (`$2...`); a startup migration (`SecurityDataMigration`) converts legacy plaintext values.
+* **`users.aadhar_number` / `users.pan_number`** are encrypted by a JPA attribute converter (AES-256-GCM, `enc:v1:` prefix). API responses return only masked values (`XXXXXXXX1234`, `XXXXXX234F`).
+* **`user_sessions`** stores one row per login: only SHA-256 hashes of the current and previous refresh tokens (for reuse detection), the absolute `expires_at` (30 days), `last_used_at`, and `revoked_at` / `revoke_reason`. A revoked or logged-out session can never be rejoined.
+
 ### Database Superclass Architecture
 All persistence models strictly extend a two-tier mapped superclass hierarchy to eliminate boilerplate and enforce immutability:
 1. **`BaseIdEntity` (`@MappedSuperclass`)**:
@@ -355,16 +380,25 @@ Every API endpoint responds with a standardized JSON wrapper:
 }
 ```
 
+### Access Control Summary
+* **Public:** `POST /api/auth/login|register|refresh|logout`, every `GET /api/stores/**` (catalog, services, reviews), `POST /api/stores/{id}/views`, and `GET /api/users/{id}` (public profile, KYC masked).
+* **Authenticated (valid `_sid` cookie, plus `X-XSRF-TOKEN` on writes):** everything else, including `GET /api/auth/me`, all address endpoints and every store, service, review and profile write.
+* **Owner-only writes:** a caller may only modify their own profile/KYC/addresses and their own stores and service packages; foreign resources return `403`. Unauthenticated calls return `401`.
+* Tokens travel only in HttpOnly cookies: `_sid` (access JWT, 15 min, SameSite=Lax, Path `/api`) and `_rid` (refresh, 30-day absolute session, SameSite=Strict, Path `/api/auth`). `Secure` is automatic except on localhost/127.0.0.1/::1.
+
 ### 1. Authentication & Session Endpoints (`/api/auth`)
 
-| Method | Endpoint | Description | Request Body | Response Data |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Authenticate user via username or email | `LoginRequest` (usernameOrEmail, password) | `AuthResponse` (token, `UserResponse`) |
-| `POST` | `/api/auth/register` | Register new unified account | `RegisterRequest` (username, email, password, fullName, phone, city, area, avatarUrl) | `AuthResponse` (token, `UserResponse`) |
-| `GET` | `/api/auth/me` | Fetch active user session | `?userId={id}` query parameter | `UserResponse` |
-| `POST` | `/api/auth/logout` | Terminate session | None | `null` |
+| Method | Endpoint | Access | Description | Request Body | Response Data |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Public | Authenticate via username or email; sets `_sid` and `_rid` cookies | `LoginRequest` (usernameOrEmail, password) | `AuthResponse` (`UserResponse`) |
+| `POST` | `/api/auth/register` | Public | Register a new unified account and sign it in | `RegisterRequest` (username, email, password, fullName, phone, city, area, avatarUrl) | `AuthResponse` (`UserResponse`) |
+| `POST` | `/api/auth/refresh` | Public (needs `_rid` cookie) | Rotate the refresh token and issue a new access token; reuse of a rotated token revokes the session | None (cookie) | `AuthResponse` (`UserResponse`) |
+| `GET` | `/api/auth/me` | Authenticated | Fetch the current user from the access cookie (no `userId` parameter) | None | `UserResponse` |
+| `POST` | `/api/auth/logout` | Public | Revoke the session and clear the auth cookies | None | `null` |
 
 ### 2. Storefront Catalog & Discovery Endpoints (`/api/stores`)
+
+> `GET` endpoints and `POST /{id}/views` are public. `POST /api/stores` requires authentication; `PUT`, `DELETE` and `PATCH` are owner-only.
 
 | Method | Endpoint | Description | Query Parameters / Payload | Response Data |
 | :--- | :--- | :--- | :--- | :--- |
@@ -379,6 +413,8 @@ Every API endpoint responds with a standardized JSON wrapper:
 
 ### 3. Store Service Packages Endpoints (`/api/stores/{storeId}/services`)
 
+> `GET` is public; `POST`, `PUT` and `DELETE` are owner-only (store owner).
+
 | Method | Endpoint | Description | Request Body | Response Data |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/stores/{storeId}/services` | List all service packages offered by a store | None | `List<ServiceItemResponse>` |
@@ -388,6 +424,8 @@ Every API endpoint responds with a standardized JSON wrapper:
 
 ### 4. Ratings & Client Reviews Endpoints (`/api/stores/{storeId}/reviews`)
 
+> `GET` is public; `POST` requires authentication (reviewer identity comes from the session).
+
 | Method | Endpoint | Description | Constraints & Details | Response Data |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/stores/{storeId}/reviews` | Fetch verified client reviews for a store | Ordered by date descending | `List<StoreReviewResponse>` |
@@ -395,10 +433,13 @@ Every API endpoint responds with a standardized JSON wrapper:
 
 ### 5. User Profile & Multi-Address Endpoints (`/api/users`)
 
+> All address endpoints are authenticated and owner-only.
+
 | Method | Endpoint | Description | Request Body | Response Data |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/users/{id}` | Fetch user profile, KYC status, and stores | None | `UserResponse` |
-| `PUT` | `/api/users/{id}` | Update personal details, bio, avatar, and KYC | `UserUpdateRequest` | `UserResponse` |
+| `GET` | `/api/users/{id}` | Public. Fetch user profile, masked KYC and stores | None | `UserResponse` |
+| `PUT` | `/api/users/{id}` | Owner-only. Update personal details, bio and avatar | `UserUpdateRequest` | `UserResponse` |
+| `PUT` | `/api/users/me/kyc` | Authenticated. Set the caller's Aadhaar/PAN; encrypted at rest, returned masked | `KycUpdateRequest` (aadharNumber, panNumber) | `UserResponse` |
 | `GET` | `/api/users/{userId}/addresses` | List all saved addresses for a user | None | `List<AddressResponse>` |
 | `POST` | `/api/users/{userId}/addresses` | Add a new address to user address book | `AddressRequest` | `AddressResponse` (201 Created) |
 | `PUT` | `/api/users/{userId}/addresses/{addressId}` | Modify an existing address | `AddressRequest` | `AddressResponse` |
@@ -415,7 +456,7 @@ The client is built using Angular 22 standalone components and fine-grained reac
 aaspass-client/src/app/
 ├── components/
 │   ├── navbar/                  # Global navigation, city selector, search input, multi-store switcher
-│   ├── auth-modal/              # Contextual login/signup popup dialog with 1-click test logins
+│   ├── toaster/                 # Global toast host for API errors and confirmations
 │   └── social-media-links/      # Reusable multi-channel social manager with preset chips & validation
 ├── pages/
 │   ├── home/                    # Discovery hub with radius filters, category carousels & store cards
@@ -424,10 +465,11 @@ aaspass-client/src/app/
 │   ├── profile/                 # Profile management hub: Personal info, KYC, Addresses & Multi-Store manager
 │   └── auth/                    # Dedicated standalone /login and /signup pages
 ├── services/
-│   ├── auth/                    # AuthService & AuthHttpService (Reactive session & token management)
-│   └── store/                   # StoreService & StoreHttpService (Reactive catalog, multi-store & analytics)
+│   ├── auth/                    # AuthService & AuthHttpService (cookie session restore, silent refresh)
+│   ├── store/                   # StoreService & StoreHttpService (Reactive catalog, multi-store & analytics)
+│   └── toast/                   # ToastService (shared notifications)
 ├── guards/
-│   └── auth.guard.ts            # Route protection: Intercepts unauthenticated users & triggers modal
+│   └── auth.guard.ts            # Route protection: redirects unauthenticated users to login
 └── models/                      # Strict TypeScript interfaces matching backend Java records
 ```
 
@@ -495,8 +537,9 @@ readonly filteredStores = computed(() => {
 
 ### 4. Comprehensive User Profile & Verification (KYC)
 * **Government Identity Verification (KYC):**
-  * **Aadhaar Card:** 12-digit identity entry with masked security formatting (`XXXX-XXXX-8921`) and verified trust badges.
-  * **PAN Card:** 10-character alphanumeric tax identifier for payouts and compliance.
+  * **Aadhaar Card:** 12-digit identity entry, encrypted at rest (AES-256-GCM), displayed masked (`XXXXXXXX1234`) with verified trust badges.
+  * **PAN Card:** 10-character alphanumeric tax identifier, encrypted at rest and displayed masked (`XXXXXX234F`).
+  * Edited through `PUT /api/users/me/kyc`.
 * **Multi-Address Book:** Manage multiple locations (Home, Office, Studio) with geo-coordinates and primary default toggling.
 * **Multi-Store Management Dashboard:**
   * Tabbed switcher displaying all stores owned by the account.
@@ -542,12 +585,14 @@ In accordance with repository guidelines (`AGENTS.md`), the codebase adheres to 
 * **Coverage:**
   * `AuthControllerTest`: Verifies login success, bad credentials, user registration, duplicate detection, and session retrieval.
   * `StoreAndUserControllerTest`: Verifies store creation, distance filtering, availability toggles, review rating bounds, address management, and Dicebear avatar fallbacks.
+  * `security.*` tests: JWT tokens, auth cookies, session rotation/reuse detection, KYC encryption and masking.
   * `EntityDesignTest`: Asserts read-only ID immutability and `@PrePersist`/`@PreUpdate` timestamp accuracy.
 
 ### Frontend Test Suite (Angular 22)
 * **Framework:** Vitest with JSDOM
 * **Coverage:**
-  * `auth.service.spec.ts`: Validates credential verification, signup workflows, local session restoration, demo quick-logins, and route guard interception.
+  * `auth.service.spec.ts` / `auth-http.service.spec.ts`: Validate login/signup, cookie session restore, silent refresh and session end on rejected refresh.
+  * `toast.service.spec.ts`: Validates the shared toaster.
   * `store.service.spec.ts`: Validates API store mapping, multi-store derivation, search filtering, review addition, and engagement analytics.
   * `app.spec.ts`: Validates root application rendering and navigation layout.
 
@@ -580,7 +625,9 @@ spring.datasource.password=root
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
+spring.profiles.default=dev
 ```
+Secrets are read from `AASPASS_JWT_SECRET` (base64, at least 32 bytes) and `AASPASS_KYC_KEY` (base64, exactly 32 bytes). The default `dev` profile (`application-dev.properties`) supplies **DEV ONLY** fallback keys. In production set `SPRING_PROFILES_ACTIVE` to something other than `dev`, provide both variables (generate with `openssl rand -base64 48` / `openssl rand -base64 32`) and optionally `AASPASS_COOKIE_DOMAIN`. Environment variables override the dev keys.
 
 Compile and start the Spring Boot service:
 ```powershell
@@ -589,7 +636,7 @@ cd aaspass-service-backend
 .\mvnw.cmd spring-boot:run
 ```
 > The backend server starts at **`http://localhost:8080`**.  
-> `DataInitializer` will automatically seed default accounts on first startup if the database is empty.
+> `DataInitializer` will automatically seed default accounts on first startup if the database is empty. On startup, `SecurityDataMigration` hashes any legacy plaintext passwords and encrypts plaintext KYC values in the existing database.
 
 ---
 
@@ -600,7 +647,7 @@ cd aaspass-client
 npm install
 npm start
 ```
-> The client application will be accessible at **`http://localhost:4200`**.
+> The client application will be accessible at **`http://localhost:4200`**. `npm start` proxies `/api` to `http://localhost:8080`, so the auth cookies stay same-origin.
 
 ---
 
@@ -612,8 +659,8 @@ npm start
 | `priya` | `priya.nair@example.com` | `password123` | Store Owner: PixelCraft Studios (Video Editing) |
 | `rohan` | `rohan.gupta@example.com` | `password123` | Store Owner: FullStack Craft (Web & Tech) |
 
-> [!TIP]
-> You can also click the quick-login demo buttons inside the login popup modal for instant one-click authentication.
+> [!NOTE]
+> Passwords are stored as BCrypt hashes; sign in through the regular login form.
 
 ---
 
@@ -628,7 +675,7 @@ AasPass-Freelancing/
 ├── aaspass-client/                     # Angular 22 Frontend Application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── components/             # Reusable UI components (Navbar, AuthModal, SocialLinks)
+│   │   │   ├── components/             # Reusable UI components (Navbar, Toaster, SocialLinks)
 │   │   │   ├── config/                 # API base URLs and contract definitions
 │   │   │   ├── guards/                 # Functional route protection guards (authGuard)
 │   │   │   ├── models/                 # TypeScript interfaces (User, Store, Requests, Responses)
@@ -643,7 +690,8 @@ AasPass-Freelancing/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/aaspass/
-│   │   │   │   ├── config/             # CORS config, DataInitializer, API logging filters
+│   │   │   │   ├── config/             # SecurityConfig (CORS, CSRF, JWT cookies), DataInitializer, API logging filters
+│   │   │   │   ├── security/           # Token, auth-cookie, session and KYC crypto services
 │   │   │   │   ├── controller/         # REST Controllers (Auth, Store, User, Reviews, Services)
 │   │   │   │   ├── dto/                # Java 17 Records (common, request, response)
 │   │   │   │   ├── entity/             # JPA Entities & mapped superclasses (BaseId, BaseAudit)
@@ -677,10 +725,13 @@ AasPass-Freelancing/
 * [x] **Spring Boot REST Persistence:** Complete MVC architecture with MySQL persistence.
 * [x] **Java 17 Record Modernization:** Fully immutable DTO layer with Jakarta Bean Validation.
 * [x] **Full-Stack Null-Safety:** Comprehensive defect prevention across backend and frontend layers.
+* [x] **Cookie-Based JWT Authentication:** HttpOnly access/refresh cookies, rotating refresh tokens with reuse detection, server-side sessions, CSRF protection and owner-only writes.
+* [x] **Encrypted KYC & Hashed Passwords:** AES-256-GCM Aadhaar/PAN with masked display, BCrypt(12) passwords.
+* [x] **Shared Toaster:** Unified API error and confirmation notifications.
 
 ### Upcoming Milestones (v2.0.0)
 * [ ] **Spatial Geolocation Queries:** Integration of PostGIS / MySQL GIS spatial indexing (`ST_Distance_Sphere`) for exact coordinate-based neighborhood matching.
-* [ ] **Stateless JWT & SMS OTP Authentication:** Transitioning from session credentials to phone OTP login via Twilio / Fast2SMS.
+* [ ] **SMS OTP Authentication:** Phone OTP login via Twilio / Fast2SMS on top of the existing JWT cookie sessions.
 * [ ] **In-App Direct Chat:** WebSocket / STOMP real-time messaging between neighbors.
 * [ ] **Neighborhood Escrow Payments:** Milestone-based escrow payments via UPI / Razorpay with release upon gig sign-off.
 * [ ] **PWA & Offline Discovery:** Progressive Web App caching for fast neighborhood access on mobile devices.
