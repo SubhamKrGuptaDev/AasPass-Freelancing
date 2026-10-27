@@ -465,7 +465,7 @@
 
             <div class="flex items-center gap-2 flex-wrap">
               <a 
-                [routerLink]="['/stores', store.id]"
+                [routerLink]="['/stores', storeService.getStoreUrlKey(store)]"
                 class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition"
               >
                 View Public Storefront →

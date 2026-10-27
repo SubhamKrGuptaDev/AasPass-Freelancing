@@ -111,6 +111,35 @@ describe('StoreService Reviews & Ratings', () => {
     expect(service.stores()[1].storeName).toBe('CodeSpark Lab');
   });
 
+  describe('store URL keys (name + id)', () => {
+    it('should build "<name>-<id>" keys for persisted stores', () => {
+      expect(service.getStoreUrlKey({ ...fixtureStore1, id: '12', storeName: "Subham's Plumbing & Co." })).toBe('subhams-plumbing-co-12');
+      expect(service.getStoreUrlKey({ ...fixtureStore1, id: '7', storeName: 'Café Shop 24' })).toBe('cafe-shop-24-7');
+    });
+
+    it('should fall back to the bare id when the name has no URL-safe characters or the id is a local one', () => {
+      expect(service.getStoreUrlKey({ ...fixtureStore1, id: '5', storeName: 'दुकान' })).toBe('5');
+      expect(service.getStoreUrlKey(fixtureStore1)).toBe('store-1');
+      expect(service.getStoreUrlKey(undefined)).toBe('');
+    });
+
+    it('should resolve stores with duplicate names by their trailing id', () => {
+      service.stores.set([
+        { ...fixtureStore1, id: '12', storeName: 'Same Name' },
+        { ...fixtureStore2, id: '24', storeName: 'Same Name' }
+      ]);
+      expect(service.getStoreByUrlKey('same-name-12')?.id).toBe('12');
+      expect(service.getStoreByUrlKey('same-name-24')?.id).toBe('24');
+      // Old id-only links and links with an outdated name still resolve
+      expect(service.getStoreByUrlKey('24')?.id).toBe('24');
+      expect(service.getStoreByUrlKey('old-name-12')?.id).toBe('12');
+    });
+
+    it('should resolve unsaved local stores by their client id', () => {
+      expect(service.getStoreByUrlKey('store-1')?.storeName).toBe('PixelCraft Studios');
+    });
+  });
+
   it('should add a review and update average rating and review count', () => {
     const storeId = 'store-1';
     const initialStore = service.getStoreById(storeId)!;

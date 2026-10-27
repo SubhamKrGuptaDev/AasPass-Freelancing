@@ -2,7 +2,7 @@ import { Component, inject, computed, signal, effect, untracked } from '@angular
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { 
@@ -66,9 +66,13 @@ export class StoreDetailComponent {
 
   store = computed(() => {
     const params = this.routeParamMap();
-    const id = params?.get('id') || this.route.snapshot.paramMap.get('id');
-    return id ? this.storeService.getStoreById(id) : undefined;
+    const key = this.routeUrlKey(params);
+    return key ? this.storeService.getStoreByUrlKey(key) : undefined;
   });
+
+  private routeUrlKey(params: ParamMap | null | undefined): string {
+    return params?.get('storeKey') || this.route.snapshot.paramMap.get('storeKey') || '';
+  }
 
   isOwner = computed(() => {
     if (!this.authService.isLoggedIn()) return false;
@@ -95,6 +99,18 @@ export class StoreDetailComponent {
   private lastRecordedStoreId: string | null = null;
 
   constructor() {
+    // Canonicalize the URL: old /stores/{id} links and links with an outdated store name
+    // are replaced with the current /stores/{name}-{id}
+    effect(() => {
+      const canonicalKey = this.storeService.getStoreUrlKey(this.store());
+      const currentKey = this.routeUrlKey(this.routeParamMap());
+      if (canonicalKey && currentKey && currentKey !== canonicalKey) {
+        untracked(() => {
+          this.router.navigate(['/stores', canonicalKey], { replaceUrl: true });
+        });
+      }
+    });
+
     effect(() => {
       const s = this.store();
       const currentId = s?.id;

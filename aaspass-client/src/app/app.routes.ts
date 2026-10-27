@@ -9,7 +9,7 @@ import { authGuard } from './guards/auth.guard';
 export const routes: Routes = [
   // Public routes (Authentication not required)
   { path: '', component: HomeComponent, title: 'AasPass - Hyperlocal Freelancing & Nearby Gigs' },
-  { path: 'stores/:id', component: StoreDetailComponent, title: 'Store Details - AasPass' },
+  { path: 'stores/:storeKey', component: StoreDetailComponent, title: 'Store Details - AasPass' },
   
   // Dedicated Auth Routes
   { path: 'login', component: AuthPageComponent, title: 'Sign In - AasPass' },

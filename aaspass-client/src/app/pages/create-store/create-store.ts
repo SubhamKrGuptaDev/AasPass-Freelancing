@@ -213,9 +213,10 @@ export class CreateStoreComponent implements OnInit {
         userSocialLinks: storeSocialMediaLinks,
         description: this.formData.description
       }, this.editingStoreId).subscribe({
-        next: () => {
+        next: (savedStore) => {
           this.isSubmitting.set(false);
-          this.router.navigate(['/stores', this.editingStoreId]);
+          // Use the returned store so a rename navigates to the updated name-id URL
+          this.router.navigate(['/stores', this.storeService.getStoreUrlKey(savedStore) || this.editingStoreId]);
         },
         error: (err) => {
           this.isSubmitting.set(false);
@@ -271,7 +272,7 @@ export class CreateStoreComponent implements OnInit {
       next: (persistedStore) => {
         this.isSubmitting.set(false);
         // Navigate directly to the verified persisted store detail page!
-        this.router.navigate(['/stores', persistedStore.id]);
+        this.router.navigate(['/stores', this.storeService.getStoreUrlKey(persistedStore)]);
       },
       error: (err) => {
         this.isSubmitting.set(false);

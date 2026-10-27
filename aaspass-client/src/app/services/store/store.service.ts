@@ -265,6 +265,36 @@ export class StoreService {
     });
   }
 
+  // URL segment for a store page: "<store-name>-<id>" (e.g. "subhams-plumbing-12").
+  // The trailing ID keeps it unique even when store names repeat; the name part is only for readability.
+  getStoreUrlKey(store: StoreProfile | undefined | null): string {
+    const id = String(store?.id ?? '');
+    // Unsaved local stores have non-numeric client IDs, which cannot be parsed back from a name-id key
+    if (!/^\d+$/.test(id)) return id;
+    const nameSlug = (store?.storeName ?? '')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .toLowerCase()
+      .replace(/'/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return nameSlug ? `${nameSlug}-${id}` : id;
+  }
+
+  // Resolve a store from a /stores/{key} URL segment. Accepts "<name>-<id>", a bare "<id>" (old links),
+  // or an unsaved local store ID. Only the trailing ID is used for lookup, so renamed stores still resolve.
+  getStoreByUrlKey(key: string): StoreProfile | undefined {
+    if (!key) return undefined;
+    // Exact ID match first, so local IDs like "store-3-1234" are not misread as numeric ID 1234
+    const user = this.currentUser();
+    const exactMatch = this.stores().find(s => String(s.id) === key)
+      ?? (user.stores || []).find(s => String(s.id) === key);
+    if (exactMatch) return exactMatch;
+
+    const idMatch = key.match(/(?:^|-)(\d+)$/);
+    return idMatch ? this.getStoreById(idMatch[1]) : undefined;
+  }
+
   // Get single store by ID (searches loaded stores, user stores, and triggers dynamic API fetch if not present)
   getStoreById(id: string): StoreProfile | undefined {
     if (!id) return undefined;
@@ -648,6 +678,16 @@ export class StoreService {
         if (res && res.data) {
           const backendMapped = this.mapBackendStoreToProfile(res.data);
           this.stores.update(list => list.map(s => String(s.id) === String(targetStoreId) ? backendMapped : s));
+          // Keep the user's session copy in sync too, so store links pick up the new name after a rename
+          this.currentUser.update(u => {
+            const syncedUser: UserProfile = {
+              ...u,
+              store: u.store && String(u.store.id) === String(targetStoreId) ? backendMapped : u.store,
+              stores: (u.stores || []).map(s => String(s.id) === String(targetStoreId) ? backendMapped : s)
+            };
+            this.authService.saveSession(syncedUser);
+            return syncedUser;
+          });
           return backendMapped;
         }
         return updatedStore;

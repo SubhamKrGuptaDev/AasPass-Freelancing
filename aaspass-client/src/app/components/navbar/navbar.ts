@@ -31,6 +31,14 @@ export class NavbarComponent {
     return user?.store?.id || (stores.length > 0 ? (stores[0]?.id || '') : '');
   });
 
+  activeStoreUrlKey = computed(() => {
+    const activeId = this.activeStoreId();
+    const user = this.storeService.currentUser();
+    const stores = this.storeService.userStores() || [];
+    const store = stores.find(s => s?.id === activeId) ?? (user?.store?.id === activeId ? user.store : undefined);
+    return this.storeService.getStoreUrlKey(store) || activeId;
+  });
+
   activeStoreName = computed(() => {
     const activeId = this.activeStoreId();
     const stores = this.storeService.userStores() || [];

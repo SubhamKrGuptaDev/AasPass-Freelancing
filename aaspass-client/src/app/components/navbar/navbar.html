@@ -129,7 +129,7 @@
           } @else if ((storeService.userStores()?.length ?? 0) === 1) {
             <!-- Single Store: Direct My Store Link -->
             <a 
-              [routerLink]="['/stores', activeStoreId()]" 
+              [routerLink]="['/stores', activeStoreUrlKey()]" 
               class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition shadow-2xs"
               title="View your store"
             >
@@ -141,7 +141,7 @@
             <div class="relative inline-flex items-center">
               <!-- Primary My Store Button -->
               <a 
-                [routerLink]="['/stores', activeStoreId()]" 
+                [routerLink]="['/stores', activeStoreUrlKey()]" 
                 (click)="closeDropdown()"
                 class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-l-xl text-xs sm:text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-r-0 border-indigo-200 transition shadow-2xs"
                 title="View your store ({{ activeStoreName() }})"
@@ -182,7 +182,7 @@
                   <div class="max-h-56 overflow-y-auto py-1">
                     @for (st of (storeService.userStores() || []); track st.id) {
                       <a 
-                        [routerLink]="['/stores', st?.id]"
+                        [routerLink]="['/stores', storeService.getStoreUrlKey(st)]"
                         (click)="closeDropdown()"
                         class="flex items-center justify-between px-3.5 py-2.5 hover:bg-indigo-50/70 transition group text-left"
                       >
