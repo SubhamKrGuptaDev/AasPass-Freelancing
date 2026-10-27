@@ -66,14 +66,18 @@ class SessionServiceTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void rotateTwiceWithSameTokenRevokesSession() {
         IssuedSession a = sessions.open(user, "ua", "1.1.1.1");
-        IssuedSession b = sessions.rotate(a.refreshToken());
-        assertThrows(SessionRevokedException.class, () -> sessions.rotate(a.refreshToken()));
+        try {
+            IssuedSession b = sessions.rotate(a.refreshToken());
+            assertThrows(SessionRevokedException.class, () -> sessions.rotate(a.refreshToken()));
 
-        // No surrounding test transaction: this re-read observes committed state.
-        UserSession stored = repository.findBySessionId(a.session().getSessionId()).orElseThrow();
-        assertEquals(SessionRevokeReason.REUSE_DETECTED, stored.getRevokeReason());
-        assertFalse(sessions.isActive(a.session().getSessionId()));
-        assertThrows(SessionRevokedException.class, () -> sessions.rotate(b.refreshToken()));
+            // No surrounding test transaction: this re-read observes committed state.
+            UserSession stored = repository.findBySessionId(a.session().getSessionId()).orElseThrow();
+            assertEquals(SessionRevokeReason.REUSE_DETECTED, stored.getRevokeReason());
+            assertFalse(sessions.isActive(a.session().getSessionId()));
+            assertThrows(SessionRevokedException.class, () -> sessions.rotate(b.refreshToken()));
+        } finally {
+            repository.findBySessionId(a.session().getSessionId()).ifPresent(repository::delete);
+        }
     }
 
     @Test

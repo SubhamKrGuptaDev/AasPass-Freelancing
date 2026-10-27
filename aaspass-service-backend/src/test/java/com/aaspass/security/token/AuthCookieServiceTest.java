@@ -70,6 +70,15 @@ class AuthCookieServiceTest {
     }
 
     @Test
+    void ipHostIsSecureWithoutDomain() {
+        for (String host : new String[] {"192.168.1.5", "2001:db8::1", "[2001:db8::1]"}) {
+            ResponseCookie c = service("aaspass.in").accessCookie(request(host), "jwt");
+            assertTrue(c.isSecure(), host);
+            assertNull(c.getDomain(), host);
+        }
+    }
+
+    @Test
     void realHostUsesConfiguredDomain() {
         assertEquals("aaspass.in", service("aaspass.in").accessCookie(request("app.aaspass.in"), "jwt").getDomain());
     }

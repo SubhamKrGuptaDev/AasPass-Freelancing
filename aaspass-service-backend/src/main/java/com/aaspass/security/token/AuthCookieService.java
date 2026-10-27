@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,8 @@ public class AuthCookieService {
     public static final String REFRESH_COOKIE = "_rid";
     private static final String ACCESS_PATH = "/api";
     private static final String REFRESH_PATH = "/api/auth";
+
+    private static final Pattern IPV4 = Pattern.compile("[0-9]{1,3}([.][0-9]{1,3}){3}");
 
     private final SecurityProperties properties;
     private final Clock clock;
@@ -63,12 +66,21 @@ public class AuthCookieService {
                 || "::1".equals(host) || "[::1]".equals(host);
     }
 
+    /** @return true for IPv4 or IPv6 literals (IPv6 with or without brackets); browsers reject Domain on these. */
+    static boolean isIpLiteral(String serverName) {
+        if (serverName == null) {
+            return false;
+        }
+        String host = serverName.trim();
+        return host.contains(":") || IPV4.matcher(host).matches();
+    }
+
     /** Applies the host-dependent {@code Secure} and {@code Domain} attributes. */
     public void applyHostRules(ResponseCookie.ResponseCookieBuilder builder, HttpServletRequest req) {
         boolean local = isLocalHost(req.getServerName());
         builder.secure(!local);
         String domain = properties.cookieDomain();
-        if (!local && domain != null && !domain.isBlank()) {
+        if (!local && !isIpLiteral(req.getServerName()) && domain != null && !domain.isBlank()) {
             builder.domain(domain.trim());
         }
     }

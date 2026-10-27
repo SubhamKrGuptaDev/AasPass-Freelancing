@@ -77,21 +77,8 @@ public class SessionService {
         String hash = TokenHashing.sha256Hex(refreshToken);
         Instant now = clock.instant();
 
-        Optional<UserSession> current = repository.findForUpdateByRefreshTokenHash(hash);
-        if (current.isEmpty()) {
-            Optional<UserSession> replayed = repository.findForUpdateByPreviousRefreshTokenHash(hash);
-            if (replayed.isPresent()) {
-                UserSession session = replayed.get();
-                if (session.getRevokedAt() == null) {
-                    revoke(session, SessionRevokeReason.REUSE_DETECTED, now);
-                }
-                log.warn("Refresh token reuse detected; revoked session {}", session.getSessionId());
-                throw new SessionRevokedException("Session revoked");
-            }
-            throw new UnauthorizedException("Invalid refresh token", ErrorCode.UNAUTHENTICATED);
-        }
-
-        UserSession session = current.get();
+        UserSession session = repository.findForUpdateByRefreshTokenHash(hash)
+                .orElseThrow(() -> unknownTokenFailure(hash, now));
         if (!session.isActive(now)) {
             throw new SessionRevokedException("Session revoked or expired");
         }
@@ -106,6 +93,19 @@ public class SessionService {
         String access = jwtTokenService.issueAccessToken(
                 user.getId(), user.getUsername(), saved.getSessionId(), now);
         return new IssuedSession(saved, newToken, access);
+    }
+
+    /** Builds the failure for a token matching no current hash, revoking the session if it is a replay. */
+    private UnauthorizedException unknownTokenFailure(String hash, Instant now) {
+        return repository.findForUpdateByPreviousRefreshTokenHash(hash)
+                .<UnauthorizedException>map(session -> {
+                    if (session.getRevokedAt() == null) {
+                        revoke(session, SessionRevokeReason.REUSE_DETECTED, now);
+                    }
+                    log.warn("Refresh token reuse detected; revoked session {}", session.getSessionId());
+                    return new SessionRevokedException("Session revoked");
+                })
+                .orElseGet(() -> new UnauthorizedException("Invalid refresh token", ErrorCode.UNAUTHENTICATED));
     }
 
     /** Permanently revokes the session matching the current or previous token hash; no-op if unknown. */
