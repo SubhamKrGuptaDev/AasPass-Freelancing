@@ -1,0 +1,48 @@
+<ng-template #toastTpl let-toast>
+  <div
+    class="pointer-events-auto flex items-start gap-3 rounded-xl border p-3 shadow-lg motion-safe:transition motion-safe:duration-200 {{ styleFor(toast) }}"
+    data-testid="toast"
+    tabindex="-1"
+    (mouseenter)="toastService.pause(toast.id)"
+    (mouseleave)="toastService.resume(toast.id)"
+    (focusin)="toastService.pause(toast.id)"
+    (focusout)="toastService.resume(toast.id)"
+    (keydown.escape)="toastService.dismiss(toast.id)"
+  >
+    <span
+      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
+      aria-hidden="true"
+      >{{ iconFor(toast) }}</span
+    >
+    <div class="min-w-0 flex-1 text-sm">
+      <span class="sr-only">{{ labelFor(toast) }}: </span>
+      @if (toast.title) {
+        <p class="font-semibold">{{ toast.title }}</p>
+      }
+      <p class="break-words">{{ toast.message }}</p>
+    </div>
+    <button
+      type="button"
+      class="-m-1 shrink-0 rounded-md p-1 text-current hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+      aria-label="Dismiss notification"
+      (click)="toastService.dismiss(toast.id)"
+    >
+      <span aria-hidden="true">&#x2715;</span>
+    </button>
+  </div>
+</ng-template>
+
+<div
+  class="pointer-events-none fixed inset-x-4 top-4 z-50 flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-96"
+>
+  <div aria-live="polite" class="flex flex-col gap-2">
+    @for (toast of politeToasts(); track toast.id) {
+      <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
+    }
+  </div>
+  <div role="alert" aria-live="assertive" class="flex flex-col gap-2">
+    @for (toast of alertToasts(); track toast.id) {
+      <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
+    }
+  </div>
+</div>
