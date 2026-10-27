@@ -537,11 +537,16 @@
                   </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">
-                  Viewer analytics for <strong>{{ store.storeName }}</strong> filtered by selected engagement timeframe
+                  @if (engagementOptions.length > 1) {
+                    Viewer analytics for <strong>{{ store.storeName }}</strong> filtered by selected engagement timeframe
+                  } @else {
+                    All-time viewer analytics for <strong>{{ store.storeName }}</strong>
+                  }
                 </p>
               </div>
 
-              <!-- Engagement Type Selector Buttons: Daily, Weekly, Monthly, Lifetime -->
+              <!-- Engagement Type Selector Buttons: Daily, Weekly, Monthly, Lifetime (hidden when only one type is enabled) -->
+              @if (engagementOptions.length > 1) {
               <div class="flex items-center gap-1 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/70 self-start sm:self-auto overflow-x-auto scrollbar-none">
                 @for (opt of engagementOptions; track opt.type) {
                   <button
@@ -559,13 +564,18 @@
                   </button>
                 }
               </div>
+              }
             </div>
 
             <!-- Main View Metrics Display for Selected Type -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              
-              <!-- Highlight Card showing the active selected timeframe count -->
-              <div class="md:col-span-2 p-5 rounded-2xl bg-white border border-indigo-200/80 shadow-xs flex flex-col justify-between">
+
+              <!-- Highlight Card showing the active selected timeframe count (full width when the type switcher is hidden) -->
+              <div
+                class="p-5 rounded-2xl bg-white border border-indigo-200/80 shadow-xs flex flex-col justify-between"
+                [class.md:col-span-2]="engagementOptions.length > 1"
+                [class.md:col-span-3]="engagementOptions.length <= 1"
+              >
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <span class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center gap-1.5">
@@ -593,7 +603,8 @@
                   </div>
                 </div>
 
-                <!-- Quick simulation button for testing real-time increment -->
+                <!-- Quick simulation button for testing real-time increment (disabled via showViewSimulation) -->
+                @if (showViewSimulation) {
                 <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <span class="text-[11px] text-slate-400">
                     Test view counter:
@@ -608,9 +619,11 @@
                     <span>+ Simulate Store View (+1)</span>
                   </button>
                 </div>
+                }
               </div>
 
-              <!-- 4-Type Mini Overview Cards / Fast Switchers -->
+              <!-- 4-Type Mini Overview Cards / Fast Switchers (hidden when only one type is enabled) -->
+              @if (engagementOptions.length > 1) {
               <div class="grid grid-cols-2 gap-2.5">
                 @for (opt of engagementOptions; track opt.type) {
                   <button
@@ -643,6 +656,7 @@
                   </button>
                 }
               </div>
+              }
 
             </div>
 

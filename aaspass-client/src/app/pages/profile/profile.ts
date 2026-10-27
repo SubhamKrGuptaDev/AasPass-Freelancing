@@ -17,10 +17,10 @@ import {
   getSocialBadgeClass, 
   normalizeSocialLinks,
   EngagementViewType,
-  ENGAGEMENT_TYPE_OPTIONS,
   EngagementTypeOption,
   getEngagementCount
 } from '../../models/store.model';
+import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS, FEATURE_FLAGS } from '../../config/feature-flags';
 import { getRandomAvatarUrl } from '../../models/user.model';
 
 @Component({
@@ -219,8 +219,10 @@ export class ProfileComponent {
   }
 
   // Engagement tracking state for store owner (Daily, Weekly, Monthly, Lifetime)
-  selectedEngagementType = signal<EngagementViewType>('daily');
-  engagementOptions = ENGAGEMENT_TYPE_OPTIONS;
+  // Visible timeframes and the simulate button are controlled by code-level FEATURE_FLAGS
+  selectedEngagementType = signal<EngagementViewType>(DEFAULT_ENGAGEMENT_TYPE);
+  engagementOptions = ENABLED_ENGAGEMENT_TYPE_OPTIONS;
+  readonly showViewSimulation = FEATURE_FLAGS.showViewSimulation;
   viewSimulationToast: string | null = null;
 
   selectedEngagementOption = computed<EngagementTypeOption>(() => {

@@ -15,10 +15,10 @@ import {
   getSocialBadgeClass, 
   normalizeSocialLinks,
   EngagementViewType,
-  ENGAGEMENT_TYPE_OPTIONS,
   EngagementTypeOption,
   getEngagementCount
 } from '../../models/store.model';
+import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS } from '../../config/feature-flags';
 
 @Component({
   selector: 'app-store-detail',
@@ -85,8 +85,9 @@ export class StoreDetailComponent {
 
 
   // Engagement tracking state for store owner
-  selectedEngagementType = signal<EngagementViewType>('lifetime');
-  engagementOptions = ENGAGEMENT_TYPE_OPTIONS;
+  // Visible timeframes are controlled by code-level FEATURE_FLAGS
+  selectedEngagementType = signal<EngagementViewType>(DEFAULT_ENGAGEMENT_TYPE);
+  engagementOptions = ENABLED_ENGAGEMENT_TYPE_OPTIONS;
 
   selectEngagementType(type: EngagementViewType): void {
     this.selectedEngagementType.set(type);

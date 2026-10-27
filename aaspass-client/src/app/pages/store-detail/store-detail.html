@@ -218,7 +218,8 @@
                       </span>
                     </div>
 
-                    <!-- Type Selector: Daily, Weekly, Monthly, Lifetime -->
+                    <!-- Type Selector: Daily, Weekly, Monthly, Lifetime (hidden when only one type is enabled) -->
+                    @if (engagementOptions.length > 1) {
                     <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/60 overflow-x-auto scrollbar-none">
                       @for (opt of engagementOptions; track opt.type) {
                         <button
@@ -236,10 +237,16 @@
                         </button>
                       }
                     </div>
+                    }
                   </div>
 
-                  <!-- 4-Metrics Quick Grid -->
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <!-- 4-Metrics Quick Grid (single full-width card when only one type is enabled) -->
+                  <div
+                    class="grid gap-2.5"
+                    [class.grid-cols-2]="engagementOptions.length > 1"
+                    [class.sm:grid-cols-4]="engagementOptions.length > 1"
+                    [class.grid-cols-1]="engagementOptions.length <= 1"
+                  >
                     @for (opt of engagementOptions; track opt.type) {
                       <div 
                         (click)="selectEngagementType(opt.type)"
