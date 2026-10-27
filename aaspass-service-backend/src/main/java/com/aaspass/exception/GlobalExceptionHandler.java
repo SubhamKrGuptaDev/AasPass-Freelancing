@@ -32,9 +32,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiResponse<Object>> handleUnauthorized(
             UnauthorizedException ex, HttpServletRequest request) {
-        log.warn("[API UNAUTHORIZED] Path: {} {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        log.warn("[API UNAUTHORIZED] Path: {} {}, Code: {}, Message: {}",
+                request.getMethod(), request.getRequestURI(), ex.code(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error(ex.getMessage()));
+                .body(ApiResponse.error(ex.getMessage(), ex.code()));
     }
 
     @ExceptionHandler(BadRequestException.class)

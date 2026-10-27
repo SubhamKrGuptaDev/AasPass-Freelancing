@@ -5,6 +5,8 @@ import com.aaspass.dto.request.ServiceItemRequest;
 import com.aaspass.dto.request.StoreCreateRequest;
 import com.aaspass.dto.request.StoreReviewRequest;
 import com.aaspass.dto.request.UserUpdateRequest;
+import com.aaspass.support.AuthTestSupport;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,6 +38,10 @@ public class StoreAndUserControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    private Cookie[] loginAman() throws Exception {
+        return AuthTestSupport.login(mockMvc, "aman", "password123");
+    }
 
     @Test
     @DisplayName("GET /api/stores - Should return seeded storefronts")
@@ -74,7 +81,7 @@ public class StoreAndUserControllerTest {
                 .description("Neighborhood PC enthusiast offering same-day PC assembly and cleaning at your place or mine.")
                 .build();
 
-        mockMvc.perform(post("/api/stores")
+        mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -103,7 +110,7 @@ public class StoreAndUserControllerTest {
                 .country("India")
                 .build();
 
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(put("/api/users/1").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -120,7 +127,7 @@ public class StoreAndUserControllerTest {
                 .avatarUrl("") // empty string should trigger random avatar generation
                 .build();
 
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(put("/api/users/1").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -141,14 +148,14 @@ public class StoreAndUserControllerTest {
                 .isDefault(false)
                 .build();
 
-        mockMvc.perform(post("/api/users/1/addresses")
+        mockMvc.perform(post("/api/users/1/addresses").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(addressRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.area", is("Indiranagar")));
 
-        mockMvc.perform(get("/api/users/1/addresses"))
+        mockMvc.perform(get("/api/users/1/addresses").cookie(loginAman()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))));
@@ -163,7 +170,7 @@ public class StoreAndUserControllerTest {
                 .message("Great work! Delivered our cafe video edit in under 20 hours.")
                 .build();
 
-        mockMvc.perform(post("/api/stores/1/reviews")
+        mockMvc.perform(post("/api/stores/1/reviews").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(reviewRequest)))
                 .andExpect(status().isCreated())
@@ -187,7 +194,7 @@ public class StoreAndUserControllerTest {
                 .description("Cinematic LUTs and exposure balancing.")
                 .build();
 
-        mockMvc.perform(post("/api/stores/1/services")
+        mockMvc.perform(post("/api/stores/1/services").with(csrf()).cookie(loginAman())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemRequest)))
                 .andExpect(status().isCreated())
@@ -203,7 +210,7 @@ public class StoreAndUserControllerTest {
     @Test
     @DisplayName("POST /api/stores/{id}/views - Track store view analytics")
     public void testTrackStoreViews() throws Exception {
-        mockMvc.perform(post("/api/stores/1/views")
+        mockMvc.perform(post("/api/stores/1/views").with(csrf())
                         .param("viewerId", "neighbor-client-44"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))

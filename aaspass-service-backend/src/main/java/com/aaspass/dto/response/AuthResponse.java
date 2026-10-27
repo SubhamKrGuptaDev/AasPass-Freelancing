@@ -4,18 +4,12 @@ import lombok.Builder;
 
 /**
  * Response DTO returned upon successful login / registration.
+ * The access and refresh tokens travel only in HttpOnly cookies, never in this body.
  */
 @Builder
 public record AuthResponse(
     boolean success,
     String message,
-    String token,
-    String tokenType,
     UserResponse user
 ) {
-    public AuthResponse {
-        if (tokenType == null || tokenType.isBlank()) {
-            tokenType = "Bearer";
-        }
-    }
 }
