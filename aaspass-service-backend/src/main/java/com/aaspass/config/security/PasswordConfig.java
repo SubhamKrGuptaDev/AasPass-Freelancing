@@ -1,5 +1,6 @@
 package com.aaspass.config.security;
 
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -15,5 +16,11 @@ public class PasswordConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
+    }
+
+    /** Shared clock so time-dependent security code is testable. */
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
     }
 }
