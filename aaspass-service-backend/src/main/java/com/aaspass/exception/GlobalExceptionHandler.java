@@ -38,6 +38,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), ex.code()));
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleForbidden(
+            ForbiddenException ex, HttpServletRequest request) {
+        log.warn("[API FORBIDDEN] Path: {} {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage(), ErrorCode.FORBIDDEN));
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(
             BadRequestException ex, HttpServletRequest request) {

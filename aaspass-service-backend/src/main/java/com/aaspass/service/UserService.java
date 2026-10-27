@@ -1,6 +1,7 @@
 package com.aaspass.service;
 
 import com.aaspass.dto.request.AddressRequest;
+import com.aaspass.dto.request.KycUpdateRequest;
 import com.aaspass.dto.request.UserUpdateRequest;
 import com.aaspass.dto.response.AddressResponse;
 import com.aaspass.dto.response.UserResponse;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +30,9 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
+    private static final Pattern AADHAAR_PATTERN = Pattern.compile("^\\d{12}$");
+    private static final Pattern PAN_PATTERN = Pattern.compile("^[A-Z]{5}[0-9]{4}[A-Z]$");
+
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
 
@@ -37,14 +42,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(Long id, boolean includeKyc) {
         log.info("[USER SERVICE] Fetching user by ID: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("[USER SERVICE] User not found with ID: {}", id);
                     return new ResourceNotFoundException("User", "id", id);
                 });
-        return DtoMapper.toUserResponse(user, true, true);
+        return DtoMapper.toUserResponse(user, true, true, includeKyc);
     }
 
     @Transactional
@@ -58,8 +63,6 @@ public class UserService {
 
         if (request.name() != null) user.setName(request.name().trim());
         if (request.phone() != null) user.setPhone(request.phone().trim());
-        if (request.aadharNumber() != null) user.setAadharNumber(request.aadharNumber().trim());
-        if (request.panNumber() != null) user.setPanNumber(request.panNumber().trim());
         if (request.avatarUrl() != null) {
             String trimmedAvatar = request.avatarUrl().trim();
             user.setAvatarUrl(trimmedAvatar.isEmpty() ? AvatarGenerator.generateRandomAvatar(user.getUsername()) : trimmedAvatar);
@@ -76,7 +79,37 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
         log.info("[USER SERVICE] Successfully updated user profile for ID: {}", id);
-        return DtoMapper.toUserResponse(updatedUser, true, true);
+        return DtoMapper.toUserResponse(updatedUser, true, true, true);
+    }
+
+    /**
+     * Updates the caller's KYC identifiers after normalising and validating them. A {@code null}
+     * field is left unchanged. Values are encrypted at rest by the entity converter.
+     */
+    @Transactional
+    public UserResponse updateKyc(Long userId, KycUpdateRequest request) {
+        log.info("[USER SERVICE] Updating KYC for user ID: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        if (request != null && request.aadharNumber() != null) {
+            String aadhaar = request.aadharNumber().replaceAll("[\\s-]", "");
+            if (!AADHAAR_PATTERN.matcher(aadhaar).matches()) {
+                throw new BadRequestException("Aadhaar must be 12 digits");
+            }
+            user.setAadharNumber(aadhaar);
+        }
+        if (request != null && request.panNumber() != null) {
+            String pan = request.panNumber().trim().toUpperCase();
+            if (!PAN_PATTERN.matcher(pan).matches()) {
+                throw new BadRequestException("PAN must look like ABCDE1234F");
+            }
+            user.setPanNumber(pan);
+        }
+
+        User saved = userRepository.save(user);
+        log.info("[USER SERVICE] KYC updated for user ID: {}", userId);
+        return DtoMapper.toUserResponse(saved, true, true, true);
     }
 
     @Transactional(readOnly = true)

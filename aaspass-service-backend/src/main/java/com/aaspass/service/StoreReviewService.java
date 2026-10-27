@@ -4,9 +4,11 @@ import com.aaspass.dto.request.StoreReviewRequest;
 import com.aaspass.dto.response.StoreReviewResponse;
 import com.aaspass.entity.Store;
 import com.aaspass.entity.StoreReview;
+import com.aaspass.entity.User;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.StoreReviewRepository;
+import com.aaspass.repository.UserRepository;
 import com.aaspass.service.mapper.DtoMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +30,13 @@ public class StoreReviewService {
 
     private final StoreReviewRepository reviewRepository;
     private final StoreRepository storeRepository;
+    private final UserRepository userRepository;
 
-    public StoreReviewService(StoreReviewRepository reviewRepository, StoreRepository storeRepository) {
+    public StoreReviewService(StoreReviewRepository reviewRepository, StoreRepository storeRepository,
+                              UserRepository userRepository) {
         this.reviewRepository = reviewRepository;
         this.storeRepository = storeRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -46,9 +51,12 @@ public class StoreReviewService {
     }
 
     @Transactional
-    public StoreReviewResponse addReview(Long storeId, StoreReviewRequest request) {
-        log.info("[STORE REVIEW] Adding review for store ID: {} from user: '{}', rating: {}",
-                storeId, request.userName(), request.rating());
+    public StoreReviewResponse addReview(Long storeId, Long reviewerId, StoreReviewRequest request) {
+        log.info("[STORE REVIEW] Adding review for store ID: {} from user ID: {}, rating: {}",
+                storeId, reviewerId, request.rating());
+
+        User reviewer = userRepository.findById(reviewerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", reviewerId));
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
@@ -59,14 +67,14 @@ public class StoreReviewService {
 
         String reviewDate = LocalDate.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy"));
 
-        String reviewerName = request.userName() != null && !request.userName().trim().isEmpty()
-                ? request.userName().trim()
+        String reviewerName = reviewer.getName() != null && !reviewer.getName().isBlank()
+                ? reviewer.getName().trim()
                 : "Anonymous";
 
         StoreReview review = StoreReview.builder()
                 .store(store)
                 .userName(reviewerName)
-                .userAvatar(request.userAvatar() != null ? request.userAvatar() :
+                .userAvatar(reviewer.getAvatarUrl() != null && !reviewer.getAvatarUrl().isBlank() ? reviewer.getAvatarUrl() :
                         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80")
                 .rating(clampedRating)
                 .message(request.message() != null ? request.message().trim() : "")

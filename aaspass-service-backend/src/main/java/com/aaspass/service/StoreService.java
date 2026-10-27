@@ -11,6 +11,7 @@ import com.aaspass.entity.StoreEngagementStats;
 import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.StoreViewRecord;
 import com.aaspass.entity.User;
+import com.aaspass.exception.ForbiddenException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -83,11 +85,28 @@ public class StoreService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Verifies that the given user owns the store.
+     *
+     * @throws ResourceNotFoundException if the store does not exist
+     * @throws ForbiddenException        if the store belongs to someone else
+     */
+    @Transactional(readOnly = true)
+    public void assertStoreOwner(Long storeId, Long userId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
+        if (ownerId == null || !ownerId.equals(userId)) {
+            log.warn("[STORE SERVICE] User {} attempted to modify store {} owned by {}", userId, storeId, ownerId);
+            throw new ForbiddenException("You don't own this store");
+        }
+    }
+
     @Transactional
-    public StoreResponse createStore(StoreCreateRequest request) {
-        log.info("[STORE SERVICE] Creating store '{}' for user ID: {}", request.storeName(), request.userId());
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.userId()));
+    public StoreResponse createStore(Long ownerId, StoreCreateRequest request) {
+        log.info("[STORE SERVICE] Creating store '{}' for user ID: {}", request.storeName(), ownerId);
+        User user = userRepository.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", ownerId));
 
         String memberSince = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
         String ownerName = (request.ownerName() != null && !request.ownerName().isBlank())
@@ -153,7 +172,8 @@ public class StoreService {
     }
 
     @Transactional
-    public StoreResponse updateStore(Long id, StoreUpdateRequest request) {
+    public StoreResponse updateStore(Long id, Long callerId, StoreUpdateRequest request) {
+        assertStoreOwner(id, callerId);
         log.info("[STORE SERVICE] Updating store ID: {}", id);
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
@@ -198,7 +218,8 @@ public class StoreService {
     }
 
     @Transactional
-    public void deleteStore(Long id) {
+    public void deleteStore(Long id, Long callerId) {
+        assertStoreOwner(id, callerId);
         log.info("[STORE SERVICE] Deleting store ID: {}", id);
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
@@ -214,7 +235,8 @@ public class StoreService {
     }
 
     @Transactional
-    public StoreResponse toggleStoreAvailability(Long id) {
+    public StoreResponse toggleStoreAvailability(Long id, Long callerId) {
+        assertStoreOwner(id, callerId);
         log.info("[STORE SERVICE] Toggling availability for store ID: {}", id);
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
@@ -228,8 +250,8 @@ public class StoreService {
     }
 
     @Transactional
-    public StoreResponse recordStoreView(Long id, String viewerId) {
-        log.info("[STORE SERVICE] Recording view for store ID: {}, viewer: '{}'", id, viewerId);
+    public StoreResponse recordStoreView(Long id, Optional<Long> viewerId) {
+        log.info("[STORE SERVICE] Recording view for store ID: {}, viewer: '{}'", id, viewerId.orElse(null));
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
 
@@ -245,7 +267,7 @@ public class StoreService {
 
         StoreViewRecord viewRecord = StoreViewRecord.builder()
                 .viewTimestamp(LocalDateTime.now())
-                .viewerId(viewerId != null ? viewerId : "anonymous")
+                .viewerId(viewerId.map(String::valueOf).orElse("anonymous"))
                 .build();
         store.addViewRecord(viewRecord);
 

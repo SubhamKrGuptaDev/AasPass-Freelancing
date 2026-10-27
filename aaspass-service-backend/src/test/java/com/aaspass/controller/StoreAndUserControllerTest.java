@@ -67,7 +67,6 @@ public class StoreAndUserControllerTest {
     @DisplayName("POST /api/stores - Should create new store for a user")
     public void testCreateStore() throws Exception {
         StoreCreateRequest request = StoreCreateRequest.builder()
-                .userId(1L)
                 .storeName("Aman's Tech Workshop")
                 .tagline("PC Assembly, Upgrades & Hardware Diagnostics")
                 .category("Tech Support, PC Builds & Hardware Setup")
@@ -100,13 +99,11 @@ public class StoreAndUserControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/users/{id} - Should update user profile KYC details")
+    @DisplayName("PUT /api/users/{id} - Should update profile and keep KYC masked")
     public void testUpdateUserProfile() throws Exception {
         UserUpdateRequest request = UserUpdateRequest.builder()
                 .bio("Updated bio for freelance gigs around Bengaluru cafes")
                 .phone("+91 91234 56789")
-                .aadharNumber("XXXX-XXXX-9999")
-                .panNumber("NEWPN1234M")
                 .country("India")
                 .build();
 
@@ -117,7 +114,7 @@ public class StoreAndUserControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.bio", containsString("Updated bio")))
                 .andExpect(jsonPath("$.data.country", is("India")))
-                .andExpect(jsonPath("$.data.panNumber", is("XXXXXX234M")));
+                .andExpect(jsonPath("$.data.panNumber", is("XXXXXX234F")));
     }
 
     @Test
@@ -165,7 +162,6 @@ public class StoreAndUserControllerTest {
     @DisplayName("POST & GET /api/stores/{storeId}/reviews - Review submission with rating bounds [1.0 - 5.0]")
     public void testStoreReviewLifecycle() throws Exception {
         StoreReviewRequest reviewRequest = StoreReviewRequest.builder()
-                .userName("Karan Patel")
                 .rating(4.5)
                 .message("Great work! Delivered our cafe video edit in under 20 hours.")
                 .build();
@@ -176,7 +172,7 @@ public class StoreAndUserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.rating", is(4.5)))
-                .andExpect(jsonPath("$.data.userName", is("Karan Patel")));
+                .andExpect(jsonPath("$.data.userName", is("Aman Sharma")));
 
         mockMvc.perform(get("/api/stores/1/reviews"))
                 .andExpect(status().isOk())
@@ -194,7 +190,7 @@ public class StoreAndUserControllerTest {
                 .description("Cinematic LUTs and exposure balancing.")
                 .build();
 
-        mockMvc.perform(post("/api/stores/1/services").with(csrf()).cookie(loginAman())
+        mockMvc.perform(post("/api/stores/1/services").with(csrf()).cookie(AuthTestSupport.login(mockMvc, "priya", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(itemRequest)))
                 .andExpect(status().isCreated())
@@ -210,8 +206,7 @@ public class StoreAndUserControllerTest {
     @Test
     @DisplayName("POST /api/stores/{id}/views - Track store view analytics")
     public void testTrackStoreViews() throws Exception {
-        mockMvc.perform(post("/api/stores/1/views").with(csrf())
-                        .param("viewerId", "neighbor-client-44"))
+        mockMvc.perform(post("/api/stores/1/views").with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.views.lifetime", greaterThan(0)));

@@ -1,5 +1,6 @@
 package com.aaspass.controller;
 
+import com.aaspass.config.security.CurrentUser;
 import com.aaspass.dto.request.StoreReviewRequest;
 import com.aaspass.dto.response.ApiResponse;
 import com.aaspass.dto.response.StoreReviewResponse;
@@ -28,9 +29,11 @@ public class StoreReviewController {
     private static final Logger log = LoggerFactory.getLogger(StoreReviewController.class);
 
     private final StoreReviewService reviewService;
+    private final CurrentUser currentUser;
 
-    public StoreReviewController(StoreReviewService reviewService) {
+    public StoreReviewController(StoreReviewService reviewService, CurrentUser currentUser) {
         this.reviewService = reviewService;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -50,10 +53,11 @@ public class StoreReviewController {
     public ResponseEntity<ApiResponse<StoreReviewResponse>> addReview(
             @PathVariable("storeId") Long storeId,
             @Valid @RequestBody StoreReviewRequest request) {
+        Long callerId = currentUser.requireUserId();
         log.info("[API-CALL] POST /api/stores/{}/reviews - User '{}' submitting rating: {}",
-                storeId, request.userName(), request.rating());
+                storeId, callerId, request.rating());
 
-        StoreReviewResponse response = reviewService.addReview(storeId, request);
+        StoreReviewResponse response = reviewService.addReview(storeId, callerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Review submitted successfully"));
     }

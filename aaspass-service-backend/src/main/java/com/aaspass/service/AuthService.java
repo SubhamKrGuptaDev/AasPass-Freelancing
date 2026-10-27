@@ -85,7 +85,7 @@ public class AuthService {
         log.info("[AUTH LOGIN SUCCESS] User authenticated successfully: ID={}, session={}",
                 user.getId(), session.session().getSessionId());
 
-        return new AuthResult(DtoMapper.toUserResponse(user, true, true), session);
+        return new AuthResult(DtoMapper.toUserResponse(user, true, true, true), session);
     }
 
     /**
@@ -133,7 +133,7 @@ public class AuthService {
         log.info("[AUTH REGISTER SUCCESS] Created new user: ID={}, username='{}'", savedUser.getId(), savedUser.getUsername());
 
         IssuedSession session = sessionService.open(savedUser, userAgent, ip);
-        return new AuthResult(DtoMapper.toUserResponse(savedUser, true, true), session);
+        return new AuthResult(DtoMapper.toUserResponse(savedUser, true, true, true), session);
     }
 
     /**
@@ -147,6 +147,6 @@ public class AuthService {
         log.info("[AUTH GET CURRENT USER] Fetching user profile for ID: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-        return DtoMapper.toUserResponse(user, true, true);
+        return DtoMapper.toUserResponse(user, true, true, true);
     }
 }

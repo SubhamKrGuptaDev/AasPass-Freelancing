@@ -27,7 +27,8 @@ public final class DtoMapper {
     private DtoMapper() {
     }
 
-    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses) {
+    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
+                                          boolean includeKyc) {
         if (user == null) return null;
 
         List<StoreResponse> storeResponses = Collections.emptyList();
@@ -50,8 +51,8 @@ public final class DtoMapper {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .aadharNumber(KycMasking.maskAadhaar(user.getAadharNumber()))
-                .panNumber(KycMasking.maskPan(user.getPanNumber()))
+                .aadharNumber(includeKyc ? KycMasking.maskAadhaar(user.getAadharNumber()) : null)
+                .panNumber(includeKyc ? KycMasking.maskPan(user.getPanNumber()) : null)
                 .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
                 .city(user.getCity())
                 .area(user.getArea())
