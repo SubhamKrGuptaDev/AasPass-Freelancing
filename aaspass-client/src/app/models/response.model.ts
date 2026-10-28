@@ -107,7 +107,6 @@ export interface BackendStoreResponse {
   area: string;
   city: string;
   serviceRadiusKm?: number;
-  distanceKm?: number;
   rating?: number;
   reviewCount?: number;
   description?: string;

@@ -113,7 +113,6 @@ export class AuthService {
         startingPrice: s.startingPrice || 0,
         area: s.area || u.area || 'Indiranagar',
         city: s.city || u.city || 'Bengaluru',
-        distanceKm: s.distanceKm || 0.5,
         serviceRadiusKm: s.serviceRadiusKm || 10,
         socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
         storeSocialMediaLinks: s.storeSocialMediaLinks,

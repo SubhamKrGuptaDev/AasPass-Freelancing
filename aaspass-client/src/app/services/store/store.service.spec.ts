@@ -18,7 +18,7 @@ const fixtureStore1: StoreProfile = {
   startingPrice: 350,
   area: 'Indiranagar',
   city: 'Bengaluru',
-  distanceKm: 0.8,
+ 
   serviceRadiusKm: 6,
   socialMediaLinks: [
     { id: 'sm-1-1', name: 'Instagram', url: 'https://instagram.com/priya_edits' },
@@ -62,7 +62,7 @@ const fixtureStore2: StoreProfile = {
   startingPrice: 1500,
   area: 'Koramangala',
   city: 'Bengaluru',
-  distanceKm: 1.4,
+ 
   serviceRadiusKm: 10,
   socialMediaLinks: [],
   description: 'Freelance engineer crafting SPAs and landing pages.',
@@ -279,7 +279,7 @@ describe('StoreService Reviews & Ratings', () => {
         startingPrice: 1200,
         area: 'Indiranagar',
         city: 'Bengaluru',
-        distanceKm: 2.1,
+       
         serviceRadiusKm: 8,
         socialMediaLinks: [],
         description: 'Quality photo shoots',

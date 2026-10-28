@@ -198,7 +198,6 @@ export interface StoreProfile {
   startingPrice: number;
   area: string;
   city: string;
-  distanceKm: number;
   serviceRadiusKm: number;
   storeSocialMediaLinks?: StoreSocialMediaLinks;
   userSocialLinks?: StoreSocialMediaLinks;

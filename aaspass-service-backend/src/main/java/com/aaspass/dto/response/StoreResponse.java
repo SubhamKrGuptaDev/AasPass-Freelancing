@@ -27,7 +27,6 @@ public record StoreResponse(
     String area,
     String city,
     Integer serviceRadiusKm,
-    Double distanceKm,
     Double rating,
     Integer reviewCount,
     String description,

@@ -29,7 +29,7 @@ function makeStore(overrides: Partial<StoreProfile> = {}): StoreProfile {
     startingPrice: 100,
     area: 'Area',
     city: 'Bengaluru',
-    distanceKm: 1,
+   
     serviceRadiusKm: 5,
     socialMediaLinks: [],
     description: '',

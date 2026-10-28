@@ -122,7 +122,6 @@ public final class DtoMapper {
                 .area(store.getArea())
                 .city(store.getCity())
                 .serviceRadiusKm(store.getServiceRadiusKm())
-                .distanceKm(0.8) // Default base neighborhood proximity
                 .rating(computedRating)
                 .reviewCount(reviewCount)
                 .description(store.getDescription())

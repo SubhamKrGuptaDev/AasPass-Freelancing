@@ -31,7 +31,7 @@ describe('StoreDetailComponent reviews', () => {
     httpTesting.match(`${API_BASE_URL}/stores`).forEach(r => r.flush({ success: true, message: 'ok', data: [] }));
     component.storeService.stores.set([{
       id: 'store-7', userId: '2', ownerName: 'Priya', storeName: 'S', tagline: '', category: 'C', skills: [],
-      experienceYears: 1, hourlyRate: 1, startingPrice: 1, area: 'A', city: 'B', distanceKm: 1, serviceRadiusKm: 1,
+      experienceYears: 1, hourlyRate: 1, startingPrice: 1, area: 'A', city: 'B', serviceRadiusKm: 1,
       socialMediaLinks: [], description: '', services: [], rating: 5, reviewCount: 0, reviews: [],
       avatarUrl: '', bannerGradient: '', isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
     }]);

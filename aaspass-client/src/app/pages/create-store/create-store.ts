@@ -231,7 +231,6 @@ export class CreateStoreComponent implements OnInit {
       startingPrice: Number(formData.startingPrice) || 300,
       area: formData.area,
       city: formData.city,
-      distanceKm: 0.5,
       serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,
       storeSocialMediaLinks: storeSocialMediaLinks,

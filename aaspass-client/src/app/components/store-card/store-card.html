@@ -5,7 +5,7 @@
     <div class="mb-3 flex items-center justify-between gap-2">
       <span hlmBadge variant="outline" class="gap-1 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700">
         <ng-icon name="lucideMapPin" size="12" />
-        <span>{{ store().distanceKm }} km away • {{ store().area }}</span>
+        <span>{{ location() }}</span>
       </span>
       @if (store().isAvailable) {
         <span hlmBadge variant="secondary" class="bg-emerald-100 text-[11px] text-emerald-800">Open for gigs</span>

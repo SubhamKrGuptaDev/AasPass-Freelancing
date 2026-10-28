@@ -10,7 +10,7 @@ function makeStore(overrides: Partial<StoreProfile> = {}): StoreProfile {
   return {
     id: '7', userId: '2', ownerName: 'Priya', storeName: 'PixelCraft', tagline: 'Design for local brands',
     category: 'Design', skills: ['A', 'B', 'C', 'D', 'E'], experienceYears: 3, hourlyRate: 450,
-    startingPrice: 100, area: 'Indiranagar', city: 'Bengaluru', distanceKm: 2, serviceRadiusKm: 5,
+    startingPrice: 100, area: 'Indiranagar', city: 'Bengaluru', serviceRadiusKm: 5,
     socialMediaLinks: [], description: '', services: [], rating: 4.8, reviewCount: 12, reviews: [],
     avatarUrl: 'https://example.com/a.png', bannerGradient: 'from-indigo-500 to-purple-500',
     isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: '',
@@ -56,6 +56,17 @@ describe('StoreCardComponent', () => {
     const el = render(store);
     const href = el.querySelector('a')?.getAttribute('href') ?? '';
     expect(href.endsWith('/stores/' + service.getStoreUrlKey(store))).toBe(true);
+  });
+
+  it('shows the store location without any distance', () => {
+    const text = render(makeStore()).textContent ?? '';
+    expect(text).toContain('Indiranagar, Bengaluru');
+    expect(text).not.toContain('km away');
+  });
+
+  it('skips an empty area in the location', () => {
+    expect(render(makeStore({ area: '' })).textContent).toContain('Bengaluru');
+    expect(fixture.nativeElement.textContent).not.toContain(', Bengaluru');
   });
 
   it('shows 0 views when views is undefined', () => {
