@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './pages/home/home';
+import { StoresComponent } from './pages/stores/stores';
 import { StoreDetailComponent } from './pages/store-detail/store-detail';
 import { CreateStoreComponent } from './pages/create-store/create-store';
 import { ProfileComponent } from './pages/profile/profile';
@@ -9,6 +10,7 @@ import { authGuard } from './guards/auth.guard';
 export const routes: Routes = [
   // Public routes (Authentication not required)
   { path: '', component: HomeComponent, title: 'AasPass - Hyperlocal Freelancing & Nearby Gigs' },
+  { path: 'stores', component: StoresComponent, title: 'Browse Local Stores - AasPass' },
   { path: 'stores/:storeKey', component: StoreDetailComponent, title: 'Store Details - AasPass' },
   
   // Dedicated Auth Routes
