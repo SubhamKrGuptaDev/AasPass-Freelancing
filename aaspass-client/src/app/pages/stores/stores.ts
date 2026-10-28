@@ -13,6 +13,7 @@ import { HlmSwitchImports } from '@spartan-ng/helm/switch';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 import { StoreCardComponent } from '../../components/store-card/store-card';
 import { StoreProfile } from '../../models/store.model';
+import { COUNTRIES } from '../../geo/countries.generated';
 import {
   DEFAULT_STORE_SORT,
   MAX_SEARCH_LENGTH,
@@ -67,9 +68,14 @@ export class StoresComponent {
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
-      const query = parseStoresQuery(params, this.storeService.availableCities, this.storeService.categories);
-      if (query.city) {
-        this.storeService.setSelectedCity(query.city);
+      const query = parseStoresQuery(params, COUNTRIES, this.storeService.categories);
+      if (query.country) {
+        this.storeService.setSelectedCountry(query.country);
+      }
+      // Until the city picker lands, only known cities are accepted (canonicalised case-insensitively).
+      const city = this.storeService.availableCities.find(c => c.toLowerCase() === (query.city ?? '').toLowerCase());
+      if (city) {
+        this.storeService.setSelectedCity(city);
       }
       this.storeService.setSelectedCategory(query.category);
       this.storeService.setSearchQuery(query.q);
@@ -78,7 +84,7 @@ export class StoresComponent {
       this.searchControl.setValue(query.q, { emitEvent: false });
       // Re-canonicalise the URL (e.g. bare /stores or a lower-case city) once state has been applied.
       // After syncing, the raw param equals the canonical city, so this cannot loop.
-      if (params.get('city') !== this.storeService.selectedCity()) {
+      if ((params.get('city') ?? '') !== this.storeService.selectedCity()) {
         this.syncUrl();
       }
     });
@@ -94,7 +100,7 @@ export class StoresComponent {
     // which also writes the city into the URL on first load and prevents URL <-> state loops.
     effect(() => {
       const city = this.storeService.selectedCity();
-      const urlCity = untracked(() => this.route.snapshot.queryParamMap.get('city'));
+      const urlCity = untracked(() => this.route.snapshot.queryParamMap.get('city') ?? '');
       if (city !== urlCity) {
         untracked(() => this.syncUrl());
       }
@@ -151,6 +157,7 @@ export class StoresComponent {
 
   private syncUrl(): void {
     const queryParams = toStoresQueryParams({
+      country: this.storeService.selectedCountry(),
       city: this.storeService.selectedCity(),
       category: this.storeService.selectedCategory(),
       q: this.searchControl.value.trim().slice(0, MAX_SEARCH_LENGTH),

@@ -1,5 +1,6 @@
 import { convertToParamMap } from '@angular/router';
 import { StoreProfile } from '../../models/store.model';
+import { Country } from '../../geo/countries.generated';
 import {
   DEFAULT_STORE_SORT,
   STORE_SORT_OPTIONS,
@@ -10,7 +11,10 @@ import {
   topStoresForCity
 } from './store-query';
 
-const CITIES = ['Bengaluru', 'Delhi NCR', 'Mumbai', 'Pune', 'Hyderabad'];
+const COUNTRY_LIST: readonly Country[] = [
+  { code: 'IN', name: 'India' },
+  { code: 'US', name: 'United States' }
+];
 const CATS = ['All', 'Video & Editing', 'Web & Tech', 'Photography'];
 
 let seq = 0;
@@ -29,7 +33,7 @@ function makeStore(overrides: Partial<StoreProfile> = {}): StoreProfile {
     startingPrice: 100,
     area: 'Area',
     city: 'Bengaluru',
-   
+    country: 'India',
     serviceRadiusKm: 5,
     socialMediaLinks: [],
     description: '',
@@ -57,31 +61,42 @@ describe('store-query', () => {
     ]);
   });
 
-  it('parses canonical city/category case-insensitively', () => {
-    const q = parseStoresQuery(convertToParamMap({ city: ' pune ', category: 'web & tech' }), CITIES, CATS);
-    expect(q).toEqual({ city: 'Pune', category: 'Web & Tech', q: '', sort: 'rating', openOnly: false });
+  it('parses canonical country, trimmed city and category case-insensitively', () => {
+    const q = parseStoresQuery(convertToParamMap({ country: 'india', city: '  Pune ', category: 'web & tech' }), COUNTRY_LIST, CATS);
+    expect(q).toEqual({ country: 'India', city: 'Pune', category: 'Web & Tech', q: '', sort: 'rating', openOnly: false });
   });
 
   it('falls back on unknown values', () => {
-    const q = parseStoresQuery(convertToParamMap({ city: 'Atlantis', category: 'Magic', sort: 'nope', open: 'yes' }), CITIES, CATS);
-    expect(q).toEqual({ city: null, category: 'All', q: '', sort: 'rating', openOnly: false });
+    const q = parseStoresQuery(convertToParamMap({ country: 'Atlantis', category: 'Magic', sort: 'nope', open: 'yes' }), COUNTRY_LIST, CATS);
+    expect(q).toEqual({ country: null, city: null, category: 'All', q: '', sort: 'rating', openOnly: false });
+  });
+
+  it('caps city at 100 characters', () => {
+    const q = parseStoresQuery(convertToParamMap({ city: 'c'.repeat(150) }), COUNTRY_LIST, CATS);
+    expect(q.city?.length).toBe(100);
   });
 
   it('parses known sort, open=1 and trimmed q', () => {
-    const q = parseStoresQuery(convertToParamMap({ sort: 'views', open: '1', q: ' reels ' }), CITIES, CATS);
-    expect(q).toEqual({ city: null, category: 'All', q: 'reels', sort: 'views', openOnly: true });
+    const q = parseStoresQuery(convertToParamMap({ sort: 'views', open: '1', q: ' reels ' }), COUNTRY_LIST, CATS);
+    expect(q).toEqual({ country: null, city: null, category: 'All', q: 'reels', sort: 'views', openOnly: true });
   });
 
   it('trims and caps q at 100 chars', () => {
-    expect(parseStoresQuery(convertToParamMap({ q: '  ' + 'a'.repeat(150) }), CITIES, CATS).q.length).toBe(100);
+    expect(parseStoresQuery(convertToParamMap({ q: '  ' + 'a'.repeat(150) }), COUNTRY_LIST, CATS).q.length).toBe(100);
   });
 
   it('omits defaults when building params', () => {
-    const base: StoresQuery = { city: 'Pune', category: 'All', q: '', sort: 'rating', openOnly: false };
-    expect(toStoresQueryParams(base)).toEqual({ city: 'Pune', category: null, q: null, sort: null, open: null });
-    expect(toStoresQueryParams({ city: 'Pune', category: 'Photography', q: 'reels', sort: 'views', openOnly: true }))
-      .toEqual({ city: 'Pune', category: 'Photography', q: 'reels', sort: 'views', open: '1' });
+    const base: StoresQuery = { country: 'India', city: 'Pune', category: 'All', q: '', sort: 'rating', openOnly: false };
+    expect(toStoresQueryParams(base)).toEqual({ country: 'India', city: 'Pune', category: null, q: null, sort: null, open: null });
+    expect(toStoresQueryParams({ ...base, category: 'Photography', q: 'reels', sort: 'views', openOnly: true }))
+      .toEqual({ country: 'India', city: 'Pune', category: 'Photography', q: 'reels', sort: 'views', open: '1' });
     expect(toStoresQueryParams({ ...base, city: null })['city']).toBeNull();
+    expect(toStoresQueryParams({ ...base, city: '' })['city']).toBeNull();
+  });
+
+  it('always writes country', () => {
+    const q: StoresQuery = { country: 'United States', city: null, category: 'All', q: '', sort: 'rating', openOnly: false };
+    expect(toStoresQueryParams(q)['country']).toBe('United States');
   });
 
   describe('sortStores', () => {

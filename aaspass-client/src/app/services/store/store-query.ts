@@ -1,5 +1,6 @@
 import { ParamMap, Params } from '@angular/router';
 import { StoreProfile } from '../../models/store.model';
+import { Country } from '../../geo/countries.generated';
 
 export type StoreSortKey = 'rating' | 'price-asc' | 'price-desc' | 'experience' | 'views';
 
@@ -14,7 +15,10 @@ export const STORE_SORT_OPTIONS: ReadonlyArray<{ key: StoreSortKey; label: strin
 export const DEFAULT_STORE_SORT: StoreSortKey = 'rating';
 export const MAX_SEARCH_LENGTH = 100;
 
+export const MAX_CITY_LENGTH = 100;
+
 export interface StoresQuery {
+  country: string | null;
   city: string | null;
   category: string;
   q: string;
@@ -33,13 +37,14 @@ function matchCanonical(value: string | null, options: readonly string[]): strin
 
 export function parseStoresQuery(
   params: ParamMap,
-  cities: readonly string[],
+  countries: readonly Country[],
   categories: readonly string[]
 ): StoresQuery {
   const rawSort = params.get('sort');
   const sort = STORE_SORT_OPTIONS.find(option => option.key === rawSort)?.key ?? DEFAULT_STORE_SORT;
   return {
-    city: matchCanonical(params.get('city'), cities),
+    country: matchCanonical(params.get('country'), countries.map(country => country.name)),
+    city: (params.get('city') ?? '').trim().slice(0, MAX_CITY_LENGTH) || null,
     category: matchCanonical(params.get('category'), categories) ?? 'All',
     q: (params.get('q') ?? '').trim().slice(0, MAX_SEARCH_LENGTH),
     sort,
@@ -49,7 +54,8 @@ export function parseStoresQuery(
 
 export function toStoresQueryParams(query: StoresQuery): Params {
   return {
-    city: query.city ?? null,
+    country: query.country ?? null,
+    city: query.city ? query.city : null,
     category: query.category && query.category !== 'All' ? query.category : null,
     q: query.q ? query.q : null,
     sort: query.sort && query.sort !== DEFAULT_STORE_SORT ? query.sort : null,

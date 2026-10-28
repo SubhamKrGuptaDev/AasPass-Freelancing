@@ -10,7 +10,7 @@ import { EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES, SELLER_BENEFITS, SE
 function makeStore(id: number, city: string, rating: number, category = 'Photography'): StoreProfile {
   return {
     id: String(id), userId: '1', ownerName: `Owner ${id}`, storeName: `Store ${id}`, tagline: 'tag',
-    category, skills: [], experienceYears: 1, hourlyRate: 100, startingPrice: 100, area: 'Area', city,
+    category, skills: [], experienceYears: 1, hourlyRate: 100, startingPrice: 100, area: 'Area', city, country: 'India',
     serviceRadiusKm: 5, socialMediaLinks: [], description: '', services: [], rating,
     reviewCount: 1, reviews: [], avatarUrl: '', bannerGradient: 'from-indigo-500 to-purple-500',
     isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
