@@ -381,7 +381,7 @@ Every API endpoint responds with a standardized JSON wrapper:
 ```
 
 ### Access Control Summary
-* **Public:** `POST /api/auth/login|register|refresh|logout`, every `GET /api/stores/**` (catalog, services, reviews), `POST /api/stores/{id}/views`, and `GET /api/users/{id}` (public profile, KYC masked).
+* **Public:** `POST /api/auth/login|register|refresh|logout`, `GET /api/auth/check-username|check-email`, every `GET /api/stores/**` (catalog, services, reviews), `POST /api/stores/{id}/views`, and `GET /api/users/{id}` (public profile, KYC masked).
 * **Authenticated (valid `_sid` cookie, plus `X-XSRF-TOKEN` on writes):** everything else, including `GET /api/auth/me`, all address endpoints and every store, service, review and profile write.
 * **Owner-only writes:** a caller may only modify their own profile/KYC/addresses and their own stores and service packages; foreign resources return `403`. Unauthenticated calls return `401`.
 * Tokens travel only in HttpOnly cookies: `_sid` (access JWT, 15 min, SameSite=Lax, Path `/api`) and `_rid` (refresh, 30-day absolute session, SameSite=Strict, Path `/api/auth`). `Secure` is automatic except on localhost/127.0.0.1/::1.
@@ -392,6 +392,8 @@ Every API endpoint responds with a standardized JSON wrapper:
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/login` | Public | Authenticate via username or email; sets `_sid` and `_rid` cookies | `LoginRequest` (usernameOrEmail, password) | `AuthResponse` (`UserResponse`) |
 | `POST` | `/api/auth/register` | Public | Register a new unified account and sign it in | `RegisterRequest` (username, email, password, fullName, phone, city, area, avatarUrl) | `AuthResponse` (`UserResponse`) |
+| `GET` | `/api/auth/check-username?username=` | Public | Signup check: is the username free? Trimmed, case-insensitive; blank → 400 | None (query param) | `ApiResponse<AvailabilityResponse>` (available) |
+| `GET` | `/api/auth/check-email?email=` | Public | Signup check: is the email free? Trimmed, case-insensitive; blank → 400 | None (query param) | `ApiResponse<AvailabilityResponse>` (available) |
 | `POST` | `/api/auth/refresh` | Public (needs `_rid` cookie) | Rotate the refresh token and issue a new access token; reuse of a rotated token revokes the session; a failed refresh returns 401 and clears both cookies | None (cookie) | `ApiResponse<UserResponse>` (data = user) |
 | `GET` | `/api/auth/me` | Authenticated | Fetch the current user from the access cookie (no `userId` parameter) | None | `UserResponse` |
 | `POST` | `/api/auth/logout` | Public | Revoke the session and clear the auth cookies | None | `null` |

@@ -164,6 +164,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/check-username", "/api/auth/check-email")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/stores/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/stores/*/views").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()

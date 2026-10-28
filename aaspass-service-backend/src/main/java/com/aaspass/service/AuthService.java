@@ -4,6 +4,7 @@ import com.aaspass.dto.request.LoginRequest;
 import com.aaspass.dto.request.RegisterRequest;
 import com.aaspass.dto.response.UserResponse;
 import com.aaspass.entity.User;
+import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.DuplicateResourceException;
 import com.aaspass.exception.ErrorCode;
 import com.aaspass.exception.ResourceNotFoundException;
@@ -90,6 +91,40 @@ public class AuthService {
     }
 
     /**
+     * Checks whether a username is free for signup. Compared trimmed and case-insensitively,
+     * matching how {@link #register} stores it.
+     *
+     * @param username candidate username
+     * @return {@code true} when no account uses the username
+     * @throws BadRequestException when the username is blank
+     */
+    @Transactional(readOnly = true)
+    public boolean isUsernameAvailable(String username) {
+        return !userRepository.existsByUsernameIgnoreCase(requireValue(username, "Username is required"));
+    }
+
+    /**
+     * Checks whether an email is free for signup. Compared trimmed and case-insensitively,
+     * matching how {@link #register} stores it.
+     *
+     * @param email candidate email
+     * @return {@code true} when no account uses the email
+     * @throws BadRequestException when the email is blank
+     */
+    @Transactional(readOnly = true)
+    public boolean isEmailAvailable(String email) {
+        return !userRepository.existsByEmailIgnoreCase(requireValue(email, "Email is required"));
+    }
+
+    private static String requireValue(String value, String message) {
+        String trimmed = value != null ? value.trim() : "";
+        if (trimmed.isEmpty()) {
+            throw new BadRequestException(message);
+        }
+        return trimmed;
+    }
+
+    /**
      * Registers a new user account and logs it in (opens a new session).
      *
      * @param request   Registration details
@@ -101,13 +136,13 @@ public class AuthService {
     public AuthResult register(RegisterRequest request, String userAgent, String ip) {
         log.info("[AUTH REGISTER ATTEMPT] Registration request received");
 
-        if (userRepository.existsByUsername(request.username())) {
+        if (!isUsernameAvailable(request.username())) {
             log.warn("[AUTH REGISTER FAILED] Username already taken");
             // No value in the message: the exception handler logs it.
             throw new DuplicateResourceException("Username is already in use");
         }
 
-        if (userRepository.existsByEmail(request.email())) {
+        if (!isEmailAvailable(request.email())) {
             log.warn("[AUTH REGISTER FAILED] Email already registered");
             throw new DuplicateResourceException("Email is already registered");
         }

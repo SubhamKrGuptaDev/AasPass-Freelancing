@@ -155,11 +155,23 @@
             <input 
               type="text"
               [(ngModel)]="signupUsername"
+              (ngModelChange)="onSignupUsernameChange()"
+              (blur)="onSignupUsernameBlur()"
               name="signupUsername"
               required
               placeholder="e.g. ananya_roy"
+              aria-describedby="signupUsernameStatus"
+              [attr.aria-invalid]="usernameStatus() === 'taken'"
               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
             />
+            <p id="signupUsernameStatus" role="status" aria-live="polite" class="mt-1 text-[11px] font-semibold">
+              @switch (usernameStatus()) {
+                @case ('checking') { <span class="text-slate-600">Checking availability…</span> }
+                @case ('available') { <span class="text-emerald-700">✓ Username is available</span> }
+                @case ('taken') { <span class="text-rose-700">This username is already taken</span> }
+                @case ('error') { <span class="text-slate-600">Couldn't check availability right now</span> }
+              }
+            </p>
           </div>
 
           <div>
@@ -169,11 +181,23 @@
             <input 
               type="email"
               [(ngModel)]="signupEmail"
+              (ngModelChange)="onSignupEmailChange()"
+              (blur)="onSignupEmailBlur()"
               name="signupEmail"
               required
               placeholder="e.g. ananya.roy@example.com"
+              aria-describedby="signupEmailStatus"
+              [attr.aria-invalid]="emailStatus() === 'taken'"
               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
             />
+            <p id="signupEmailStatus" role="status" aria-live="polite" class="mt-1 text-[11px] font-semibold">
+              @switch (emailStatus()) {
+                @case ('checking') { <span class="text-slate-600">Checking availability…</span> }
+                @case ('available') { <span class="text-emerald-700">✓ Email is available</span> }
+                @case ('taken') { <span class="text-rose-700">An account with this email already exists</span> }
+                @case ('error') { <span class="text-slate-600">Couldn't check availability right now</span> }
+              }
+            </p>
           </div>
 
           <div class="grid grid-cols-2 gap-2">

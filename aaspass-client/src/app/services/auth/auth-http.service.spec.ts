@@ -198,4 +198,20 @@ describe('AuthHttpService', () => {
     expect(delReq.request.method).toBe('DELETE');
     delReq.flush({ success: true, message: 'Deleted', data: null });
   });
+
+  it('should call GET /api/auth/check-username and check-email with the value as a query param, without toasts', () => {
+    service.checkUsername('aman').subscribe(resp => expect(resp.data.available).toBe(false));
+    const userReq = httpTesting.expectOne(r => r.url === `${API_BASE_URL}/auth/check-username`);
+    expect(userReq.request.method).toBe('GET');
+    expect(userReq.request.params.get('username')).toBe('aman');
+    expect(userReq.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
+    expect(userReq.request.context.get(SKIP_AUTH_REFRESH)).toBe(true);
+    userReq.flush({ success: true, message: 'taken', data: { available: false } });
+
+    service.checkEmail('a+b@example.com').subscribe(resp => expect(resp.data.available).toBe(true));
+    const emailReq = httpTesting.expectOne(r => r.url === `${API_BASE_URL}/auth/check-email`);
+    expect(emailReq.request.params.get('email')).toBe('a+b@example.com');
+    expect(emailReq.request.context.get(SKIP_ERROR_TOAST)).toBe(true);
+    emailReq.flush({ success: true, message: 'free', data: { available: true } });
+  });
 });

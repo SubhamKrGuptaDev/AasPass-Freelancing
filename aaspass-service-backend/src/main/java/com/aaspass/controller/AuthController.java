@@ -5,6 +5,7 @@ import com.aaspass.dto.request.LoginRequest;
 import com.aaspass.dto.request.RegisterRequest;
 import com.aaspass.dto.response.ApiResponse;
 import com.aaspass.dto.response.AuthResponse;
+import com.aaspass.dto.response.AvailabilityResponse;
 import com.aaspass.dto.response.UserResponse;
 import com.aaspass.exception.UnauthorizedException;
 import com.aaspass.security.session.IssuedSession;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -98,6 +100,36 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(toAuthResponse(result, "Registration successful"),
                         "Account registered successfully"));
+    }
+
+    /**
+     * Username availability API endpoint used by the signup form before submitting.
+     *
+     * @param username candidate username
+     * @return Standardized ApiResponse wrapping AvailabilityResponse; 400 when the username is blank
+     */
+    @GetMapping("/check-username")
+    public ResponseEntity<ApiResponse<AvailabilityResponse>> checkUsername(
+            @RequestParam(name = "username", required = false) String username) {
+        log.info("[API-CALL] GET /api/auth/check-username - Received availability check");
+        boolean available = authService.isUsernameAvailable(username);
+        return ResponseEntity.ok(ApiResponse.success(new AvailabilityResponse(available),
+                available ? "Username is available" : "Username is already in use"));
+    }
+
+    /**
+     * Email availability API endpoint used by the signup form before submitting.
+     *
+     * @param email candidate email
+     * @return Standardized ApiResponse wrapping AvailabilityResponse; 400 when the email is blank
+     */
+    @GetMapping("/check-email")
+    public ResponseEntity<ApiResponse<AvailabilityResponse>> checkEmail(
+            @RequestParam(name = "email", required = false) String email) {
+        log.info("[API-CALL] GET /api/auth/check-email - Received availability check");
+        boolean available = authService.isEmailAvailable(email);
+        return ResponseEntity.ok(ApiResponse.success(new AvailabilityResponse(available),
+                available ? "Email is available" : "Email is already registered"));
     }
 
     /**

@@ -306,4 +306,27 @@ describe('AuthService', () => {
       expect(authService.returnUrl()).toBe('/create-store');
     });
   });
+
+  it('availability checks trim the value and map the response to a boolean', () => {
+    const results: boolean[] = [];
+    authService.isUsernameAvailable('  aman ').subscribe(v => results.push(v));
+    const userReq = httpTesting.expectOne(r => r.url === `${API_BASE_URL}/auth/check-username`);
+    expect(userReq.request.params.get('username')).toBe('aman');
+    userReq.flush({ success: true, message: 'taken', data: { available: false } });
+
+    authService.isEmailAvailable(' new@example.com ').subscribe(v => results.push(v));
+    const emailReq = httpTesting.expectOne(r => r.url === `${API_BASE_URL}/auth/check-email`);
+    expect(emailReq.request.params.get('email')).toBe('new@example.com');
+    emailReq.flush({ success: true, message: 'free', data: { available: true } });
+
+    expect(results).toEqual([false, true]);
+  });
+
+  it('availability check errors on a malformed response instead of reporting "taken"', () => {
+    let failed = false;
+    authService.isUsernameAvailable('aman').subscribe({ error: () => (failed = true) });
+    httpTesting.expectOne(r => r.url === `${API_BASE_URL}/auth/check-username`)
+      .flush({ success: true, message: 'ok', data: null });
+    expect(failed).toBe(true);
+  });
 });

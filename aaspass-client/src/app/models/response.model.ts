@@ -19,6 +19,11 @@ export interface ApiResponse<T> {
   code?: ApiErrorCode;
 }
 
+/** Payload of GET /auth/check-username and GET /auth/check-email. */
+export interface BackendAvailabilityResponse {
+  available: boolean;
+}
+
 export interface BackendSocialMediaLinkResponse {
   id?: number | string;
   name: string;

@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, catchError, firstValueFrom, map, tap, throwError, timeout } from 'rxjs';
 import { SignupRequest, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
-import { ApiResponse, BackendUserResponse } from '../../models/response.model';
+import { ApiResponse, BackendAvailabilityResponse, BackendUserResponse } from '../../models/response.model';
 import { KycUpdatePayload } from '../../models/request.model';
 import { ToastService } from '../toast/toast.service';
 import { errorCode } from '../../interceptors/error-toast.interceptor';
@@ -172,6 +172,16 @@ export class AuthService {
     );
   }
 
+  /** Asks GET /auth/check-username whether no account uses the username yet. */
+  isUsernameAvailable(username: string): Observable<boolean> {
+    return this.authHttpService.checkUsername((username ?? '').trim()).pipe(map(availableFrom));
+  }
+
+  /** Asks GET /auth/check-email whether no account uses the email yet. */
+  isEmailAvailable(email: string): Observable<boolean> {
+    return this.authHttpService.checkEmail((email ?? '').trim()).pipe(map(availableFrom));
+  }
+
   /** Registers via POST /auth/register (which also signs the user in); the user comes from the response. */
   signup(request: SignupRequest): Observable<UserProfile> {
     const name = (request.name ?? '').trim();
@@ -335,4 +345,13 @@ export class AuthService {
   setModalMode(mode: 'login' | 'signup'): void {
     this.modalMode.set(mode);
   }
+}
+
+/** Reads `available` from an availability response; a malformed body is an error, never "taken". */
+function availableFrom(resp: ApiResponse<BackendAvailabilityResponse> | null | undefined): boolean {
+  const available = resp?.data?.available;
+  if (typeof available !== 'boolean') {
+    throw new Error('Malformed availability response');
+  }
+  return available;
 }

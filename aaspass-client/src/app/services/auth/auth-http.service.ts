@@ -3,7 +3,7 @@ import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
 import { SKIP_AUTH_REFRESH, SKIP_ERROR_TOAST } from '../../interceptors/http-context';
-import { ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../models/response.model';
+import { ApiResponse, BackendAuthResponse, BackendAvailabilityResponse, BackendUserResponse } from '../../models/response.model';
 import { KycUpdatePayload, LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
 export type { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
@@ -52,6 +52,21 @@ export class AuthHttpService {
 
   register(payload: RegisterPayload): Observable<ApiResponse<BackendAuthResponse>> {
     return this.post<BackendAuthResponse>('/auth/register', payload, { context: skipRefresh() });
+  }
+
+  // Signup availability checks: the form shows the result inline, so no error toasts.
+  checkUsername(username: string): Observable<ApiResponse<BackendAvailabilityResponse>> {
+    return this.get<BackendAvailabilityResponse>('/auth/check-username', {
+      params: { username },
+      context: skipRefresh().set(SKIP_ERROR_TOAST, true)
+    });
+  }
+
+  checkEmail(email: string): Observable<ApiResponse<BackendAvailabilityResponse>> {
+    return this.get<BackendAvailabilityResponse>('/auth/check-email', {
+      params: { email },
+      context: skipRefresh().set(SKIP_ERROR_TOAST, true)
+    });
   }
 
   refresh(): Observable<ApiResponse<BackendUserResponse>> {

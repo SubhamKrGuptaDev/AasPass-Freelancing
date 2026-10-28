@@ -650,4 +650,66 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.user.avatarUrl", is(customAvatar)));
     }
+
+    // ---------------------------------------------------------------- availability checks
+
+    @Test
+    @DisplayName("GET /api/auth/check-username - Taken username is unavailable, ignoring case and spaces")
+    public void checkUsernameTaken() throws Exception {
+        mockMvc.perform(get("/api/auth/check-username").param("username", "  AMAN "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.available", is(false)));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/check-username - Unused username is available without a session")
+    public void checkUsernameAvailable() throws Exception {
+        mockMvc.perform(get("/api/auth/check-username").param("username", "free_" + System.currentTimeMillis()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available", is(true)));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/check-email - Taken email is unavailable, ignoring case")
+    public void checkEmailTaken() throws Exception {
+        mockMvc.perform(get("/api/auth/check-email").param("email", "Aman.Sharma@Example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available", is(false)));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/check-email - Unused email is available")
+    public void checkEmailAvailable() throws Exception {
+        mockMvc.perform(get("/api/auth/check-email").param("email", "free_" + System.currentTimeMillis() + "@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available", is(true)));
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/check-username and check-email - Blank or missing value is a 400")
+    public void checkAvailabilityBlankIsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/auth/check-username").param("username", "   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+        mockMvc.perform(get("/api/auth/check-email"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register - Username differing only in case is rejected as a duplicate")
+    public void registerRejectsCaseOnlyDuplicateUsername() throws Exception {
+        RegisterRequest request = RegisterRequest.builder()
+                .name("Case Dup")
+                .username("AMAN")
+                .email("case_dup_" + System.currentTimeMillis() + "@example.com")
+                .password("securePassword123")
+                .build();
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+    }
 }
