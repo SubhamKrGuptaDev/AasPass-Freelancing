@@ -88,7 +88,7 @@
         <a
           routerLink="/stores"
           routerLinkActive="text-indigo-600 font-semibold"
-          [routerLinkActiveOptions]="{exact: true}"
+          [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
           class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg transition"
         >
           <span>Browse Stores</span>

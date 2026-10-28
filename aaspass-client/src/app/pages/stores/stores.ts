@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { debounceTime } from 'rxjs';
 import { provideIcons, NgIcon } from '@ng-icons/core';
 import { lucideSearch } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -47,6 +47,7 @@ export class StoresComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly sortOptions = STORE_SORT_OPTIONS;
+  readonly sortLabel = (key: StoreSortKey): string => STORE_SORT_OPTIONS.find(o => o.key === key)?.label ?? key;
   readonly maxSearchLength = MAX_SEARCH_LENGTH;
   readonly skeletonSlots = [1, 2, 3, 4, 5, 6];
 
@@ -75,10 +76,15 @@ export class StoresComponent {
       this.sort.set(query.sort);
       this.openOnly.set(query.openOnly);
       this.searchControl.setValue(query.q, { emitEvent: false });
+      // Re-canonicalise the URL (e.g. bare /stores or a lower-case city) once state has been applied.
+      // After syncing, the raw param equals the canonical city, so this cannot loop.
+      if (params.get('city') !== this.storeService.selectedCity()) {
+        this.syncUrl();
+      }
     });
 
     this.searchControl.valueChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .pipe(debounceTime(300), takeUntilDestroyed())
       .subscribe(value => {
         this.storeService.setSearchQuery((value ?? '').trim().slice(0, MAX_SEARCH_LENGTH));
         this.syncUrl();

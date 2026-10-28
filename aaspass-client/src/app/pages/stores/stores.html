@@ -1,14 +1,15 @@
 <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
   <header class="mb-6">
     <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Browse local stores</h1>
-    <p class="mt-1 text-sm text-slate-600">Find skilled neighbours in your city. Sellers keep 100% of what they earn.</p>
+    <p class="mt-1 text-sm text-slate-600">Find skilled neighbours in your city. AasPass takes zero commission.</p>
   </header>
 
   <!-- Filter bar -->
   <div class="mb-6 space-y-4 rounded-xl border border-slate-200 bg-white p-4">
     <div class="flex flex-wrap items-center gap-3">
+      <label for="stores-city-trigger" class="sr-only">City</label>
       <hlm-select [value]="storeService.selectedCity()" (valueChange)="onCityChange($event)">
-        <hlm-select-trigger class="w-44" aria-label="City"><hlm-select-value placeholder="City" /></hlm-select-trigger>
+        <hlm-select-trigger buttonId="stores-city-trigger" class="w-44"><hlm-select-value placeholder="City" /></hlm-select-trigger>
         <hlm-select-content *hlmSelectPortal>
           @for (city of storeService.availableCities; track city) {
             <hlm-select-item [value]="city">{{ city }}</hlm-select-item>
@@ -29,8 +30,9 @@
         />
       </div>
 
-      <hlm-select [value]="sort()" (valueChange)="onSortChange($event)">
-        <hlm-select-trigger class="w-52" aria-label="Sort stores"><hlm-select-value placeholder="Sort by" /></hlm-select-trigger>
+      <label for="stores-sort-trigger" class="sr-only">Sort by</label>
+      <hlm-select [value]="sort()" [itemToString]="sortLabel" (valueChange)="onSortChange($event)">
+        <hlm-select-trigger buttonId="stores-sort-trigger" class="w-52"><hlm-select-value placeholder="Sort by" /></hlm-select-trigger>
         <hlm-select-content *hlmSelectPortal>
           @for (option of sortOptions; track option.key) {
             <hlm-select-item [value]="option.key">{{ option.label }}</hlm-select-item>
@@ -50,6 +52,7 @@
       type="single"
       variant="outline"
       size="sm"
+      [nullable]="false"
       class="flex flex-wrap gap-1"
       [value]="storeService.selectedCategory()"
       (valueChange)="onCategoryChange($event)"
@@ -61,7 +64,9 @@
   </div>
 
   <h2 class="mb-4 text-lg font-semibold text-slate-900" aria-live="polite">
-    {{ results().length }} stores in {{ storeService.selectedCity() }}
+    @if (!storeService.isLoading()) {
+      {{ results().length }} {{ results().length === 1 ? 'store' : 'stores' }} in {{ storeService.selectedCity() }}
+    }
   </h2>
 
   @if (storeService.isLoading()) {
@@ -85,6 +90,7 @@
           <a
             routerLink="/stores"
             [queryParams]="{ city: city }"
+            queryParamsHandling="merge"
             class="rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
           >{{ city }}</a>
         }

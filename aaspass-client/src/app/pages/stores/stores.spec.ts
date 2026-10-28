@@ -91,6 +91,51 @@ describe('StoresComponent', () => {
     expect(router.url).toContain(`city=${encodeURIComponent(service.selectedCity())}`);
   });
 
+  it('shows the sort label, not the raw key, in the sort trigger', async () => {
+    await open('/stores?city=Pune');
+    const text = (harness.routeNativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Top rated');
+    const el = harness.routeNativeElement as HTMLElement;
+    for (const id of ['stores-city-trigger', 'stores-sort-trigger']) {
+      expect(el.querySelector(`button#${id}`)).not.toBeNull();
+      expect(el.querySelector(`label[for="${id}"]`)).not.toBeNull();
+    }
+  });
+
+  it('accepts a retyped search term after a reset', async () => {
+    vi.useFakeTimers();
+    try {
+      const cmp = await open('/stores?city=Pune');
+      cmp.searchControl.setValue('react');
+      await vi.advanceTimersByTimeAsync(350);
+      expect(service.searchQuery()).toBe('react');
+      cmp.resetFilters();
+      expect(service.searchQuery()).toBe('');
+      cmp.searchControl.setValue('react');
+      await vi.advanceTimersByTimeAsync(350);
+      expect(service.searchQuery()).toBe('react');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('re-canonicalises a bare /stores to the selected city after being on ?city=Pune', async () => {
+    await open('/stores?city=Pune');
+    expect(service.selectedCity()).toBe('Pune');
+    await harness.navigateByUrl('/stores');
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(router.url).toContain('city=Pune');
+  });
+
+  it('shows singular count and hides count while loading', async () => {
+    const cmp = await open('/stores?city=Pune', [backendStore(1)]);
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('1 store in Pune');
+    expect(el.textContent).not.toContain('1 stores');
+    expect(cmp.results().length).toBe(1);
+  });
+
   it('filters to open stores and sorts results', async () => {
     const cmp = await open('/stores?city=Pune', [
       backendStore(1, { hourlyRate: 300 }),
@@ -119,6 +164,7 @@ describe('StoresComponent', () => {
     const cmp = await open('/stores?city=Pune', []);
     const el = harness.routeNativeElement as HTMLElement;
     expect(el.textContent).toContain('0 stores in Pune');
+    expect(Array.from(el.querySelectorAll('a')).filter(a => (a.getAttribute('href') ?? '').includes('city=Mumbai')).length).toBeGreaterThan(0);
     const links = Array.from(el.querySelectorAll('a')).map(a => a.getAttribute('href') ?? '');
     expect(links.some(h => h.includes('city=Mumbai'))).toBe(true);
     expect(links.some(h => h.includes('city=Pune'))).toBe(false);

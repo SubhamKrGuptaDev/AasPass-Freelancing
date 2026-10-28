@@ -3,7 +3,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideArrowRight, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
+  lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
   lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
   lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
   lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench
@@ -32,7 +32,7 @@ import {
     HlmSelectImports, HlmSkeletonImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideArrowRight, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
+    lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
     lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
     lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
     lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench

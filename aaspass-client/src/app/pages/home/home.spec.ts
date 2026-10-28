@@ -5,7 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { StoreProfile } from '../../models/store.model';
 import { StoreService } from '../../services/store/store.service';
 import { HomeComponent } from './home';
-import { EXAMPLE_SELLERS, FAQS, HOME_CATEGORIES, SELLER_BENEFITS, SELLER_COPY } from './home.content';
+import { EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES, SELLER_BENEFITS, SELLER_COPY } from './home.content';
 
 function makeStore(id: number, city: string, rating: number, category = 'Photography'): StoreProfile {
   return {
@@ -69,6 +69,13 @@ describe('HomeComponent', () => {
   it('every example seller maps to a real category', () => {
     expect(EXAMPLE_SELLERS.length).toBe(14);
     expect(EXAMPLE_SELLERS.every(s => service.categories.includes(s.category))).toBe(true);
+  });
+
+  it('does not promise radius filters', () => {
+    const answer = FAQS.find(f => f.question === 'How close are providers?')?.answer ?? '';
+    expect(answer).toBe('Providers are in your immediate vicinity, typically 2 to 10 km away.');
+    const step = HIRE_STEPS.find(h => h.title === 'Search nearby')?.description ?? '';
+    expect(step).toBe('Find talent in your city, filtered by category.');
   });
 
   it('has 6 FAQs and 4 seller benefits', () => {

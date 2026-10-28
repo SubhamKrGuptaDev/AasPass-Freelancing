@@ -36,8 +36,9 @@
             [formControl]="heroSearch"
           />
         </div>
+        <label for="home-city-trigger" class="sr-only">City</label>
         <hlm-select [value]="storeService.selectedCity()" (valueChange)="onCityChange($event)">
-          <hlm-select-trigger class="w-full sm:w-44" aria-label="City"><hlm-select-value placeholder="City" /></hlm-select-trigger>
+          <hlm-select-trigger buttonId="home-city-trigger" class="w-full sm:w-44"><hlm-select-value placeholder="City" /></hlm-select-trigger>
           <hlm-select-content *hlmSelectPortal>
             @for (city of storeService.availableCities; track city) {
               <hlm-select-item [value]="city">{{ city }}</hlm-select-item>
@@ -256,7 +257,7 @@
     <h2 id="faq-heading" class="mb-4 text-2xl font-bold text-slate-900">Frequently asked questions</h2>
     <hlm-accordion type="single">
       @for (f of faqs; track f.question) {
-        <hlm-accordion-item>
+        <hlm-accordion-item class="border-border">
           <hlm-accordion-trigger>{{ f.question }}</hlm-accordion-trigger>
           <hlm-accordion-content>{{ f.answer }}</hlm-accordion-content>
         </hlm-accordion-item>

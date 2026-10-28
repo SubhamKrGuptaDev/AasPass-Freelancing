@@ -14,11 +14,15 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
   * **`/stores` page:** Public, lazy-loaded city stores page with city, category, search, sort and open-only filters synced to URL query params.
   * **Home:** Rewritten as a landing page (hero search to `/stores`, category cards, "Anyone can open a store" seller section with zero-commission copy, how-it-works tabs, why AasPass, top stores in the selected city, trust and safety, cities, earn CTA, FAQ accordion). Static copy lives in `home.content.ts`; the old search/filter sync with `StoreService` was removed.
   * **Docs:** Updated `README.md` (stack row, categories, `/stores`, zero commission).
+  * **Final-review fixes:** Added Spartan custom Tailwind variants (`dark`, `data-*`) to `styles.css`; select triggers now have accessible names and show the sort label; search retype after reset works; `/stores` URL is re-canonicalised; singular/zero-safe result count; navbar "Browse Stores" stays active with query params; category toggle no longer deselects; local `border-border` for FAQ and store-card dividers; copy corrected (no radius filters, "AasPass takes zero commission"); removed unused icon import.
   * **Verification:** 150 frontend tests pass; `npm run build` succeeds (initial bundle 860.63 kB, under the 1 MB error budget; the 500 kB warning is pre-existing).
 * **Why Changed:** Give visitors a public way to browse local stores, present AasPass's seller proposition clearly, and broaden the categories beyond tech and creative work.
 * **Files Modified:**
   * `aaspass-client/src/app/pages/home/*`, `aaspass-client/src/app/app.routes.ts`
   * `aaspass-client/src/app/pages/stores/*`, `aaspass-client/src/app/components/store-card/*`, `aaspass-client/src/app/ui/**`
+  * `aaspass-client/src/app/services/store/store.service.ts`, `aaspass-client/src/app/pages/create-store/create-store.ts`
+  * `aaspass-client/src/app/components/navbar/navbar.html`, `aaspass-client/src/styles.css`
+  * `aaspass-client/tsconfig.json`, `aaspass-client/package.json`
   * `README.md`
   * `doc/AI-doc/CHANGELOG.md`
 

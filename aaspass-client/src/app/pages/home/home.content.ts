@@ -54,7 +54,7 @@ export const EXAMPLE_SELLERS: readonly ExampleSeller[] = [
 ];
 
 export const HIRE_STEPS: readonly ContentStep[] = [
-  { title: 'Search nearby', description: 'Find talent within 2 km, 5 km, 10 km or across the entire city, filtered by category.' },
+  { title: 'Search nearby', description: 'Find talent in your city, filtered by category.' },
   { title: 'View storefront & packages', description: 'See the bio, experience, hourly rate, service packages with turnaround times and verified social links.' },
   { title: 'Book or request a callback', description: 'Send a one-click service booking request or ask for a callback.' }
 ];
@@ -89,7 +89,7 @@ export const FAQS: readonly Faq[] = [
   { question: 'Does AasPass take a commission?', answer: 'No. AasPass takes zero commission — everything your customer pays for your service is yours.' },
   { question: 'What kind of store can I open?', answer: 'Almost anything people nearby need: puja and astrology, driving, tutoring, self-defense and fitness, drawing and music classes, cooking, tailoring, video editing, photography, web development and much more.' },
   { question: 'Do I need a shop?', answer: 'No. AasPass is tailored for students and individuals who want flexible side income without needing a physical commercial shop, and you never have to expose your private home.' },
-  { question: 'How close are providers?', answer: 'Providers are in your immediate vicinity, 2 to 10 km away. You can filter within 2 km, 5 km, 10 km or across the entire city.' },
+  { question: 'How close are providers?', answer: 'Providers are in your immediate vicinity, typically 2 to 10 km away.' },
   { question: 'Is my ID data safe?', answer: 'Aadhaar and PAN are stored AES-256-GCM encrypted and only ever shown masked. Sessions use HttpOnly cookies, so tokens are never exposed to JavaScript.' },
   { question: 'Can I both hire and earn?', answer: 'Yes. AasPass uses a single, unified account: every user can hire local providers, and can open a store at any time to start receiving gigs.' }
 ];
