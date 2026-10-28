@@ -16,6 +16,8 @@
 AasPass bridges this gap by creating **Neighborhood Skill Storefronts**:
 * **Physical Proximity & Trust:** Hire someone 1–3 km away whom you can meet at a local cafe or collaborate with in person.
 * **Low Barrier for Newcomers:** Tailored for students and individuals new to a city wanting flexible side income without needing a physical commercial shop.
+* **Zero Commission:** AasPass takes no commission on your earnings.
+* **Anyone Can Open a Store:** A pandit, astrologer, car driver, teacher, self-defense coach, home cook, tailor or anyone with a skill that neighbors would value can open a store.
 * **Fast Turnaround:** Direct, neighborhood-speed execution for same-day video edits, tutoring, photography, web fixes, or event support.
 
 ---
@@ -40,6 +42,12 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
   * 📚 Tutoring & Mentorship
   * 🎨 Graphics, Logos & Brand Design
   * 🛠️ Tech Support, PC Builds & Hardware Setup
+  * 🔮 Astrology & Spiritual (puja and astrology)
+  * 🚗 Driving & Transport
+  * 🥋 Fitness & Self-Defense
+  * 🎵 Art, Music & Hobbies (drawing and music classes)
+  * 🏠 Home & Personal Services (cooking, tailoring)
+* **Public Stores Page:** Browse every store at `/stores` without signing in, with city, category, search, sort and "Open for gigs" filters kept in the URL.
 
 ### 2. Digital Skill Storefronts
 * **Public Profile:** Showcases bio, years of experience, standard hourly rate, and starting gig price.
@@ -66,6 +74,7 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
 | :--- | :--- | :--- |
 | **Frontend** | Angular 22 | Modern Standalone Components, Signal-based reactive state |
 | **Styling** | Tailwind CSS v4 | Responsive utility-first design, modern gradients & micro-interactions |
+| **UI Components** | Spartan UI | Accessible `@spartan-ng/helm` components (select, tabs, accordion, card, badge, button) with Lucide icons |
 | **Backend** | Spring Boot 4.x / Java 17 | REST APIs, Spring Data JPA, Hibernate, Java 17 Records, Maven |
 | **Security** | Spring Security, JWT in HttpOnly cookies | Access/refresh cookie sessions, CSRF protection, BCrypt(12), AES-256-GCM encrypted KYC |
 | **Database** | MySQL 8.x | Relational persistence, connection pooling |

@@ -1,34 +1,78 @@
-import { Component, effect, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, computed, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideArrowRight, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
+  lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
+  lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
+  lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench
+} from '@ng-icons/lucide';
+import { HlmAccordionImports } from '@spartan-ng/helm/accordion';
+import { HlmBadgeImports } from '@spartan-ng/helm/badge';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmCardImports } from '@spartan-ng/helm/card';
+import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
+import { HlmTabsImports } from '@spartan-ng/helm/tabs';
+import { StoreCardComponent } from '../../components/store-card/store-card';
 import { StoreService } from '../../services/store/store.service';
-import { StoreProfile } from '../../models/store.model';
+import { topStoresForCity } from '../../services/store/store-query';
+import {
+  COMPARISONS, EARN_STEPS, EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES,
+  SELLER_BENEFITS, SELLER_COPY, TRUST_POINTS, VALUE_PROPS
+} from './home.content';
 
 @Component({
   selector: 'app-home',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './home.html',
-  styleUrl: './home.css'
+  imports: [
+    ReactiveFormsModule, RouterLink, NgIcon, StoreCardComponent,
+    HlmAccordionImports, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmInputImports,
+    HlmSelectImports, HlmSkeletonImports, HlmTabsImports
+  ],
+  providers: [provideIcons({
+    lucideArrowRight, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
+    lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
+    lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
+    lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench
+  })],
+  templateUrl: './home.html'
 })
 export class HomeComponent {
-  storeService = inject(StoreService);
+  readonly storeService = inject(StoreService);
+  private readonly router = inject(Router);
 
-  /** Mirrors StoreService.searchQuery, which stays the source of truth (resetFilters clears it). */
-  readonly searchControl = new FormControl(this.storeService.searchQuery(), { nonNullable: true });
+  readonly categories = HOME_CATEGORIES;
+  readonly sellerCopy = SELLER_COPY;
+  readonly sellerBenefits = SELLER_BENEFITS;
+  readonly exampleSellers = EXAMPLE_SELLERS;
+  readonly hireSteps = HIRE_STEPS;
+  readonly earnSteps = EARN_STEPS;
+  readonly comparisons = COMPARISONS;
+  readonly valueProps = VALUE_PROPS;
+  readonly trustPoints = TRUST_POINTS;
+  readonly faqs = FAQS;
+  readonly skeletons = [1, 2, 3, 4, 5, 6];
 
-  constructor() {
-    this.searchControl.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe(q => this.storeService.setSearchQuery(q));
+  /** City-only preview: category/search filters are deliberately ignored on Home. */
+  readonly topStores = computed(() =>
+    topStoresForCity(this.storeService.stores(), this.storeService.selectedCity())
+  );
 
-    effect(() => {
-      const q = this.storeService.searchQuery();
-      if (this.searchControl.value !== q) {
-        this.searchControl.setValue(q, { emitEvent: false });
-      }
+  /** Local to Home; only applied on submit (navigates to /stores). */
+  readonly heroSearch = new FormControl('', { nonNullable: true });
+
+  onCityChange(city: string | null | undefined): void {
+    if (city) {
+      this.storeService.setSelectedCity(city);
+    }
+  }
+
+  findTalent(): void {
+    const q = this.heroSearch.value.trim();
+    void this.router.navigate(['/stores'], {
+      queryParams: { city: this.storeService.selectedCity(), q: q || null }
     });
   }
 }
