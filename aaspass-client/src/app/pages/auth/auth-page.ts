@@ -1,16 +1,18 @@
 import { Component, computed, inject, signal, OnInit, WritableSignal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth/auth.service';
 import { Observable, catchError, defaultIfEmpty, forkJoin, of, tap } from 'rxjs';
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
+import { matchingFields, minTrimmedLength, notBlank } from '../../forms/validators';
 
 /** Result of the live signup availability check for one field. */
 export type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 
 @Component({
   selector: 'app-auth-page',
-  imports: [FormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './auth-page.html',
   styleUrl: './auth-page.css'
 })
@@ -25,19 +27,23 @@ export class AuthPageComponent implements OnInit {
   readonly isSubmitting = signal<boolean>(false);
   isLoginMode = computed(() => this.mode() === 'login');
 
-  loginInput = '';
-  loginPassword = '';
+  readonly loginForm = new FormGroup({
+    identifier: new FormControl('', { nonNullable: true, validators: [notBlank] }),
+    password: new FormControl('', { nonNullable: true, validators: [notBlank] })
+  });
   showPassword = signal<boolean>(false);
 
-  signupName = '';
-  signupUsername = '';
-  signupEmail = '';
-  signupCountry = 'India';
-  signupCity = 'Bengaluru';
-  signupArea = 'Indiranagar';
-  signupPassword = '';
-  signupConfirmPassword = '';
-  signupAvatarUrl = '';
+  readonly signupForm = new FormGroup({
+    name: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(2)] }),
+    username: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(3)] }),
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/@/)] }),
+    country: new FormControl('India', { nonNullable: true }),
+    city: new FormControl('Bengaluru', { nonNullable: true }),
+    area: new FormControl('Indiranagar', { nonNullable: true }),
+    password: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(6)] }),
+    confirmPassword: new FormControl('', { nonNullable: true }),
+    avatarUrl: new FormControl('', { nonNullable: true })
+  }, { validators: [matchingFields('password', 'confirmPassword')] });
   getRandomAvatarUrl = getRandomAvatarUrl;
 
   readonly usernameStatus = signal<AvailabilityStatus>('idle');
@@ -55,9 +61,19 @@ export class AuthPageComponent implements OnInit {
     'Singapore'
   ];
 
+  constructor() {
+    // Editing a field invalidates its last availability result.
+    this.signupForm.controls.username.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.usernameStatus.set('idle'));
+    this.signupForm.controls.email.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.emailStatus.set('idle'));
+  }
+
   randomizeSignupAvatar(): void {
     const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
-    this.signupAvatarUrl = getRandomAvatarUrl(randomSeed);
+    this.signupForm.controls.avatarUrl.setValue(getRandomAvatarUrl(randomSeed));
   }
 
   ngOnInit(): void {
@@ -104,52 +120,43 @@ export class AuthPageComponent implements OnInit {
     });
   }
 
-  onLoginSubmit(event: Event): void {
-    event.preventDefault();
+  onLoginSubmit(): void {
     this.formError.set(null);
     if (this.isSubmitting()) return;
 
-    if (!this.loginInput.trim()) {
+    const { identifier, password } = this.loginForm.controls;
+    if (identifier.invalid) {
       this.formError.set('Please enter your username or email address.');
       return;
     }
-    if (!this.loginPassword.trim()) {
+    if (password.invalid) {
       this.formError.set('Please enter your password.');
       return;
     }
 
-    this.submit(this.authService.login(this.loginInput, this.loginPassword));
-  }
-
-  /** Editing a field invalidates its last availability result. */
-  onSignupUsernameChange(): void {
-    this.usernameStatus.set('idle');
-  }
-
-  onSignupEmailChange(): void {
-    this.emailStatus.set('idle');
+    this.submit(this.authService.login(identifier.value, password.value));
   }
 
   onSignupUsernameBlur(): void {
-    const username = this.signupUsername.trim();
+    const username = this.signupForm.controls.username.value.trim();
     if (username.length < 3) return;
     this.checkUsername(username).subscribe();
   }
 
   onSignupEmailBlur(): void {
-    const email = this.signupEmail.trim();
+    const email = this.signupForm.controls.email.value.trim();
     if (!email.includes('@')) return;
     this.checkEmail(email).subscribe();
   }
 
   private checkUsername(username: string): Observable<boolean | null> {
     return this.trackAvailability(this.authService.isUsernameAvailable(username), this.usernameStatus,
-      () => this.signupUsername.trim() === username);
+      () => this.signupForm.controls.username.value.trim() === username);
   }
 
   private checkEmail(email: string): Observable<boolean | null> {
     return this.trackAvailability(this.authService.isEmailAvailable(email), this.emailStatus,
-      () => this.signupEmail.trim() === email);
+      () => this.signupForm.controls.email.value.trim() === email);
   }
 
   /**
@@ -172,39 +179,40 @@ export class AuthPageComponent implements OnInit {
     );
   }
 
-  onSignupSubmit(event: Event): void {
-    event.preventDefault();
+  /** First client-side problem with the signup form, in field order, or null when it is valid. */
+  private signupValidationError(): string | null {
+    const c = this.signupForm.controls;
+    if (c.name.invalid) {
+      return 'Please provide your full name (minimum 2 characters).';
+    }
+    if (c.username.invalid) {
+      return 'Please provide a username with at least 3 characters.';
+    }
+    if (c.email.invalid) {
+      return 'Please enter a valid email address.';
+    }
+    if (c.password.invalid) {
+      return 'Password must be at least 6 characters long.';
+    }
+    if (this.signupForm.hasError('fieldsMismatch')) {
+      return 'Passwords do not match. Please re-enter your password.';
+    }
+    return null;
+  }
+
+  onSignupSubmit(): void {
     this.formError.set(null);
     if (this.isSubmitting()) return;
 
-    if (this.signupName.trim().length < 2) {
-      this.formError.set('Please provide your full name (minimum 2 characters).');
-      return;
-    }
-
-    if (this.signupUsername.trim().length < 3) {
-      this.formError.set('Please provide a username with at least 3 characters.');
-      return;
-    }
-
-    if (!this.signupEmail.includes('@')) {
-      this.formError.set('Please enter a valid email address.');
-      return;
-    }
-
-    if (this.signupPassword.trim().length < 6) {
-      this.formError.set('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (this.signupPassword !== this.signupConfirmPassword) {
-      this.formError.set('Passwords do not match. Please re-enter your password.');
+    const validationError = this.signupValidationError();
+    if (validationError) {
+      this.formError.set(validationError);
       return;
     }
 
     // Re-check right before submitting: the blur result may be stale or never have run.
-    const username = this.signupUsername.trim();
-    const email = this.signupEmail.trim();
+    const username = this.signupForm.controls.username.value.trim();
+    const email = this.signupForm.controls.email.value.trim();
     this.isSubmitting.set(true);
     forkJoin({ usernameFree: this.checkUsername(username), emailFree: this.checkEmail(email) })
       .subscribe(({ usernameFree, emailFree }) => {
@@ -221,15 +229,16 @@ export class AuthPageComponent implements OnInit {
   }
 
   private submitSignup(username: string, email: string): void {
+    const form = this.signupForm.getRawValue();
     this.submit(this.authService.signup({
-      name: this.signupName,
+      name: form.name,
       username,
       email,
-      country: this.signupCountry,
-      city: this.signupCity,
-      area: this.signupArea,
-      password: this.signupPassword,
-      avatarUrl: this.signupAvatarUrl
+      country: form.country,
+      city: form.city,
+      area: form.area,
+      password: form.password,
+      avatarUrl: form.avatarUrl
     }));
   }
 }

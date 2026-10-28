@@ -56,19 +56,19 @@ describe('ProfileComponent KYC', () => {
 
   it('only one KYC field is editable at a time and cancel clears the input', () => {
     component.startKycEdit('aadhaar');
-    component.kycInput.set('1234');
+    component.kycControl.setValue('1234');
     component.startKycEdit('pan');
     expect(component.editingKyc()).toBe('pan');
-    expect(component.kycInput()).toBe('');
-    component.kycInput.set('ABC');
+    expect(component.kycControl.value).toBe('');
+    component.kycControl.setValue('ABC');
     component.cancelKycEdit();
     expect(component.editingKyc()).toBeNull();
-    expect(component.kycInput()).toBe('');
+    expect(component.kycControl.value).toBe('');
   });
 
   it('submitKycCallsKycEndpoint on success shows masked value and closes the editor', () => {
     component.startKycEdit('aadhaar');
-    component.kycInput.set('1234 5678 1234');
+    component.kycControl.setValue('1234 5678 1234');
     component.submitKyc();
 
     const req = httpTesting.expectOne(KYC_URL);
@@ -78,14 +78,14 @@ describe('ProfileComponent KYC', () => {
 
     expect(component.storeService.currentUser().aadharNumber).toBe('XXXXXXXX1234');
     expect(component.editingKyc()).toBeNull();
-    expect(component.kycInput()).toBe('');
+    expect(component.kycControl.value).toBe('');
     expect(toast.toasts().some(t => t.type === 'success' && t.message === 'Aadhaar updated')).toBe(true);
   });
 
   it('submitKyc sends an uppercased PAN', () => {
     component.startKycEdit('pan');
-    component.setKycInput('abcde1234f');
-    expect(component.kycInput()).toBe('ABCDE1234F');
+    component.kycControl.setValue('abcde1234f');
+    expect(component.kycControl.value).toBe('ABCDE1234F');
     component.submitKyc();
 
     const req = httpTesting.expectOne(KYC_URL);
@@ -96,7 +96,7 @@ describe('ProfileComponent KYC', () => {
 
   it('submitKyc on 400 shows one error toast and keeps the editor open', () => {
     component.startKycEdit('aadhaar');
-    component.kycInput.set('12');
+    component.kycControl.setValue('12');
     component.submitKyc();
 
     httpTesting.expectOne(KYC_URL).flush(
@@ -105,14 +105,14 @@ describe('ProfileComponent KYC', () => {
     );
 
     expect(component.editingKyc()).toBe('aadhaar');
-    expect(component.kycInput()).toBe('12');
+    expect(component.kycControl.value).toBe('12');
     const errors = toast.toasts().filter(t => t.type === 'error');
     expect(errors.length).toBe(1);
   });
 
   it('KYC success does not close the editor when another field is now being edited', () => {
     component.startKycEdit('aadhaar');
-    component.kycInput.set('123456781234');
+    component.kycControl.setValue('123456781234');
     component.submitKyc();
     // While saving, switching fields and cancelling are blocked.
     component.startKycEdit('pan');
@@ -152,7 +152,7 @@ describe('ProfileComponent KYC', () => {
         avatarUrl: '', bannerGradient: '', isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
       }]);
       component.isAddingReview = true;
-      component.newReviewMessage = 'Great work';
+      component.reviewForm.controls.message.setValue('Great work');
     });
 
     it('200 inserts the review under the session user name and shows one success toast', () => {

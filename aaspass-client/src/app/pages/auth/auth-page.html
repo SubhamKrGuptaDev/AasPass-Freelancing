@@ -70,9 +70,9 @@
 
       <!-- LOGIN FORM -->
       @if (isLoginMode()) {
-        <form (submit)="onLoginSubmit($event)" class="space-y-4">
+        <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="loginIdentifier" class="block text-xs font-bold text-slate-700 mb-1">
               Username or Email
             </label>
             <div class="relative">
@@ -83,8 +83,8 @@
               </div>
               <input 
                 type="text"
-                [(ngModel)]="loginInput"
-                name="loginInput"
+                id="loginIdentifier"
+                formControlName="identifier"
                 required
                 placeholder="e.g. aman or aman.sharma@example.com"
                 class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
@@ -93,7 +93,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="loginPassword" class="block text-xs font-bold text-slate-700 mb-1">
               Password
             </label>
             <div class="relative">
@@ -104,8 +104,8 @@
               </div>
               <input 
                 [type]="showPassword() ? 'text' : 'password'"
-                [(ngModel)]="loginPassword"
-                name="loginPassword"
+                id="loginPassword"
+                formControlName="password"
                 required
                 placeholder="Enter your password"
                 class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
@@ -133,15 +133,15 @@
 
       <!-- SIGNUP FORM -->
       @if (!isLoginMode()) {
-        <form (submit)="onSignupSubmit($event)" class="space-y-3.5">
+        <form [formGroup]="signupForm" (ngSubmit)="onSignupSubmit()" class="space-y-3.5">
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupName" class="block text-xs font-bold text-slate-700 mb-1">
               Full Name *
             </label>
             <input 
               type="text"
-              [(ngModel)]="signupName"
-              name="signupName"
+              id="signupName"
+              formControlName="name"
               required
               placeholder="e.g. Ananya Roy"
               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
@@ -149,15 +149,14 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupUsername" class="block text-xs font-bold text-slate-700 mb-1">
               Username *
             </label>
             <input 
               type="text"
-              [(ngModel)]="signupUsername"
-              (ngModelChange)="onSignupUsernameChange()"
+              id="signupUsername"
+              formControlName="username"
               (blur)="onSignupUsernameBlur()"
-              name="signupUsername"
               required
               placeholder="e.g. ananya_roy"
               aria-describedby="signupUsernameStatus"
@@ -175,15 +174,14 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupEmail" class="block text-xs font-bold text-slate-700 mb-1">
               Email Address *
             </label>
             <input 
               type="email"
-              [(ngModel)]="signupEmail"
-              (ngModelChange)="onSignupEmailChange()"
+              id="signupEmail"
+              formControlName="email"
               (blur)="onSignupEmailBlur()"
-              name="signupEmail"
               required
               placeholder="e.g. ananya.roy@example.com"
               aria-describedby="signupEmailStatus"
@@ -202,12 +200,12 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">
+              <label for="signupCountry" class="block text-xs font-bold text-slate-700 mb-1">
                 Country *
               </label>
               <select 
-                [(ngModel)]="signupCountry" 
-                name="signupCountry"
+                id="signupCountry"
+                formControlName="country"
                 class="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
               >
                 @for (c of availableCountries; track c) {
@@ -216,12 +214,12 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">
+              <label for="signupCity" class="block text-xs font-bold text-slate-700 mb-1">
                 City
               </label>
               <select 
-                [(ngModel)]="signupCity" 
-                name="signupCity"
+                id="signupCity"
+                formControlName="city"
                 class="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition cursor-pointer"
               >
                 <option value="Bengaluru">Bengaluru</option>
@@ -234,27 +232,27 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupArea" class="block text-xs font-bold text-slate-700 mb-1">
               Neighborhood Area
             </label>
             <input 
               type="text"
-              [(ngModel)]="signupArea"
-              name="signupArea"
+              id="signupArea"
+              formControlName="area"
               placeholder="e.g. Koramangala"
               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupPassword" class="block text-xs font-bold text-slate-700 mb-1">
               Password * (Min 6 chars)
             </label>
             <div class="relative">
               <input 
                 [type]="showPassword() ? 'text' : 'password'"
-                [(ngModel)]="signupPassword"
-                name="signupPassword"
+                id="signupPassword"
+                formControlName="password"
                 required
                 placeholder="Create a strong password"
                 class="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
@@ -271,13 +269,13 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">
+            <label for="signupConfirmPassword" class="block text-xs font-bold text-slate-700 mb-1">
               Confirm Password *
             </label>
             <input 
               type="password"
-              [(ngModel)]="signupConfirmPassword"
-              name="signupConfirmPassword"
+              id="signupConfirmPassword"
+              formControlName="confirmPassword"
               required
               placeholder="Re-enter your password"
               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
@@ -287,7 +285,7 @@
           <!-- Profile Avatar (Optional) -->
           <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <div class="flex items-center justify-between">
-              <label class="block text-xs font-bold text-slate-700">Profile Avatar (Optional)</label>
+              <label for="signupAvatarUrl" class="block text-xs font-bold text-slate-700">Profile Avatar (Optional)</label>
               <button 
                 type="button" 
                 (click)="randomizeSignupAvatar()" 
@@ -299,14 +297,14 @@
             </div>
             <div class="flex items-center gap-2.5">
               <img 
-                [src]="signupAvatarUrl || getRandomAvatarUrl(signupUsername || signupName || 'user')" 
+                [src]="signupForm.controls.avatarUrl.value || getRandomAvatarUrl(signupForm.controls.username.value || signupForm.controls.name.value || 'user')" 
                 alt="Avatar Preview" 
                 class="w-9 h-9 rounded-lg object-cover ring-2 ring-indigo-200 bg-white shrink-0"
               />
               <input 
                 type="text" 
-                [(ngModel)]="signupAvatarUrl" 
-                name="signupAvatarUrl"
+                id="signupAvatarUrl"
+                formControlName="avatarUrl"
                 placeholder="Image URL (optional)"
                 class="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />

@@ -1,32 +1,72 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { 
-  SocialMediaLink, 
-  formatSocialUrl, 
-  displaySocialUrl, 
-  getSocialIcon, 
-  getSocialBadgeClass 
+import { Component, input } from '@angular/core';
+import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import {
+  SocialMediaLink,
+  formatSocialUrl,
+  displaySocialUrl,
+  getSocialIcon,
+  getSocialBadgeClass
 } from '../../models/store.model';
+
+/** One editable social link row. */
+export type SocialLinkForm = FormGroup<{
+  id: FormControl<string>;
+  name: FormControl<string>;
+  url: FormControl<string>;
+}>;
+
+export type SocialLinksFormArray = FormArray<SocialLinkForm>;
+
+function newSocialLinkId(prefix: string): string {
+  return prefix + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+}
+
+export function createSocialLinkGroup(link: Partial<SocialMediaLink> = {}): SocialLinkForm {
+  return new FormGroup({
+    id: new FormControl(link.id || newSocialLinkId('sm-'), { nonNullable: true }),
+    name: new FormControl(link.name ?? '', { nonNullable: true }),
+    url: new FormControl(link.url ?? '', { nonNullable: true })
+  });
+}
+
+export function createSocialLinksArray(links: SocialMediaLink[] = []): SocialLinksFormArray {
+  return new FormArray(links.map(l => createSocialLinkGroup(l)));
+}
+
+/** Replaces every row of {@code array} with {@code links}. */
+export function setSocialLinks(array: SocialLinksFormArray, links: SocialMediaLink[]): void {
+  array.clear();
+  links.forEach(l => array.push(createSocialLinkGroup(l)));
+}
+
+/** Trimmed links with both a name and a URL; blank rows are dropped. */
+export function toValidSocialLinks(array: SocialLinksFormArray, idPrefix: string = 'sm-'): SocialMediaLink[] {
+  return array.getRawValue()
+    .map(l => ({
+      id: l.id || newSocialLinkId(idPrefix),
+      name: l.name.trim(),
+      url: l.url.trim()
+    }))
+    .filter(l => l.name.length > 0 && l.url.length > 0);
+}
 
 @Component({
   selector: 'app-social-media-links',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [ReactiveFormsModule],
   templateUrl: './social-media-links.html',
   styleUrl: './social-media-links.css'
 })
 export class SocialMediaLinksComponent {
-  @Input() title: string = 'Social Media & Portfolios';
-  @Input() subtitle: string = 'Add multiple social media and portfolio links with their platform names.';
-  @Input() badgeNumber: number | string | null = null;
-  @Input() showPresets: boolean = true;
-  @Input() idPrefix: string = 'sml';
+  readonly title = input<string>('Social Media & Portfolios');
+  readonly subtitle = input<string>('Add multiple social media and portfolio links with their platform names.');
+  readonly badgeNumber = input<number | string | null>(null);
+  readonly showPresets = input<boolean>(true);
+  readonly idPrefix = input<string>('sml');
 
-  @Input() links: SocialMediaLink[] = [];
-  @Output() linksChange = new EventEmitter<SocialMediaLink[]>();
+  /** The parent form's links array; rows are added and removed in place. */
+  readonly linksArray = input.required<SocialLinksFormArray>();
 
-  datalistId = 'socialPlatformsList_' + Math.random().toString(36).substr(2, 6);
+  datalistId = 'socialPlatformsList_' + Math.random().toString(36).substring(2, 8);
 
   formatUrl = formatSocialUrl;
   displayUrl = displaySocialUrl;
@@ -45,23 +85,10 @@ export class SocialMediaLinksComponent {
   ];
 
   addLink(presetName: string = ''): void {
-    const newLink: SocialMediaLink = {
-      id: 'sm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      name: presetName,
-      url: ''
-    };
-    this.links = [...this.links, newLink];
-    this.linksChange.emit(this.links);
+    this.linksArray().push(createSocialLinkGroup({ name: presetName }));
   }
 
   removeLink(index: number): void {
-    const updated = [...this.links];
-    updated.splice(index, 1);
-    this.links = updated;
-    this.linksChange.emit(this.links);
-  }
-
-  onLinkChange(): void {
-    this.linksChange.emit(this.links);
+    this.linksArray().removeAt(index);
   }
 }

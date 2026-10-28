@@ -37,8 +37,8 @@
           </div>
           <input 
             type="text" 
-            [ngModel]="storeService.searchQuery()"
-            (ngModelChange)="storeService.setSearchQuery($event)"
+            aria-label="Search skills, services, or stores"
+            [formControl]="searchControl"
             placeholder="Search skill, service, or store (e.g. Reels, Web, Python)..." 
             class="w-full pl-11 pr-4 py-3 bg-slate-100/80 rounded-xl text-sm font-medium placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition"
           />

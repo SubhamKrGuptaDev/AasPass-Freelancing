@@ -1,11 +1,18 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { map } from 'rxjs';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { ToastService } from '../../services/toast/toast.service';
-import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
+import {
+  SocialMediaLinksComponent,
+  createSocialLinksArray,
+  setSocialLinks,
+  toValidSocialLinks
+} from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
   StoreServiceItem, 
@@ -23,7 +30,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SocialMediaLinksComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent],
   templateUrl: './create-store.html',
   styleUrl: './create-store.css'
 })
@@ -42,31 +49,35 @@ export class CreateStoreComponent implements OnInit {
     'Tech Support & Hardware'
   ];
 
-  skillsInput = 'Short Reels, Adobe Premiere, Color Grading';
-
   isEditing = false;
   editingStoreId = '';
 
   isSubmitting = signal<boolean>(false);
 
-  formData = {
-    storeName: 'QuickEdits Bangalore',
-    tagline: 'Fast 24-hour turnaround Instagram reels and shorts for local creators',
-    category: 'Video & Editing',
-    experienceYears: 2,
-    hourlyRate: 500,
-    startingPrice: 350,
-    area: 'Indiranagar',
-    city: 'Bengaluru',
-    serviceRadiusKm: 5,
-    description: 'Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.'
-  };
+  readonly storeForm = new FormGroup({
+    storeName: new FormControl('QuickEdits Bangalore', { nonNullable: true }),
+    tagline: new FormControl('Fast 24-hour turnaround Instagram reels and shorts for local creators', { nonNullable: true }),
+    category: new FormControl('Video & Editing', { nonNullable: true }),
+    experienceYears: new FormControl<number | null>(2),
+    skills: new FormControl('Short Reels, Adobe Premiere, Color Grading', { nonNullable: true }),
+    hourlyRate: new FormControl<number | null>(500),
+    startingPrice: new FormControl<number | null>(350),
+    area: new FormControl('Indiranagar', { nonNullable: true }),
+    city: new FormControl('Bengaluru', { nonNullable: true }),
+    serviceRadiusKm: new FormControl<number>(5, { nonNullable: true }),
+    description: new FormControl('Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.', { nonNullable: true }),
+    socialMediaLinks: createSocialLinksArray([
+      { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
+      { id: 'sm-init-2', name: 'LinkedIn', url: 'https://linkedin.com/in/myprofile' },
+      { id: 'sm-init-3', name: 'Portfolio', url: 'https://myportfolio.site' }
+    ])
+  });
 
-  socialMediaLinks: SocialMediaLink[] = [
-    { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
-    { id: 'sm-init-2', name: 'LinkedIn', url: 'https://linkedin.com/in/myprofile' },
-    { id: 'sm-init-3', name: 'Portfolio', url: 'https://myportfolio.site' }
-  ];
+  /** Live form value for the preview card; a signal so programmatic patches re-render too. */
+  readonly formValue = toSignal(
+    this.storeForm.valueChanges.pipe(map(() => this.storeForm.getRawValue())),
+    { initialValue: this.storeForm.getRawValue() }
+  );
 
   formatUrl = formatSocialUrl;
   displayUrl = displaySocialUrl;
@@ -82,30 +93,29 @@ export class CreateStoreComponent implements OnInit {
 
   private initForm(editId: string | null): void {
     const user = this.storeService.currentUser();
+    const links = this.storeForm.controls.socialMediaLinks;
 
     if (editId) {
       const storeToEdit = this.storeService.getStoreById(editId);
       if (storeToEdit && (storeToEdit.userId === user.id || (user.stores || []).some(s => s.id === storeToEdit.id))) {
         this.isEditing = true;
         this.editingStoreId = storeToEdit.id;
-        this.formData.storeName = storeToEdit.storeName;
-        this.formData.tagline = storeToEdit.tagline;
-        this.formData.category = storeToEdit.category;
-        this.formData.experienceYears = storeToEdit.experienceYears;
-        this.formData.hourlyRate = storeToEdit.hourlyRate;
-        this.formData.startingPrice = storeToEdit.startingPrice;
-        this.formData.area = storeToEdit.area;
-        this.formData.city = storeToEdit.city;
-        this.formData.serviceRadiusKm = storeToEdit.serviceRadiusKm;
-        this.formData.description = storeToEdit.description;
-        this.skillsInput = storeToEdit.skills.join(', ');
-        
+        this.storeForm.patchValue({
+          storeName: storeToEdit.storeName,
+          tagline: storeToEdit.tagline,
+          category: storeToEdit.category,
+          experienceYears: storeToEdit.experienceYears,
+          hourlyRate: storeToEdit.hourlyRate,
+          startingPrice: storeToEdit.startingPrice,
+          area: storeToEdit.area,
+          city: storeToEdit.city,
+          serviceRadiusKm: storeToEdit.serviceRadiusKm,
+          description: storeToEdit.description,
+          skills: (storeToEdit.skills ?? []).join(', ')
+        });
+
         const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.storeSocialMediaLinks || storeToEdit.userSocialLinks);
-        if (normalized && normalized.length > 0) {
-          this.socialMediaLinks = normalized.map(l => ({ ...l }));
-        } else {
-          this.socialMediaLinks = [];
-        }
+        setSocialLinks(links, normalized ?? []);
         return;
       }
     }
@@ -113,48 +123,42 @@ export class CreateStoreComponent implements OnInit {
     // Creating a new store (either first store or an additional store!)
     this.isEditing = false;
     this.editingStoreId = '';
-    this.formData.area = user.area || 'Indiranagar';
-    this.formData.city = user.city || 'Bengaluru';
+    this.storeForm.patchValue({
+      area: user.area || 'Indiranagar',
+      city: user.city || 'Bengaluru'
+    });
 
     const currentOwnedCount = this.storeService.userStores().length;
     if (currentOwnedCount > 0) {
       // Customize starter text for additional store
-      this.formData.storeName = `${user.name.split(' ')[0]}'s Studio #${currentOwnedCount + 1}`;
-      this.formData.tagline = 'Professional freelance services tailored for local clients';
-      this.formData.category = 'Graphics & Design';
-      this.skillsInput = 'Branding, Figma, Visual Design, Poster Design';
-      this.formData.hourlyRate = 600;
-      this.formData.startingPrice = 450;
-      this.socialMediaLinks = [
+      this.storeForm.patchValue({
+        storeName: `${(user.name ?? '').split(' ')[0] || 'My'}'s Studio #${currentOwnedCount + 1}`,
+        tagline: 'Professional freelance services tailored for local clients',
+        category: 'Graphics & Design',
+        skills: 'Branding, Figma, Visual Design, Poster Design',
+        hourlyRate: 600,
+        startingPrice: 450
+      });
+      setSocialLinks(links, [
         { id: 'sm-init-1', name: 'Instagram', url: '' },
         { id: 'sm-init-2', name: 'LinkedIn', url: '' }
-      ];
+      ]);
     } else {
-      this.formData.storeName = 'QuickEdits Bangalore';
-      this.formData.tagline = 'Fast 24-hour turnaround Instagram reels and shorts for local creators';
-      this.formData.category = 'Video & Editing';
-      this.formData.experienceYears = 2;
-      this.formData.hourlyRate = 500;
-      this.formData.startingPrice = 350;
-      this.skillsInput = 'Short Reels, Adobe Premiere, Color Grading';
-      this.socialMediaLinks = [
+      this.storeForm.patchValue({
+        storeName: 'QuickEdits Bangalore',
+        tagline: 'Fast 24-hour turnaround Instagram reels and shorts for local creators',
+        category: 'Video & Editing',
+        experienceYears: 2,
+        hourlyRate: 500,
+        startingPrice: 350,
+        skills: 'Short Reels, Adobe Premiere, Color Grading'
+      });
+      setSocialLinks(links, [
         { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
         { id: 'sm-init-2', name: 'LinkedIn', url: 'https://linkedin.com/in/myprofile' },
         { id: 'sm-init-3', name: 'Portfolio', url: 'https://myportfolio.site' }
-      ];
+      ]);
     }
-  }
-
-  addLink(presetName: string = ''): void {
-    this.socialMediaLinks.push({
-      id: 'sm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      name: presetName,
-      url: ''
-    });
-  }
-
-  removeLink(index: number): void {
-    this.socialMediaLinks.splice(index, 1);
   }
 
   onSubmit(): void {
@@ -162,18 +166,13 @@ export class CreateStoreComponent implements OnInit {
       return;
     }
 
-    const skills = this.skillsInput
+    const formData = this.storeForm.getRawValue();
+    const skills = formData.skills
       .split(',')
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
-    const validSocialLinks: SocialMediaLink[] = this.socialMediaLinks
-      .map(l => ({
-        id: l.id || ('sm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
-        name: l.name.trim(),
-        url: l.url.trim()
-      }))
-      .filter(l => l.name.length > 0 && l.url.length > 0);
+    const validSocialLinks: SocialMediaLink[] = toValidSocialLinks(this.storeForm.controls.socialMediaLinks);
 
     const storeSocialMediaLinks: StoreSocialMediaLinks = toStoreSocialMediaLinks(validSocialLinks);
 
@@ -181,20 +180,20 @@ export class CreateStoreComponent implements OnInit {
       this.isSubmitting.set(true);
 
       this.storeService.updateStore({
-        storeName: this.formData.storeName,
-        tagline: this.formData.tagline,
-        category: this.formData.category,
+        storeName: formData.storeName,
+        tagline: formData.tagline,
+        category: formData.category,
         skills: skills.length ? skills : ['General Freelancer'],
-        experienceYears: Number(this.formData.experienceYears) || 1,
-        hourlyRate: Number(this.formData.hourlyRate) || 500,
-        startingPrice: Number(this.formData.startingPrice) || 300,
-        area: this.formData.area,
-        city: this.formData.city,
-        serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
+        experienceYears: Number(formData.experienceYears) || 1,
+        hourlyRate: Number(formData.hourlyRate) || 500,
+        startingPrice: Number(formData.startingPrice) || 300,
+        area: formData.area,
+        city: formData.city,
+        serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
         socialMediaLinks: validSocialLinks,
         storeSocialMediaLinks: storeSocialMediaLinks,
         userSocialLinks: storeSocialMediaLinks,
-        description: this.formData.description
+        description: formData.description
       }, this.editingStoreId).subscribe({
         next: (savedStore) => {
           this.isSubmitting.set(false);
@@ -213,14 +212,14 @@ export class CreateStoreComponent implements OnInit {
       {
         id: 's-initial-1',
         name: 'Single Package / Gig Delivery',
-        price: this.formData.startingPrice,
+        price: Number(formData.startingPrice) || 300,
         duration: '24 hours',
         description: 'Complete milestone delivery with revision and satisfaction guarantee.'
       },
       {
         id: 's-initial-2',
         name: 'Hourly Custom Work / Consultation',
-        price: this.formData.hourlyRate,
+        price: Number(formData.hourlyRate) || 500,
         duration: 'Hourly',
         description: 'Dedicated one-on-one session or customized project milestone.'
       }
@@ -230,21 +229,21 @@ export class CreateStoreComponent implements OnInit {
 
     this.storeService.createStore({
       ownerName: this.storeService.currentUser().name,
-      storeName: this.formData.storeName,
-      tagline: this.formData.tagline,
-      category: this.formData.category,
+      storeName: formData.storeName,
+      tagline: formData.tagline,
+      category: formData.category,
       skills: skills.length ? skills : ['General Freelancer'],
-      experienceYears: Number(this.formData.experienceYears) || 1,
-      hourlyRate: Number(this.formData.hourlyRate) || 500,
-      startingPrice: Number(this.formData.startingPrice) || 300,
-      area: this.formData.area,
-      city: this.formData.city,
+      experienceYears: Number(formData.experienceYears) || 1,
+      hourlyRate: Number(formData.hourlyRate) || 500,
+      startingPrice: Number(formData.startingPrice) || 300,
+      area: formData.area,
+      city: formData.city,
       distanceKm: 0.5,
-      serviceRadiusKm: Number(this.formData.serviceRadiusKm) || 5,
+      serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,
       storeSocialMediaLinks: storeSocialMediaLinks,
       userSocialLinks: storeSocialMediaLinks,
-      description: this.formData.description,
+      description: formData.description,
       services: initialServices,
       avatarUrl: this.storeService.currentUser().avatarUrl,
       bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',

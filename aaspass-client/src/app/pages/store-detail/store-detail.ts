@@ -2,7 +2,8 @@ import { Component, inject, computed, signal, effect, untracked } from '@angular
 import { toSignal } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { clampRating, notBlank } from '../../forms/validators';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { ToastService } from '../../services/toast/toast.service';
@@ -25,7 +26,7 @@ import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS } from '../../
 @Component({
   selector: 'app-store-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './store-detail.html',
   styleUrl: './store-detail.css'
 })
@@ -61,8 +62,10 @@ export class StoreDetailComponent {
   }
 
   // Review Form state
-  reviewRating: number = 5.0;
-  reviewMessage: string = '';
+  readonly reviewForm = new FormGroup({
+    rating: new FormControl<number | null>(5.0, [Validators.required, Validators.min(1.0), Validators.max(5.0)]),
+    message: new FormControl('', { nonNullable: true, validators: [notBlank] })
+  });
   reviewError: string | null = null;
   /** True while a review POST is in flight; blocks double submits. */
   readonly reviewSubmitting = signal(false);
@@ -127,26 +130,23 @@ export class StoreDetailComponent {
     });
   }
 
-  setRating(val: number): void {
-    const num = Number(val);
-    if (isNaN(num)) {
-      this.reviewRating = 5.0;
-      return;
-    }
-    // Strictly enforce min 1.0 and max 5.0
-    this.reviewRating = Math.max(1.0, Math.min(5.0, Math.round(num * 10) / 10));
+  /** Strictly enforces min 1.0 and max 5.0. */
+  setRating(val: unknown): void {
+    this.reviewForm.controls.rating.setValue(clampRating(val));
   }
 
   submitReview(): void {
     const s = this.store();
     if (!s || this.reviewSubmitting()) return;
 
-    if (this.reviewRating < 1.0 || this.reviewRating > 5.0) {
+    const { rating, message } = this.reviewForm.controls;
+    const ratingValue = rating.value;
+    if (rating.invalid || ratingValue === null) {
       this.reviewError = 'Rating must be between 1.0 (minimum) and 5.0 (maximum).';
       return;
     }
 
-    if (!this.reviewMessage || !this.reviewMessage.trim()) {
+    if (message.invalid) {
       this.reviewError = 'Please enter a review message.';
       return;
     }
@@ -154,14 +154,14 @@ export class StoreDetailComponent {
     this.reviewError = null;
     this.reviewSubmitting.set(true);
     this.storeService.addReview(s.id, {
-      rating: this.reviewRating,
-      message: this.reviewMessage.trim()
+      rating: ratingValue,
+      message: message.value.trim()
     }).pipe(
       finalize(() => this.reviewSubmitting.set(false))
     ).subscribe({
       next: () => {
-        this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
-        this.reviewMessage = '';
+        this.toast.success(`Thank you! Your ${ratingValue.toFixed(1)}★ review for ${s.ownerName} was posted.`);
+        message.reset();
       },
       error: () => {
         // The error interceptor shows the toast; the form keeps the typed message.

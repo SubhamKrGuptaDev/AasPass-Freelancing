@@ -1,12 +1,18 @@
 import { Component, inject, signal, computed, Injector, afterNextRender } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { ToastService } from '../../services/toast/toast.service';
-import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
+import {
+  SocialMediaLinksComponent,
+  createSocialLinksArray,
+  setSocialLinks,
+  toValidSocialLinks
+} from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
   SocialMediaLink, 
@@ -24,11 +30,12 @@ import {
 } from '../../models/store.model';
 import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS, FEATURE_FLAGS } from '../../config/feature-flags';
 import { getRandomAvatarUrl } from '../../models/user.model';
+import { clampRating, notBlank } from '../../forms/validators';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SocialMediaLinksComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
@@ -42,22 +49,31 @@ export class ProfileComponent {
   // KYC (Aadhaar / PAN): stored values are masked by the backend and shown read-only;
   // a new value is typed into a single inline input and saved through the dedicated KYC endpoint.
   editingKyc = signal<'aadhaar' | 'pan' | null>(null);
-  kycInput = signal('');
+  readonly kycControl = new FormControl('', { nonNullable: true, validators: [notBlank] });
   kycSaving = signal(false);
+
+  constructor() {
+    // PAN is uppercased as typed.
+    this.kycControl.valueChanges.pipe(takeUntilDestroyed()).subscribe(value => {
+      if (this.editingKyc() === 'pan' && value !== value.toUpperCase()) {
+        this.kycControl.setValue(value.toUpperCase(), { emitEvent: false });
+      }
+    });
+  }
 
   startKycEdit(field: 'aadhaar' | 'pan'): void {
     if (this.kycSaving()) {
       return;
     }
     this.editingKyc.set(field);
-    this.kycInput.set('');
+    this.kycControl.reset();
     this.focusAfterRender(`kyc-${field}-input`);
   }
 
   cancelKycEdit(): void {
     const field = this.editingKyc();
     this.editingKyc.set(null);
-    this.kycInput.set('');
+    this.kycControl.reset();
     if (field) {
       this.focusAfterRender(`kyc-${field}-update`);
     }
@@ -68,25 +84,10 @@ export class ProfileComponent {
     afterNextRender(() => this.document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
-  /** Stores the typed KYC value; PAN is uppercased as typed. */
-  setKycInput(value: string): void {
-    this.kycInput.set(this.editingKyc() === 'pan' ? value.toUpperCase() : value);
-  }
-
-  onKycInput(event: Event): void {
-    const target = event.target;
-    if (target instanceof HTMLInputElement) {
-      this.setKycInput(target.value);
-      if (target.value !== this.kycInput()) {
-        target.value = this.kycInput();
-      }
-    }
-  }
-
   submitKyc(): void {
     const field = this.editingKyc();
-    const value = this.kycInput().trim();
-    if (!field || !value || this.kycSaving()) {
+    const value = this.kycControl.value.trim();
+    if (!field || this.kycControl.invalid || this.kycSaving()) {
       return;
     }
     const payload = field === 'aadhaar' ? { aadharNumber: value } : { panNumber: value };
@@ -108,16 +109,16 @@ export class ProfileComponent {
   }
 
   isEditingUser = false;
-  editName = this.storeService.currentUser().name;
-  editUsername = this.storeService.currentUser().username || '';
-  editPhone = this.storeService.currentUser().phone;
-  editArea = this.storeService.currentUser().area;
-  editCity = this.storeService.currentUser().city;
-  editCountry = this.storeService.currentUser().country || 'India';
-  editBio = this.storeService.currentUser().bio;
-  editAvatarUrl = this.storeService.currentUser().avatarUrl || '';
-
-  editUserSocialLinks: SocialMediaLink[] = [];
+  readonly profileForm = new FormGroup({
+    name: new FormControl(this.storeService.currentUser().name, { nonNullable: true }),
+    phone: new FormControl(this.storeService.currentUser().phone, { nonNullable: true }),
+    country: new FormControl(this.storeService.currentUser().country || 'India', { nonNullable: true }),
+    city: new FormControl(this.storeService.currentUser().city, { nonNullable: true }),
+    area: new FormControl(this.storeService.currentUser().area, { nonNullable: true }),
+    bio: new FormControl(this.storeService.currentUser().bio, { nonNullable: true }),
+    avatarUrl: new FormControl(this.storeService.currentUser().avatarUrl || '', { nonNullable: true }),
+    socialMediaLinks: createSocialLinksArray()
+  });
 
   formatUrl = formatSocialUrl;
   displayUrl = displaySocialUrl;
@@ -127,7 +128,7 @@ export class ProfileComponent {
 
   randomizeAvatar(): void {
     const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
-    this.editAvatarUrl = getRandomAvatarUrl(randomSeed);
+    this.profileForm.controls.avatarUrl.setValue(getRandomAvatarUrl(randomSeed));
   }
 
   handleAvatarError(event: Event): void {
@@ -139,15 +140,16 @@ export class ProfileComponent {
 
   startEditUser(): void {
     const user = this.storeService.currentUser();
-    this.editName = user.name;
-    this.editUsername = user.username || '';
-    this.editPhone = user.phone;
-    this.editArea = user.area;
-    this.editCity = user.city;
-    this.editCountry = user.country || 'India';
-    this.editBio = user.bio;
-    this.editAvatarUrl = user.avatarUrl || getRandomAvatarUrl(user.name);
-    this.editUserSocialLinks = this.getUserSocialLinks().map(l => ({ ...l }));
+    this.profileForm.patchValue({
+      name: user.name,
+      phone: user.phone,
+      area: user.area,
+      city: user.city,
+      country: user.country || 'India',
+      bio: user.bio,
+      avatarUrl: user.avatarUrl || getRandomAvatarUrl(user.name)
+    });
+    setSocialLinks(this.profileForm.controls.socialMediaLinks, this.getUserSocialLinks());
     this.isEditingUser = true;
   }
 
@@ -201,37 +203,34 @@ export class ProfileComponent {
 
   // Review section for store owner
   isAddingReview = false;
-  newReviewRating = 5.0;
-  newReviewMessage = '';
+  readonly reviewForm = new FormGroup({
+    rating: new FormControl<number | null>(5.0, [Validators.required, Validators.min(1.0), Validators.max(5.0)]),
+    message: new FormControl('', { nonNullable: true, validators: [notBlank] })
+  });
   reviewFormError: string | null = null;
   /** True while a review POST is in flight; blocks double submits. */
   readonly reviewSubmitting = signal(false);
 
   saveUserDetails(): void {
-    const validSocial = this.editUserSocialLinks
-      .map(l => ({
-        id: l.id || ('usr-sm-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4)),
-        name: l.name.trim(),
-        url: l.url.trim()
-      }))
-      .filter(l => l.name.length > 0 && l.url.length > 0);
+    const form = this.profileForm.getRawValue();
+    const validSocial = toValidSocialLinks(this.profileForm.controls.socialMediaLinks, 'usr-sm-');
 
     const userSocialMediaLinks = toUserSocialMediaLinks(validSocial);
 
     // If user does not have an image, add random avatar when saving UserDetails
-    const finalAvatar = (this.editAvatarUrl && this.editAvatarUrl.trim())
-      ? this.editAvatarUrl.trim()
+    const finalAvatar = form.avatarUrl.trim()
+      ? form.avatarUrl.trim()
       : (this.storeService.currentUser().avatarUrl && this.storeService.currentUser().avatarUrl.trim()
           ? this.storeService.currentUser().avatarUrl.trim()
-          : getRandomAvatarUrl(this.editName || 'user'));
+          : getRandomAvatarUrl(form.name || 'user'));
 
     this.storeService.updateUserProfile({
-      name: this.editName,
-      phone: this.editPhone,
-      area: this.editArea,
-      city: this.editCity,
-      country: this.editCountry,
-      bio: this.editBio,
+      name: form.name,
+      phone: form.phone,
+      area: form.area,
+      city: form.city,
+      country: form.country,
+      bio: form.bio,
       avatarUrl: finalAvatar,
       socialMediaLinks: validSocial,
       userSocialMediaLinks: userSocialMediaLinks,
@@ -240,26 +239,22 @@ export class ProfileComponent {
     this.isEditingUser = false;
   }
 
-  setNewRating(val: number): void {
-    const num = Number(val);
-    if (isNaN(num)) {
-      this.newReviewRating = 5.0;
-      return;
-    }
-    // strictly enforce min 1.0 and max 5.0
-    this.newReviewRating = Math.max(1.0, Math.min(5.0, Math.round(num * 10) / 10));
+  /** Strictly enforces min 1.0 and max 5.0. */
+  setNewRating(val: unknown): void {
+    this.reviewForm.controls.rating.setValue(clampRating(val));
   }
 
   submitStoreReview(storeId: string): void {
     if (this.reviewSubmitting()) {
       return;
     }
-    if (this.newReviewRating < 1.0 || this.newReviewRating > 5.0) {
+    const { rating, message } = this.reviewForm.controls;
+    if (rating.invalid || rating.value === null) {
       this.reviewFormError = 'Rating must be between 1.0 (min) and 5.0 (max).';
       return;
     }
 
-    if (!this.newReviewMessage || !this.newReviewMessage.trim()) {
+    if (message.invalid) {
       this.reviewFormError = 'Please write a review message.';
       return;
     }
@@ -267,15 +262,14 @@ export class ProfileComponent {
     this.reviewFormError = null;
     this.reviewSubmitting.set(true);
     this.storeService.addReview(storeId, {
-      rating: this.newReviewRating,
-      message: this.newReviewMessage.trim()
+      rating: rating.value,
+      message: message.value.trim()
     }).pipe(
       finalize(() => this.reviewSubmitting.set(false))
     ).subscribe({
       next: review => {
         this.toast.success(`Added ${review.rating.toFixed(1)}★ review as "${review.userName}".`);
-        this.newReviewRating = 5.0;
-        this.newReviewMessage = '';
+        this.reviewForm.reset({ rating: 5.0, message: '' });
         this.isAddingReview = false;
       },
       error: () => {

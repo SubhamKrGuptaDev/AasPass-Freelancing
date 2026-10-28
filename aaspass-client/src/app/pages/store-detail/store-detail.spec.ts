@@ -35,7 +35,7 @@ describe('StoreDetailComponent reviews', () => {
       socialMediaLinks: [], description: '', services: [], rating: 5, reviewCount: 0, reviews: [],
       avatarUrl: '', bannerGradient: '', isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
     }]);
-    component.reviewMessage = 'Great work';
+    component.reviewForm.controls.message.setValue('Great work');
   });
 
   afterEach(() => {
