@@ -8,6 +8,7 @@ import com.aaspass.exception.UnauthorizedException;
 import com.aaspass.security.token.JwtTokenService;
 import com.aaspass.security.token.TokenHashing;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Creates, rotates and revokes login sessions. Refresh tokens are stored only as SHA-256
- * hashes and rotated on every use; a replayed (previous) token revokes the whole session.
+ * hashes and rotated on every use; a replayed (previous) token revokes the whole session, except
+ * within a short grace window after the rotation, where it is treated as a benign multi-tab race or
+ * lost response and rejected without revoking.
  * Revocation is permanent and a new login always gets a brand-new session id.
  * Tokens and token hashes are never logged.
  */
@@ -28,6 +31,8 @@ public class SessionService {
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
     private static final int MAX_USER_AGENT = 255;
     private static final int MAX_IP = 45;
+    /** How long after a rotation the previous token is answered with 401 instead of a revocation. */
+    static final Duration REUSE_GRACE = Duration.ofSeconds(20);
 
     private final UserSessionRepository repository;
     private final JwtTokenService jwtTokenService;
@@ -95,10 +100,20 @@ public class SessionService {
         return new IssuedSession(saved, newToken, access);
     }
 
-    /** Builds the failure for a token matching no current hash, revoking the session if it is a replay. */
+    /**
+     * Builds the failure for a token matching no current hash. A previous token presented within
+     * {@link #REUSE_GRACE} of the last rotation of an active session is a benign race (another tab
+     * rotated first, or the rotation response was lost) and is rejected without revoking; any other
+     * replay revokes the session.
+     */
     private UnauthorizedException unknownTokenFailure(String hash, Instant now) {
         return repository.findForUpdateByPreviousRefreshTokenHash(hash)
                 .<UnauthorizedException>map(session -> {
+                    if (isWithinReuseGrace(session, now)) {
+                        log.info("Previous refresh token presented within grace window for session {}; not revoking",
+                                session.getSessionId());
+                        return new UnauthorizedException("Refresh token already rotated", ErrorCode.UNAUTHENTICATED);
+                    }
                     if (session.getRevokedAt() == null) {
                         revoke(session, SessionRevokeReason.REUSE_DETECTED, now);
                     }
@@ -106,6 +121,11 @@ public class SessionService {
                     return new SessionRevokedException("Session revoked");
                 })
                 .orElseGet(() -> new UnauthorizedException("Invalid refresh token", ErrorCode.UNAUTHENTICATED));
+    }
+
+    private static boolean isWithinReuseGrace(UserSession session, Instant now) {
+        Instant lastUsed = session.getLastUsedAt();
+        return session.isActive(now) && lastUsed != null && !now.isAfter(lastUsed.plus(REUSE_GRACE));
     }
 
     /** Permanently revokes the session matching the current or previous token hash; no-op if unknown. */

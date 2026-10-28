@@ -5,6 +5,8 @@ import com.aaspass.dto.request.LoginRequest;
 import com.aaspass.dto.request.RegisterRequest;
 import com.aaspass.entity.User;
 import com.aaspass.repository.UserRepository;
+import com.aaspass.security.session.UserSession;
+import com.aaspass.security.session.UserSessionRepository;
 import com.aaspass.security.token.AuthCookieService;
 import com.aaspass.security.token.JwtTokenService;
 import com.aaspass.support.AuthTestSupport;
@@ -30,6 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.spec.SecretKeySpec;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -73,6 +76,9 @@ public class AuthControllerTest {
     @Autowired
     private SecurityProperties securityProperties;
 
+    @Autowired
+    private UserSessionRepository userSessionRepository;
+
     // ---------------------------------------------------------------- helpers
 
     private MvcResult loginAman() throws Exception {
@@ -95,6 +101,13 @@ public class AuthControllerTest {
             throw new AssertionError("No Set-Cookie for " + name + " in " + headers.size() + " header(s)");
         }
         return found;
+    }
+
+    /** Moves the session's last use back by {@code by}, as if that much time had passed since the last rotation. */
+    private void backdateLastUse(Cookie accessCookie, Duration by) throws Exception {
+        UserSession session = userSessionRepository.findBySessionId(sidClaim(accessCookie.getValue())).orElseThrow();
+        session.setLastUsedAt(session.getLastUsedAt().minus(by));
+        userSessionRepository.saveAndFlush(session);
     }
 
     private static String sidClaim(String accessToken) throws Exception {
@@ -371,6 +384,7 @@ public class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
         Cookie rotatedRid = AuthTestSupport.cookie(first, RID);
+        backdateLastUse(cookies[0], Duration.ofSeconds(21));
 
         MvcResult replay = mockMvc.perform(post("/api/auth/refresh").cookie(cookies[1]))
                 .andExpect(status().isUnauthorized())
@@ -382,6 +396,24 @@ public class AuthControllerTest {
         mockMvc.perform(post("/api/auth/refresh").cookie(rotatedRid))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code", is("SESSION_REVOKED")));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/refresh - replay within the grace window is UNAUTHENTICATED and keeps the session")
+    public void refreshReplayWithinGraceWindowKeepsSession() throws Exception {
+        Cookie[] cookies = AuthTestSupport.login(mockMvc, "aman", "password123");
+
+        MvcResult first = mockMvc.perform(post("/api/auth/refresh").cookie(cookies[1]))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie rotatedRid = AuthTestSupport.cookie(first, RID);
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(cookies[1]))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", is("UNAUTHENTICATED")));
+
+        mockMvc.perform(post("/api/auth/refresh").cookie(rotatedRid))
+                .andExpect(status().isOk());
     }
 
     // ---------------------------------------------------------------- logout

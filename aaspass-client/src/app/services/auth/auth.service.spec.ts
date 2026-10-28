@@ -114,15 +114,42 @@ describe('AuthService', () => {
     expect(authService.currentUser()?.username).toBe('aman');
   });
 
-  it('restoreSessionGuestIsSilent', async () => {
+  it('restoreWithExpiredAccessCookieRefreshes', async () => {
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL).flush({ success: true, message: 'Session refreshed', data: AMAN });
+    await restore;
+
+    expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()?.username).toBe('aman');
+    expect(toast.toasts()).toEqual([]);
+  });
+
+  it('restoreGuestRefresh401IsSilent', async () => {
     const navigate = vi.spyOn(router, 'navigate');
     const restore = authService.restoreSession();
     httpTesting.expectOne(ME_URL)
       .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
     await restore;
 
-    httpTesting.expectNone(REFRESH_URL);
     expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()).toBeNull();
+    expect(toast.toasts()).toEqual([]);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('restoreRefreshServerErrorIsSilentGuest', async () => {
+    const navigate = vi.spyOn(router, 'navigate');
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'down' }, { status: 503, statusText: 'Service Unavailable' });
+    await restore;
+
     expect(authService.currentUser()).toBeNull();
     expect(toast.toasts()).toEqual([]);
     expect(navigate).not.toHaveBeenCalled();
@@ -157,6 +184,8 @@ describe('AuthService', () => {
 
     httpTesting.expectOne(ME_URL)
       .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
     await restore;
   });
 
@@ -256,6 +285,8 @@ describe('AuthService', () => {
 
       httpTesting.expectOne(ME_URL)
         .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+      httpTesting.expectOne(REFRESH_URL)
+        .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
 
       const tree = await result;
       expect(tree instanceof UrlTree).toBe(true);

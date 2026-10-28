@@ -6,11 +6,19 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.aaspass.config.security.SecurityProperties;
 import com.aaspass.entity.User;
+import com.aaspass.exception.ErrorCode;
 import com.aaspass.exception.SessionRevokedException;
+import com.aaspass.exception.UnauthorizedException;
 import com.aaspass.repository.UserRepository;
+import com.aaspass.security.token.JwtTokenService;
 import com.aaspass.security.token.TokenHashing;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +35,8 @@ class SessionServiceTest {
     @Autowired SessionService sessions;
     @Autowired UserSessionRepository repository;
     @Autowired UserRepository users;
+    @Autowired JwtTokenService jwtTokenService;
+    @Autowired SecurityProperties properties;
 
     private User user;
 
@@ -68,6 +78,10 @@ class SessionServiceTest {
         IssuedSession a = sessions.open(user, "ua", "1.1.1.1");
         try {
             IssuedSession b = sessions.rotate(a.refreshToken());
+            // Move past the benign-race grace window so the replay counts as reuse.
+            UserSession rotated = repository.findBySessionId(a.session().getSessionId()).orElseThrow();
+            rotated.setLastUsedAt(rotated.getLastUsedAt().minus(Duration.ofSeconds(21)));
+            repository.saveAndFlush(rotated);
             assertThrows(SessionRevokedException.class, () -> sessions.rotate(a.refreshToken()));
 
             // No surrounding test transaction: this re-read observes committed state.
@@ -103,5 +117,68 @@ class SessionServiceTest {
         assertNotEquals(a.session().getSessionId(), b.session().getSessionId());
         assertFalse(sessions.isActive(a.session().getSessionId()));
         assertTrue(sessions.isActive(b.session().getSessionId()));
+    }
+
+    @Test
+    void previousTokenWithinGraceWindowIsUnauthenticatedWithoutRevoking() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-10-28T10:00:00Z"));
+        SessionService timed = new SessionService(repository, jwtTokenService, properties, clock);
+        IssuedSession a = timed.open(user, "ua", "1.1.1.1");
+        IssuedSession b = timed.rotate(a.refreshToken());
+
+        clock.advance(Duration.ofSeconds(20));
+        UnauthorizedException e = assertThrows(UnauthorizedException.class, () -> timed.rotate(a.refreshToken()));
+
+        assertFalse(e instanceof SessionRevokedException, "a benign race must not be treated as reuse");
+        assertEquals(ErrorCode.UNAUTHENTICATED, e.code());
+        UserSession stored = repository.findBySessionId(a.session().getSessionId()).orElseThrow();
+        assertEquals(null, stored.getRevokedAt());
+        assertEquals(null, stored.getRevokeReason());
+        // The winning token still works.
+        IssuedSession c = timed.rotate(b.refreshToken());
+        assertEquals(a.session().getSessionId(), c.session().getSessionId());
+    }
+
+    @Test
+    void previousTokenAfterGraceWindowRevokesSession() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-10-28T10:00:00Z"));
+        SessionService timed = new SessionService(repository, jwtTokenService, properties, clock);
+        IssuedSession a = timed.open(user, "ua", "1.1.1.1");
+        IssuedSession b = timed.rotate(a.refreshToken());
+
+        clock.advance(Duration.ofSeconds(21));
+        assertThrows(SessionRevokedException.class, () -> timed.rotate(a.refreshToken()));
+
+        UserSession stored = repository.findBySessionId(a.session().getSessionId()).orElseThrow();
+        assertEquals(SessionRevokeReason.REUSE_DETECTED, stored.getRevokeReason());
+        assertThrows(SessionRevokedException.class, () -> timed.rotate(b.refreshToken()));
+    }
+
+    /** A clock the test moves explicitly. */
+    private static final class MutableClock extends Clock {
+        private Instant now;
+
+        MutableClock(Instant start) {
+            this.now = start;
+        }
+
+        void advance(Duration by) {
+            now = now.plus(by);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 }

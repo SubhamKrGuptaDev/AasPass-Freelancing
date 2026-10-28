@@ -1,11 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, firstValueFrom, map, tap, throwError, timeout } from 'rxjs';
+import { Observable, catchError, firstValueFrom, map, tap, throwError, timeout } from 'rxjs';
 import { SignupRequest, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { ApiResponse, BackendUserResponse } from '../../models/response.model';
 import { KycUpdatePayload } from '../../models/request.model';
 import { ToastService } from '../toast/toast.service';
+import { errorCode } from '../../interceptors/error-toast.interceptor';
 import { AuthHttpService } from './auth-http.service';
+import { SessionRefreshService } from './session-refresh.service';
 
 /** Upper bound for the startup session check so a hung backend never blocks bootstrap. */
 const RESTORE_TIMEOUT_MS = 10_000;
@@ -16,7 +19,8 @@ const LEGACY_STORAGE_KEYS = ['aaspass_auth_user', 'aaspass_auth_token', 'aaspass
 /**
  * Holds the signed-in user. Auth state comes only from backend responses: the session itself lives in
  * HttpOnly cookies, so nothing is persisted client-side. On startup {@link restoreSession} asks
- * GET /auth/me (the refresh interceptor renews an expired access cookie first); any failure means guest.
+ * GET /auth/me and, when the access cookie is gone or expired, renews the session once through the
+ * shared refresh; any failure means guest.
  */
 @Injectable({
   providedIn: 'root'
@@ -24,6 +28,7 @@ const LEGACY_STORAGE_KEYS = ['aaspass_auth_user', 'aaspass_auth_token', 'aaspass
 export class AuthService {
   private readonly router = inject(Router);
   private readonly authHttpService = inject(AuthHttpService);
+  private readonly sessionRefresh = inject(SessionRefreshService);
   private readonly toast = inject(ToastService);
 
   private readonly _currentUser = signal<UserProfile | null>(null);
@@ -45,13 +50,24 @@ export class AuthService {
 
   /**
    * Restores the cookie session once per app; every caller (app initializer, guard) awaits the same
-   * promise. Never rejects: any failure, including a failed refresh, leaves the app as a silent guest.
+   * promise. A 401 UNAUTHENTICATED from GET /auth/me (the browser already dropped the expired access
+   * cookie) runs the shared refresh once and takes the user from its response; an expired-but-present
+   * access cookie (TOKEN_EXPIRED) is renewed by the refresh interceptor instead. Never rejects: any
+   * failure, including a rejected or failed refresh, leaves the app as a silent guest (no toast, no redirect).
    */
   restoreSession(): Promise<void> {
     if (!this.restorePromise) {
       this.purgeLegacyStorage();
       this.restorePromise = firstValueFrom(
-        this.authHttpService.me().pipe(timeout({ first: RESTORE_TIMEOUT_MS })),
+        this.authHttpService.me().pipe(
+          catchError((err: unknown) => {
+            if (err instanceof HttpErrorResponse && err.status === 401 && errorCode(err) === 'UNAUTHENTICATED') {
+              return this.sessionRefresh.refresh();
+            }
+            return throwError(() => err);
+          }),
+          timeout({ first: RESTORE_TIMEOUT_MS })
+        ),
         { defaultValue: null }
       )
         .then(resp => {
