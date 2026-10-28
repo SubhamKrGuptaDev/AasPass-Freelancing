@@ -40,14 +40,7 @@ export class CreateStoreComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
 
-  availableCategories = [
-    'Video & Editing',
-    'Web & Tech',
-    'Photography',
-    'Tutoring & Education',
-    'Graphics & Design',
-    'Tech Support & Hardware'
-  ];
+  availableCategories = this.storeService.categories.filter(c => c !== 'All');
 
   isEditing = false;
   editingStoreId = '';
