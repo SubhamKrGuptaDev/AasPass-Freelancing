@@ -15,15 +15,16 @@ import type { ClassValue } from 'clsx';
 		<h3 brnAccordionHeader class="flex">
 			<button brnAccordionTrigger data-slot="accordion-trigger" [class]="_computedTriggerClass()">
 				<ng-content />
+				<!-- AasPass: hidden! (important) because ng-icon's unlayered :host display beats layered Tailwind utilities -->
 				<ng-icon
 					name="lucideChevronDown"
 					data-slot="accordion-trigger-icon"
-					class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
+					class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden!"
 				/>
 				<ng-icon
 					name="lucideChevronUp"
 					data-slot="accordion-trigger-icon"
-					class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline group-aria-[expanded=false]/accordion-trigger:hidden"
+					class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline group-aria-[expanded=false]/accordion-trigger:hidden!"
 				/>
 			</button>
 		</h3>
