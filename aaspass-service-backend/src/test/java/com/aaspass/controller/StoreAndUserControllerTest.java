@@ -89,6 +89,74 @@ public class StoreAndUserControllerTest {
                 .andExpect(jsonPath("$.data.userId", is(1)));
     }
 
+    private StoreCreateRequest.StoreCreateRequestBuilder countryStoreBuilder(String name) {
+        return StoreCreateRequest.builder()
+                .storeName(name)
+                .category("Tech Support, PC Builds & Hardware Setup")
+                .area("Downtown")
+                .city("Austin");
+    }
+
+    private tools.jackson.databind.JsonNode createStore(StoreCreateRequest request) throws Exception {
+        String body = mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(body);
+    }
+
+    @Test
+    @DisplayName("POST /api/stores - Country defaults to India when omitted")
+    public void testCreateStoreDefaultsCountryToIndia() throws Exception {
+        mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(countryStoreBuilder("Default Country Store").build())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.country", is("India")));
+    }
+
+    @Test
+    @DisplayName("POST /api/stores - Country is stored when provided")
+    public void testCreateStoreWithCountry() throws Exception {
+        mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                countryStoreBuilder("US Store").country("United States").build())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.country", is("United States")));
+    }
+
+    @Test
+    @DisplayName("GET /api/stores?country= - Filters by country case-insensitively")
+    public void testGetStoresFilterByCountry() throws Exception {
+        createStore(countryStoreBuilder("US Filter Store").country("United States").build());
+
+        mockMvc.perform(get("/api/stores").param("country", "india"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$.data[*].country", everyItem(is("India"))));
+
+        mockMvc.perform(get("/api/stores").param("country", "United States"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].country", is("United States")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/stores/{id} - Update without country keeps existing country")
+    public void testUpdateStoreWithoutCountryKeepsCountry() throws Exception {
+        long id = createStore(countryStoreBuilder("US Update Store").country("United States").build())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(put("/api/stores/" + id).with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagline\":\"Updated tagline\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tagline", is("Updated tagline")))
+                .andExpect(jsonPath("$.data.country", is("United States")));
+    }
+
     @Test
     @DisplayName("GET /api/users/{id} - Should fetch user profile")
     public void testGetUserProfile() throws Exception {

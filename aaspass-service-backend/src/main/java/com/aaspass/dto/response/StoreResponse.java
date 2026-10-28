@@ -26,6 +26,7 @@ public record StoreResponse(
     BigDecimal startingPrice,
     String area,
     String city,
+    String country,
     Integer serviceRadiusKm,
     Double rating,
     Integer reviewCount,

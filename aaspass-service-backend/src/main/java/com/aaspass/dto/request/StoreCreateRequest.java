@@ -4,6 +4,7 @@ import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -35,6 +36,9 @@ public record StoreCreateRequest(
 
     @NotBlank(message = "City is required")
     String city,
+
+    @Size(max = 60, message = "Country must be at most 60 characters")
+    String country,
 
     Integer serviceRadiusKm,
     String description,

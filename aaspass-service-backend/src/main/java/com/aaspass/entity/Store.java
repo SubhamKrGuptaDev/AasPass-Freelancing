@@ -73,6 +73,10 @@ public class Store extends BaseAuditEntity {
     @Column(name = "city", nullable = false, length = 60)
     private String city;
 
+    @Builder.Default
+    @Column(name = "country", nullable = false, columnDefinition = "VARCHAR(60) NOT NULL DEFAULT 'India'")
+    private String country = "India";
+
 //    @Builder.Default
 //    @Column(name = "distance_km")
 //    private Double distanceKm = 0.0;

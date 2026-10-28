@@ -47,15 +47,16 @@ public class StoreController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<StoreResponse>>> getStores(
+            @RequestParam(value = "country", required = false) String country,
             @RequestParam(value = "city", required = false) String city,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "query", required = false) String query,
             @RequestParam(value = "availableOnly", required = false, defaultValue = "false") Boolean availableOnly) {
 
-        log.info("[API-CALL] GET /api/stores - city='{}', category='{}', query='{}', availableOnly={}",
-                city, category, query, availableOnly);
+        log.info("[API-CALL] GET /api/stores - country='{}', city='{}', category='{}', query='{}', availableOnly={}",
+                country, city, category, query, availableOnly);
 
-        List<StoreResponse> stores = storeService.getStores(city, category, query, availableOnly);
+        List<StoreResponse> stores = storeService.getStores(country, city, category, query, availableOnly);
         return ResponseEntity.ok(ApiResponse.success(stores, "Stores retrieved successfully"));
     }
 

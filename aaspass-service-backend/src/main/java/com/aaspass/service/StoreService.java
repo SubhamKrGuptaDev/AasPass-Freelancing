@@ -46,11 +46,12 @@ public class StoreService {
     }
 
     @Transactional(readOnly = true)
-    public List<StoreResponse> getStores(String city, String category, String query, Boolean availableOnly) {
-        log.info("[STORE SERVICE] Querying stores: city='{}', category='{}', query='{}', availableOnly={}",
-                city, category, query, availableOnly);
+    public List<StoreResponse> getStores(String country, String city, String category, String query, Boolean availableOnly) {
+        log.info("[STORE SERVICE] Querying stores: country='{}', city='{}', category='{}', query='{}', availableOnly={}",
+                country, city, category, query, availableOnly);
 
         List<Store> stores = storeRepository.searchStores(
+                (country != null && !country.isBlank()) ? country.trim() : null,
                 (city != null && !city.isBlank()) ? city.trim() : null,
                 (category != null && !category.isBlank()) ? category.trim() : null,
                 (query != null && !query.isBlank()) ? query.trim() : null,
@@ -125,6 +126,7 @@ public class StoreService {
                 .startingPrice(request.startingPrice())
                 .area(request.area().trim())
                 .city(request.city().trim())
+                .country(request.country() != null && !request.country().isBlank() ? request.country().trim() : "India")
                 .serviceRadiusKm(request.serviceRadiusKm() != null ? request.serviceRadiusKm() : 10)
                 .description(request.description())
                 .avatarUrl(request.avatarUrl() != null ? request.avatarUrl() : user.getAvatarUrl())
@@ -188,6 +190,7 @@ public class StoreService {
         if (request.startingPrice() != null) store.setStartingPrice(request.startingPrice());
         if (request.area() != null) store.setArea(request.area().trim());
         if (request.city() != null) store.setCity(request.city().trim());
+        if (request.country() != null && !request.country().isBlank()) store.setCountry(request.country().trim());
         if (request.serviceRadiusKm() != null) store.setServiceRadiusKm(request.serviceRadiusKm());
         if (request.description() != null) store.setDescription(request.description());
         if (request.avatarUrl() != null) store.setAvatarUrl(request.avatarUrl());
