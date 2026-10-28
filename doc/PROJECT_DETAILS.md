@@ -392,7 +392,7 @@ Every API endpoint responds with a standardized JSON wrapper:
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/login` | Public | Authenticate via username or email; sets `_sid` and `_rid` cookies | `LoginRequest` (usernameOrEmail, password) | `AuthResponse` (`UserResponse`) |
 | `POST` | `/api/auth/register` | Public | Register a new unified account and sign it in | `RegisterRequest` (username, email, password, fullName, phone, city, area, avatarUrl) | `AuthResponse` (`UserResponse`) |
-| `POST` | `/api/auth/refresh` | Public (needs `_rid` cookie) | Rotate the refresh token and issue a new access token; reuse of a rotated token revokes the session | None (cookie) | `AuthResponse` (`UserResponse`) |
+| `POST` | `/api/auth/refresh` | Public (needs `_rid` cookie) | Rotate the refresh token and issue a new access token; reuse of a rotated token revokes the session; a failed refresh returns 401 and clears both cookies | None (cookie) | `ApiResponse<UserResponse>` (data = user) |
 | `GET` | `/api/auth/me` | Authenticated | Fetch the current user from the access cookie (no `userId` parameter) | None | `UserResponse` |
 | `POST` | `/api/auth/logout` | Public | Revoke the session and clear the auth cookies | None | `null` |
 
@@ -548,7 +548,7 @@ readonly filteredStores = computed(() => {
 
 ### 5. Verified Client Reviews & Ratings
 * **Strict Rating Scale [1.0 to 5.0]:** Enforces mathematical bounds on all submitted reviews.
-* **Anti-Self-Rating Shield:** Freelancers cannot review their own storefronts.
+* **Anti-Self-Rating Shield (UI-only):** The store detail page hides the review form from a store's own owner; the server does not enforce this.
 * **Dynamic Recalculation:** Every review instantly updates the store's average rating and total review count.
 
 ### 6. Store Engagement & View Analytics
@@ -690,8 +690,9 @@ AasPass-Freelancing/
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/aaspass/
-│   │   │   │   ├── config/             # SecurityConfig (CORS, CSRF, JWT cookies), DataInitializer, API logging filters
-│   │   │   │   ├── security/           # Token, auth-cookie, session and KYC crypto services
+│   │   │   │   ├── config/             # CORS config, DataInitializer, API logging filters
+│   │   │   │   │   └── security/       # SecurityConfig, cookie bearer resolver, JWT validators, CurrentUser
+│   │   │   │   ├── security/           # token (JWT, cookies), session and crypto (KYC) services
 │   │   │   │   ├── controller/         # REST Controllers (Auth, Store, User, Reviews, Services)
 │   │   │   │   ├── dto/                # Java 17 Records (common, request, response)
 │   │   │   │   ├── entity/             # JPA Entities & mapped superclasses (BaseId, BaseAudit)

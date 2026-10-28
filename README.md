@@ -90,15 +90,16 @@ AasPass-Freelancing/
 │   └── package.json
 ├── aaspass-service-backend/      # Spring Boot Java 17 Backend Application
 │   ├── src/main/java/com/aaspass/
-│   │   ├── config/               # SecurityConfig (CORS, CSRF, JWT cookies), DataInitializer, Logging filters
+│   │   ├── config/               # WebMvcConfig, DataInitializer, Logging filters
+│   │   │   └── security/         # SecurityConfig, cookie bearer resolver, JWT validators, CurrentUser
 │   │   ├── controller/           # REST Controllers (Auth, Store, User, Reviews, Services)
 │   │   ├── dto/                  # Java 17 Records (Request, Response, Common)
 │   │   ├── entity/               # JPA Entities (User, Store, Address, Reviews, etc.)
 │   │   ├── exception/            # GlobalExceptionHandler & Custom Exceptions
 │   │   ├── repository/           # Spring Data JPA Repositories
 │   │   ├── service/              # Business Service layer & DtoMapper
+│   │   ├── security/             # token (JWT, cookies), session and crypto (KYC) services
 │   │   └── util/                 # Helper utilities (AvatarGenerator)
-│   │   ├── security/             # Cookie/JWT token, session and KYC crypto services
 │   ├── src/main/resources/       # application.properties (Datasource & JPA)
 │   └── pom.xml
 ├── doc/
@@ -167,10 +168,10 @@ Passwords are stored as BCrypt (cost 12) hashes; the seeded demo accounts all us
 
 * `Secure` is applied automatically on every host except `localhost`, `127.0.0.1` and `::1`. `Domain` is never set on localhost/IP hosts; elsewhere it is set only when `AASPASS_COOKIE_DOMAIN` is provided.
 * **CSRF:** the backend issues an `XSRF-TOKEN` cookie and requires its value in the `X-XSRF-TOKEN` header on state-changing requests (the Angular client does this automatically).
-* **Refresh-token rotation with reuse detection:** every `POST /api/auth/refresh` issues a new `_rid`. Replaying an already-rotated refresh token revokes the whole session. A logged-out or revoked session can never be rejoined. The client silently refreshes on a 401 and ends the session only when the refresh itself is rejected.
+* **Refresh-token rotation with reuse detection:** every `POST /api/auth/refresh` issues a new `_rid`. Replaying an already-rotated refresh token revokes the whole session. A logged-out or revoked session can never be rejoined. The client silently refreshes on a 401 and ends the session only when the refresh itself is rejected. A failed refresh clears both cookies.
 * **Passwords** are hashed with BCrypt (cost 12). Legacy plaintext passwords are migrated at startup.
 * **KYC data:** Aadhaar and PAN are encrypted at rest with AES-256-GCM and only ever returned masked (`XXXXXXXX1234`, `XXXXXX234F`). They are updated through `PUT /api/users/me/kyc`.
-* **Authorization:** catalog reads (stores, reviews, services, public user profiles) and login/register/refresh/logout are public. Everything else requires a valid session, and writes are owner-only (a user can only modify their own profile, addresses and stores, and cannot review their own store).
+* **Authorization:** catalog reads (stores, reviews, services, public user profiles) and login/register/refresh/logout are public. Everything else requires a valid session, and writes are owner-only (a user can only modify their own profile, addresses and stores). The review form is hidden from a store's own owner in the UI only; the server does not enforce this.
 
 ### Configuration, Secrets & Production
 
