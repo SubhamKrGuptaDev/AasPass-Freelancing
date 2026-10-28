@@ -1,0 +1,28 @@
+<label
+  [id]="labelId()"
+  [for]="inputId()"
+  [class]="hideLabel() ? 'sr-only' : 'mb-1 block text-xs font-bold text-slate-700'"
+  >{{ label() }}</label
+>
+<hlm-autocomplete
+  [value]="value() || null"
+  (valueChange)="onSelect($event)"
+  [(search)]="search"
+  [disabled]="disabled()"
+  [autoHighlight]="true"
+  (stateChanged)="onPanelState($event)"
+>
+  <hlm-autocomplete-input
+    [inputId]="inputId()"
+    [placeholder]="placeholder()"
+    (click)="openList()"
+  />
+  <hlm-autocomplete-content *hlmAutocompletePortal>
+    <hlm-autocomplete-empty>No countries found.</hlm-autocomplete-empty>
+    <div hlmAutocompleteList [aria-labelledby]="labelId()">
+      @for (name of options(); track name) {
+        <hlm-autocomplete-item [value]="name">{{ name }}</hlm-autocomplete-item>
+      }
+    </div>
+  </hlm-autocomplete-content>
+</hlm-autocomplete>
