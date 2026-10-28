@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aaspass-client-verify",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "aaspass-client", "ng", "serve", "--port", "4300"],
+      "cwd": "aaspass-client",
+      "port": 4300
+    }
+  ]
+}
