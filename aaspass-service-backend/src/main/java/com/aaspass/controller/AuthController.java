@@ -66,8 +66,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
                                                            HttpServletRequest httpRequest,
                                                            HttpServletResponse httpResponse) {
-        log.info("[API-CALL] POST /api/auth/login - Received login request for identifier: '{}'",
-                request.usernameOrEmail());
+        log.info("[API-CALL] POST /api/auth/login - Received login request");
 
         AuthResult result = authService.login(request, userAgent(httpRequest), httpRequest.getRemoteAddr());
         authCookieService.writeSession(httpRequest, httpResponse, result.session());
@@ -88,8 +87,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request,
                                                               HttpServletRequest httpRequest,
                                                               HttpServletResponse httpResponse) {
-        log.info("[API-CALL] POST /api/auth/register - Received registration request for username: '{}', email: '{}'",
-                request.username(), request.email());
+        log.info("[API-CALL] POST /api/auth/register - Received registration request");
 
         AuthResult result = authService.register(request, userAgent(httpRequest), httpRequest.getRemoteAddr());
         authCookieService.writeSession(httpRequest, httpResponse, result.session());

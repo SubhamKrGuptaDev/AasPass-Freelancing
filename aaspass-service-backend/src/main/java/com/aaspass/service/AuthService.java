@@ -64,7 +64,8 @@ public class AuthService {
     @Transactional
     public AuthResult login(LoginRequest request, String userAgent, String ip) {
         String identifier = request.usernameOrEmail() != null ? request.usernameOrEmail().trim() : "";
-        log.info("[AUTH LOGIN ATTEMPT] Identifying user by: '{}'", identifier);
+        // Spec §6: log user id and session id only, never the identifier, username or email.
+        log.info("[AUTH LOGIN ATTEMPT] Login attempt received");
 
         User user = userRepository.findByUsernameOrEmail(identifier).orElse(null);
         String rawPassword = request.password() != null ? request.password() : "";
@@ -72,12 +73,12 @@ public class AuthService {
         if (user == null) {
             // Dummy compare keeps timing similar to the wrong-password path.
             passwordEncoder.matches(rawPassword, dummyHash);
-            log.warn("[AUTH LOGIN FAILED] No user found matching identifier: '{}'", identifier);
+            log.warn("[AUTH LOGIN FAILED] Invalid credentials (unknown account)");
             throw new UnauthorizedException("Invalid username or password", ErrorCode.INVALID_CREDENTIALS);
         }
 
         if (user.getPassword() == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
-            log.warn("[AUTH LOGIN FAILED] Password mismatch for user ID: {} (username: '{}')", user.getId(), user.getUsername());
+            log.warn("[AUTH LOGIN FAILED] Invalid credentials for user ID: {}", user.getId());
             throw new UnauthorizedException("Invalid username or password", ErrorCode.INVALID_CREDENTIALS);
         }
 
@@ -98,17 +99,17 @@ public class AuthService {
      */
     @Transactional
     public AuthResult register(RegisterRequest request, String userAgent, String ip) {
-        log.info("[AUTH REGISTER ATTEMPT] Registering username='{}', email='{}'",
-                request.username(), request.email());
+        log.info("[AUTH REGISTER ATTEMPT] Registration request received");
 
         if (userRepository.existsByUsername(request.username())) {
-            log.warn("[AUTH REGISTER FAILED] Username '{}' is already taken", request.username());
-            throw new DuplicateResourceException("Username '" + request.username() + "' is already in use");
+            log.warn("[AUTH REGISTER FAILED] Username already taken");
+            // No value in the message: the exception handler logs it.
+            throw new DuplicateResourceException("Username is already in use");
         }
 
         if (userRepository.existsByEmail(request.email())) {
-            log.warn("[AUTH REGISTER FAILED] Email '{}' is already registered", request.email());
-            throw new DuplicateResourceException("Email '" + request.email() + "' is already registered");
+            log.warn("[AUTH REGISTER FAILED] Email already registered");
+            throw new DuplicateResourceException("Email is already registered");
         }
 
         String memberSince = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"));
@@ -130,7 +131,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(newUser);
-        log.info("[AUTH REGISTER SUCCESS] Created new user: ID={}, username='{}'", savedUser.getId(), savedUser.getUsername());
+        log.info("[AUTH REGISTER SUCCESS] Created new user: ID={}", savedUser.getId());
 
         IssuedSession session = sessionService.open(savedUser, userAgent, ip);
         return new AuthResult(DtoMapper.toUserResponse(savedUser, true, true, true), session);

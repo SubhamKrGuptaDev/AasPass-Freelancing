@@ -15,8 +15,11 @@ import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -56,6 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 public class AuthControllerTest {
 
     private static final String SID = AuthCookieService.ACCESS_COOKIE;
@@ -512,6 +516,41 @@ public class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
         assertClearsBothCookies(result);
+    }
+
+    // ---------------------------------------------------------------- privacy
+
+    @Test
+    @DisplayName("Login and registration never log usernames, emails or login identifiers")
+    public void authLogsContainNoPersonalData(CapturedOutput output) throws Exception {
+        String unique = "piiuser_" + System.currentTimeMillis();
+        RegisterRequest request = RegisterRequest.builder()
+                .name("Pii User")
+                .username(unique)
+                .email(unique + "@example.com")
+                .password("securePassword123")
+                .phone("+91 99999 55555")
+                .build();
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+        // Duplicate registration, success login, wrong password and unknown identifier.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+        AuthTestSupport.login(mockMvc, unique, "securePassword123");
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"usernameOrEmail\":\"" + unique + "@example.com\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"usernameOrEmail\":\"ghost_" + unique + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().isUnauthorized());
+
+        assertFalse(output.getAll().contains(unique), "logs must not contain usernames, emails or identifiers");
     }
 
     // ---------------------------------------------------------------- register
