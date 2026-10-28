@@ -2,6 +2,7 @@
   "name": "aaspass-client",
   "version": "0.0.0",
   "scripts": {
+    "build:geo": "node scripts/build-geo.mjs",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
@@ -34,6 +35,8 @@
     "@angular/cli": "^22.2.2",
     "@angular/compiler-cli": "^22.2.0",
     "@tailwindcss/postcss": "^4.1.12",
+    "cities.json": "^1.1.65",
+    "countries-list": "^3.4.1",
     "jsdom": "^30.0.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
