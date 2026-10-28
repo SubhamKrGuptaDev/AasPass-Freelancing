@@ -12,7 +12,22 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "paths": {
+      "@spartan-ng/helm/accordion": ["./src/app/ui/accordion/src/index.ts"],
+      "@spartan-ng/helm/badge": ["./src/app/ui/badge/src/index.ts"],
+      "@spartan-ng/helm/button": ["./src/app/ui/button/src/index.ts"],
+      "@spartan-ng/helm/card": ["./src/app/ui/card/src/index.ts"],
+      "@spartan-ng/helm/input": ["./src/app/ui/input/src/index.ts"],
+      "@spartan-ng/helm/select": ["./src/app/ui/select/src/index.ts"],
+      "@spartan-ng/helm/separator": ["./src/app/ui/separator/src/index.ts"],
+      "@spartan-ng/helm/skeleton": ["./src/app/ui/skeleton/src/index.ts"],
+      "@spartan-ng/helm/switch": ["./src/app/ui/switch/src/index.ts"],
+      "@spartan-ng/helm/tabs": ["./src/app/ui/tabs/src/index.ts"],
+      "@spartan-ng/helm/toggle": ["./src/app/ui/toggle/src/index.ts"],
+      "@spartan-ng/helm/toggle-group": ["./src/app/ui/toggle-group/src/index.ts"],
+      "@spartan-ng/helm/utils": ["./src/app/ui/utils/src/index.ts"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
