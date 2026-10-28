@@ -161,7 +161,8 @@ export class AuthService {
   login(usernameOrEmail: string, password: string): Observable<UserProfile> {
     return this.authHttpService.login({
       usernameOrEmail: (usernameOrEmail ?? '').trim(),
-      password: (password ?? '').trim()
+      // Passwords are sent verbatim: surrounding spaces are part of the secret.
+      password: password ?? ''
     }).pipe(
       map(resp => this.profileFromAuthResponse(resp?.data?.user)),
       tap(profile => {
@@ -186,7 +187,7 @@ export class AuthService {
       name,
       username: username.toLowerCase(),
       email: email.toLowerCase(),
-      password: (request.password ?? '').trim(),
+      password: request.password ?? '',
       phone: (request.phone ?? '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',

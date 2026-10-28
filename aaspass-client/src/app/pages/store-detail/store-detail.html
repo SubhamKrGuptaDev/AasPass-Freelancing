@@ -373,9 +373,11 @@
                     <button 
                       type="button" 
                       (click)="submitReview()"
-                      class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs hover:shadow-md transition active:scale-98 cursor-pointer"
+                      [disabled]="reviewSubmitting()"
+                      [attr.aria-busy]="reviewSubmitting()"
+                      class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs hover:shadow-md transition active:scale-98 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Submit Review
+                      {{ reviewSubmitting() ? 'Submitting…' : 'Submit Review' }}
                     </button>
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth/auth.service';
 import { SessionRefreshService } from '../services/auth/session-refresh.service';
 import { errorCode } from './error-toast.interceptor';
-import { SKIP_AUTH_REFRESH } from './http-context';
+import { SKIP_AUTH_REFRESH, markErrorToastHandled } from './http-context';
 
 /** Auth endpoints that must never be retried through a refresh, even without the context flag. */
 const AUTH_ENDPOINT = /\/auth\/(login|register|refresh|logout)(\?|$)/;
@@ -44,8 +44,9 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((err: unknown) => {
       if (isRevokedWhileLoggedIn(err, authService)) {
         // The server killed the session (logout elsewhere, reuse detection): refreshing cannot help.
+        // handleSessionEnded shows the only toast for this outcome.
         authService.handleSessionEnded();
-        return throwError(() => err);
+        return throwError(() => markErrorToastHandled(err));
       }
       if (!shouldRefresh(err, authService)) {
         return throwError(() => err);
@@ -53,8 +54,9 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
       return sessionRefresh.refresh().pipe(
         catchError((refreshErr: unknown) => {
           if (refreshErr instanceof HttpErrorResponse && refreshErr.status === 401) {
+            // handleSessionEnded shows the only toast; the original 401 must not add "Please log in".
             authService.handleSessionEnded();
-            return throwError(() => err);
+            return throwError(() => markErrorToastHandled(err));
           }
           // Network / server failure: the session may still be valid, so keep the user and surface the
           // refresh error so the error-toast interceptor shows the connection or server message.

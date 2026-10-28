@@ -171,6 +171,17 @@ describe('ProfileComponent KYC', () => {
       expect(component.isAddingReview).toBe(false);
     });
 
+    it('a double submit posts the review only once', () => {
+      component.submitStoreReview('store-7');
+      component.submitStoreReview('store-7');
+      expect(component.reviewSubmitting()).toBe(true);
+
+      httpTesting.expectOne(REVIEWS_URL).flush({ success: true, message: 'ok', data: {} });
+
+      expect(component.reviewSubmitting()).toBe(false);
+      expect(component.storeService.getStoreById('store-7')?.reviews?.length).toBe(1);
+    });
+
     it('500 shows no success toast and inserts no review', () => {
       component.submitStoreReview('store-7');
       httpTesting.expectOne(REVIEWS_URL).flush({ success: false, message: 'boom' }, { status: 500, statusText: 'Server Error' });
@@ -178,6 +189,7 @@ describe('ProfileComponent KYC', () => {
       expect(toast.toasts().some(t => t.type === 'success')).toBe(false);
       expect(component.storeService.getStoreById('store-7')?.reviews?.length).toBe(0);
       expect(component.isAddingReview).toBe(true);
+      expect(component.reviewSubmitting()).toBe(false);
     });
   });
 });

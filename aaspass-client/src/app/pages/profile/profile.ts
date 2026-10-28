@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, Injector, afterNextRender } from '
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { ToastService } from '../../services/toast/toast.service';
@@ -203,6 +204,8 @@ export class ProfileComponent {
   newReviewRating = 5.0;
   newReviewMessage = '';
   reviewFormError: string | null = null;
+  /** True while a review POST is in flight; blocks double submits. */
+  readonly reviewSubmitting = signal(false);
 
   saveUserDetails(): void {
     const validSocial = this.editUserSocialLinks
@@ -248,6 +251,9 @@ export class ProfileComponent {
   }
 
   submitStoreReview(storeId: string): void {
+    if (this.reviewSubmitting()) {
+      return;
+    }
     if (this.newReviewRating < 1.0 || this.newReviewRating > 5.0) {
       this.reviewFormError = 'Rating must be between 1.0 (min) and 5.0 (max).';
       return;
@@ -259,10 +265,13 @@ export class ProfileComponent {
     }
 
     this.reviewFormError = null;
+    this.reviewSubmitting.set(true);
     this.storeService.addReview(storeId, {
       rating: this.newReviewRating,
       message: this.newReviewMessage.trim()
-    }).subscribe({
+    }).pipe(
+      finalize(() => this.reviewSubmitting.set(false))
+    ).subscribe({
       next: review => {
         this.toast.success(`Added ${review.rating.toFixed(1)}★ review as "${review.userName}".`);
         this.newReviewRating = 5.0;

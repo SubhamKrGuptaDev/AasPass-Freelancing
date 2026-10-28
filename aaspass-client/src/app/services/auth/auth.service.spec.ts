@@ -75,6 +75,18 @@ describe('AuthService', () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it('loginAndSignupSendPasswordsVerbatim', () => {
+    authService.login(' aman ', '  pass word  ').subscribe();
+    const login = httpTesting.expectOne(LOGIN_URL);
+    expect(login.request.body).toEqual({ usernameOrEmail: 'aman', password: '  pass word  ' });
+    login.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
+
+    authService.signup({ name: 'Aman Sharma', username: 'aman', email: 'aman@example.com', password: ' secret12 ' }).subscribe();
+    const register = httpTesting.expectOne(REGISTER_URL);
+    expect(register.request.body.password).toBe(' secret12 ');
+    register.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
+  });
+
   it('loginFailureLeavesGuest', () => {
     let failed = false;
     authService.login('aman', 'wrong').subscribe({ error: () => (failed = true) });

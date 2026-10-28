@@ -921,9 +921,11 @@
                     <button 
                       type="button" 
                       (click)="submitStoreReview(store.id)"
-                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+                      [disabled]="reviewSubmitting()"
+                      [attr.aria-busy]="reviewSubmitting()"
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Save Review
+                      {{ reviewSubmitting() ? 'Saving…' : 'Save Review' }}
                     </button>
                   </div>
                 </div>

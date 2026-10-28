@@ -169,6 +169,20 @@ describe('authRefreshInterceptor', () => {
     expect((error!.error as { code?: string }).code).toBe('TOKEN_EXPIRED');
   });
 
+  it('refresh401WhileLoggedInShowsOnlyTheSessionEndedToast', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(USER));
+    let error: HttpErrorResponse | null = null;
+    http.get(`${API_BASE_URL}/users/me`).subscribe({ error: (e: HttpErrorResponse) => (error = e) });
+
+    httpTesting.expectOne(`${API_BASE_URL}/users/me`).flush(UNAUTHENTICATED, { status: 401, statusText: 'Unauthorized' });
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'Invalid refresh token', code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(error!.status).toBe(401);
+    expect(authService.currentUser()).toBeNull();
+    expect(toast.toasts().map(t => t.message)).toEqual(['Your session has ended. Please log in again.']);
+  });
+
   it('publicGetRecoversAfterRefresh', () => {
     let body: unknown = null;
     http.get(`${API_BASE_URL}/stores`).subscribe(r => (body = r));

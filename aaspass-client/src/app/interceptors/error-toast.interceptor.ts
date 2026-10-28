@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ToastType } from '../models/toast.model';
 import { ToastService } from '../services/toast/toast.service';
-import { SKIP_ERROR_TOAST } from './http-context';
+import { SKIP_ERROR_TOAST, isErrorToastHandled } from './http-context';
 
 interface ToastMessage {
   type: ToastType;
@@ -76,12 +76,15 @@ export function toastMessageFor(err: HttpErrorResponse): ToastMessage | null {
   return { type: 'error', message: GENERIC_CLIENT_MESSAGE };
 }
 
-/** Shows a friendly toast for failed API calls, then re-throws so callers can still react. */
+/**
+ * Shows a friendly toast for failed API calls, then re-throws so callers can still react. Errors an
+ * inner interceptor already reported (see {@link isErrorToastHandled}) get no second toast.
+ */
 export const errorToastInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
   return next(req).pipe(
     catchError((err: unknown) => {
-      if (err instanceof HttpErrorResponse && !req.context.get(SKIP_ERROR_TOAST)) {
+      if (err instanceof HttpErrorResponse && !req.context.get(SKIP_ERROR_TOAST) && !isErrorToastHandled(err)) {
         const result = toastMessageFor(err);
         if (result) {
           toast.show(result.type, result.message);

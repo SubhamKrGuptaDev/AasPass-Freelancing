@@ -1,5 +1,6 @@
 import { Component, inject, computed, signal, effect, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
@@ -63,6 +64,8 @@ export class StoreDetailComponent {
   reviewRating: number = 5.0;
   reviewMessage: string = '';
   reviewError: string | null = null;
+  /** True while a review POST is in flight; blocks double submits. */
+  readonly reviewSubmitting = signal(false);
 
   store = computed(() => {
     const params = this.routeParamMap();
@@ -136,7 +139,7 @@ export class StoreDetailComponent {
 
   submitReview(): void {
     const s = this.store();
-    if (!s) return;
+    if (!s || this.reviewSubmitting()) return;
 
     if (this.reviewRating < 1.0 || this.reviewRating > 5.0) {
       this.reviewError = 'Rating must be between 1.0 (minimum) and 5.0 (maximum).';
@@ -149,10 +152,13 @@ export class StoreDetailComponent {
     }
 
     this.reviewError = null;
+    this.reviewSubmitting.set(true);
     this.storeService.addReview(s.id, {
       rating: this.reviewRating,
       message: this.reviewMessage.trim()
-    }).subscribe({
+    }).pipe(
+      finalize(() => this.reviewSubmitting.set(false))
+    ).subscribe({
       next: () => {
         this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
         this.reviewMessage = '';

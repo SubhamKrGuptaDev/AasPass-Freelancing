@@ -482,11 +482,17 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.code", is("SESSION_REVOKED")))
                 .andReturn();
         assertClearsBothCookies(refresh);
-        for (Cookie c : refresh.getResponse().getCookies()) {
-            if (SID.equals(c.getName())) {
-                assertTrue(c.getValue() == null || c.getValue().isEmpty(), "no new access cookie may be issued");
-            }
-        }
+        List<String> sidHeaders = refresh.getResponse().getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .filter(h -> h.startsWith(SID + "="))
+                .toList();
+        assertFalse(sidHeaders.isEmpty(), "the replayed refresh must clear the access cookie");
+        assertTrue(sidHeaders.stream().allMatch(h -> h.startsWith(SID + "=;")),
+                "no non-empty access cookie may be issued: " + sidHeaders);
+        List<String> ridHeaders = refresh.getResponse().getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .filter(h -> h.startsWith(RID + "="))
+                .toList();
+        assertTrue(ridHeaders.stream().allMatch(h -> h.startsWith(RID + "=;")),
+                "no non-empty refresh cookie may be issued: " + ridHeaders);
     }
 
     @Test
@@ -519,6 +525,16 @@ public class AuthControllerTest {
     }
 
     // ---------------------------------------------------------------- privacy
+
+    @Test
+    @DisplayName("Malformed JSON gets a generic 400 without parser details")
+    public void malformedBodyGetsGenericMessage() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"usernameOrEmail\": \"aman\", \"password\": "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Invalid request body.")));
+    }
 
     @Test
     @DisplayName("Login and registration never log usernames, emails or login identifiers")
