@@ -6,6 +6,27 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-28 22:45:00 IST] - Home Redesign, Public Stores Page, Spartan UI and 5 New Categories
+* **What Changed:**
+  * **Spartan UI:** Added `@spartan-ng/helm` components (button, card, badge, input, select, tabs, accordion, skeleton, separator, toggle-group, switch) under `src/app/ui` with brand theme tokens and Lucide icons via `@ng-icons`.
+  * **Categories:** Added 5 store categories (Astrology & Spiritual, Driving & Transport, Fitness & Self-Defense, Art, Music & Hobbies, Home & Personal Services) plus shared store query/sort/ranking helpers.
+  * **Store card:** New shared `StoreCardComponent` used by Home and the Stores page.
+  * **`/stores` page:** Public, lazy-loaded city stores page with city, category, search, sort and open-only filters synced to URL query params.
+  * **Home:** Rewritten as a landing page (hero search to `/stores`, category cards, "Anyone can open a store" seller section with zero-commission copy, how-it-works tabs, why AasPass, top stores in the selected city, trust and safety, cities, earn CTA, FAQ accordion). Static copy lives in `home.content.ts`; the old search/filter sync with `StoreService` was removed.
+  * **Docs:** Updated `README.md` (stack row, categories, `/stores`, zero commission).
+  * **Final-review fixes:** Added Spartan custom Tailwind variants (`dark`, `data-*`) to `styles.css`; select triggers now have accessible names and show the sort label; search retype after reset works; `/stores` URL is re-canonicalised; singular/zero-safe result count; navbar "Browse Stores" stays active with query params; category toggle no longer deselects; local `border-border` for FAQ and store-card dividers; copy corrected (no radius filters, "AasPass takes zero commission"); removed unused icon import.
+  * **Verification:** 155 frontend tests pass; `npm run build` succeeds (initial bundle 864.60 kB, under the 1 MB error budget; the 500 kB warning is pre-existing).
+* **Why Changed:** Give visitors a public way to browse local stores, present AasPass's seller proposition clearly, and broaden the categories beyond tech and creative work.
+* **Files Modified:**
+  * `aaspass-client/src/app/pages/home/*`, `aaspass-client/src/app/app.routes.ts`
+  * `aaspass-client/src/app/pages/stores/*`, `aaspass-client/src/app/components/store-card/*`, `aaspass-client/src/app/ui/**`
+  * `aaspass-client/src/app/services/store/store.service.ts`, `aaspass-client/src/app/pages/create-store/create-store.ts`
+  * `aaspass-client/src/app/components/navbar/navbar.html`, `aaspass-client/src/styles.css`
+  * `aaspass-client/tsconfig.json`, `aaspass-client/package.json`
+  * `README.md`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
 ### [2026-10-28 10:30:00 IST] - Cookie-Based JWT Auth, Encrypted KYC, Owner-Only Writes and Shared Toaster
 * **What Changed:**
   * **Backend:** Spring Security with stateless JWT auth. Access JWT in HttpOnly `_sid` cookie (15 min, SameSite=Lax, Path `/api`); rotating refresh token in HttpOnly `_rid` cookie (30-day absolute session, SameSite=Strict, Path `/api/auth`) backed by a new `user_sessions` table with reuse detection and non-rejoinable revoked sessions. New `POST /api/auth/refresh`; `GET /api/auth/me` now reads the caller from the cookie. CSRF via `XSRF-TOKEN` cookie / `X-XSRF-TOKEN` header. `Secure` is automatic except on localhost; `Domain` only via `AASPASS_COOKIE_DOMAIN`.

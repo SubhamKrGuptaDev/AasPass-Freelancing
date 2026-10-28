@@ -1,0 +1,65 @@
+<div hlmCard class="group h-full gap-0 overflow-hidden py-0 transition-all hover:border-indigo-300 hover:shadow-xl">
+  <div class="h-3 bg-gradient-to-r {{ store().bannerGradient }}"></div>
+
+  <div class="flex flex-1 flex-col p-5">
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <span hlmBadge variant="outline" class="gap-1 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700">
+        <ng-icon name="lucideMapPin" size="12" />
+        <span>{{ store().distanceKm }} km away • {{ store().area }}</span>
+      </span>
+      @if (store().isAvailable) {
+        <span hlmBadge variant="secondary" class="bg-emerald-100 text-[11px] text-emerald-800">Open for gigs</span>
+      } @else {
+        <span hlmBadge variant="secondary" class="text-[11px] text-slate-500">Paused</span>
+      }
+    </div>
+
+    <div class="mb-3 flex items-start gap-3">
+      <img
+        [src]="store().avatarUrl"
+        [alt]="store().ownerName"
+        class="h-12 w-12 flex-shrink-0 rounded-xl object-cover ring-2 ring-slate-100"
+      />
+      <div class="min-w-0">
+        <h3 class="line-clamp-1 font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
+          {{ store().storeName }}
+        </h3>
+        <p class="text-xs font-medium text-slate-500">
+          by {{ store().ownerName }} • {{ store().experienceYears }} yrs exp
+        </p>
+        <div class="mt-1 flex items-center gap-3 text-xs">
+          <span class="flex items-center gap-1 font-bold text-amber-500">
+            <ng-icon name="lucideStar" size="12" />
+            {{ store().rating }}
+            <span class="font-normal text-slate-400">({{ store().reviewCount }})</span>
+          </span>
+          <span class="flex items-center gap-1 font-semibold text-slate-600" title="Store view count">
+            <ng-icon name="lucideEye" size="12" />
+            <span data-testid="views">{{ store().views?.lifetime ?? 0 }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <p class="mb-4 line-clamp-2 flex-1 text-xs font-medium text-slate-700">{{ store().tagline }}</p>
+
+    @let skills = store().skills ?? [];
+    <div class="mb-4 flex flex-wrap gap-1.5">
+      @for (skill of skills.slice(0, 3); track $index) {
+        <span hlmBadge variant="secondary" data-testid="skill" class="text-[11px]">{{ skill }}</span>
+      }
+      @if (skills.length > 3) {
+        <span class="rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">+{{ skills.length - 3 }}</span>
+      }
+    </div>
+
+    <div class="mt-auto flex items-center justify-between border-t border-border pt-4">
+      <div>
+        <span class="block text-[10px] font-semibold uppercase text-slate-400">Rate</span>
+        <span class="text-base font-extrabold text-indigo-700">₹{{ store().hourlyRate }}</span>
+        <span class="text-xs text-slate-500">/hr</span>
+      </div>
+      <a hlmBtn size="sm" [routerLink]="['/stores', storeKey()]">View store</a>
+    </div>
+  </div>
+</div>

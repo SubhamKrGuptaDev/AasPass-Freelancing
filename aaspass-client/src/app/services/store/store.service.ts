@@ -195,7 +195,12 @@ export class StoreService {
     'Photography',
     'Tutoring & Education',
     'Graphics & Design',
-    'Tech Support & Hardware'
+    'Tech Support & Hardware',
+    'Astrology & Spiritual',
+    'Driving & Transport',
+    'Fitness & Self-Defense',
+    'Art, Music & Hobbies',
+    'Home & Personal Services'
   ];
 
   // Available cities for selection

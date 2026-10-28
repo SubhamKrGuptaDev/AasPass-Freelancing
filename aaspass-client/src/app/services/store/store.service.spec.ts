@@ -118,6 +118,23 @@ describe('StoreService Reviews & Ratings', () => {
     ]);
   });
 
+  it('should expose the 12 store categories in order', () => {
+    expect(service.categories).toEqual([
+      'All',
+      'Video & Editing',
+      'Web & Tech',
+      'Photography',
+      'Tutoring & Education',
+      'Graphics & Design',
+      'Tech Support & Hardware',
+      'Astrology & Spiritual',
+      'Driving & Transport',
+      'Fitness & Self-Defense',
+      'Art, Music & Hobbies',
+      'Home & Personal Services'
+    ]);
+  });
+
   it('should initialize with test stores', () => {
     expect(service.stores().length).toBe(2);
     expect(service.stores()[0].storeName).toBe('PixelCraft Studios');
