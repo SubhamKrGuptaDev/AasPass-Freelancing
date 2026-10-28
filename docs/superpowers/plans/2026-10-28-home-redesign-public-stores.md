@@ -20,7 +20,8 @@
 - Sort keys: `rating` (default), `price-asc`, `price-desc`, `experience`, `views`.
 - `q` is trimmed and capped at 100 characters. Search input debounce: 300 ms.
 - Home preview: max 6 stores, city-only (ignores category/search), rating desc then reviewCount desc.
-- All copy comes from `README.md`; no pricing/commission claims.
+- Copy comes from `README.md` plus the user-provided seller copy in spec §4.2.1 (used verbatim). The only pricing claim allowed is "zero commission"; never "free listing", fees or payouts.
+- Categories (spec §2.1), exact strings and order: `All`, `Video & Editing`, `Web & Tech`, `Photography`, `Tutoring & Education`, `Graphics & Design`, `Tech Support & Hardware`, `Astrology & Spiritual`, `Driving & Transport`, `Fitness & Self-Defense`, `Art, Music & Hobbies`, `Home & Personal Services`.
 - Production budget `anyComponentStyle` 4 kB warning / 8 kB error must not be exceeded.
 - Null-safety rules from `AGENTS.md` (`?.`, `??`, guarded `find()`).
 - Test command: `npx ng test --watch=false` (single file: add `--include <path>`). Build: `npm run build`.
@@ -77,11 +78,14 @@ git commit -m "build(client): add Spartan UI helm components and brand theme tok
 
 ---
 
-### Task 2: Store query helpers (parse, sort, rank)
+### Task 2: Extended categories + store query helpers (parse, sort, rank)
 
 **Files:**
+- Modify: `src/app/services/store/store.service.ts:191-199` (`categories`), `src/app/pages/create-store/create-store.ts:43-50` (`availableCategories` → `this.storeService.categories.filter(c => c !== 'All')`; `storeService` is already injected above it)
 - Create: `src/app/services/store/store-query.ts`
-- Test: `src/app/services/store/store-query.spec.ts`
+- Test: `src/app/services/store/store-query.spec.ts`, add a case to `src/app/services/store/store.service.spec.ts`
+
+- [ ] **Step 0: Categories.** Add test in `store.service.spec.ts`: `expect(service.categories).toEqual([...12 exact strings from Global Constraints...])`; add a create-store assertion only if a create-store spec exists (it does not today — skip). Run → FAIL. Update the list and `availableCategories`. Run → PASS. `npm run build` → success (create-store template still compiles).
 
 **Interfaces:**
 - Produces:
@@ -133,8 +137,8 @@ it('topStoresForCity filters by city case-insensitively, ranks by rating then re
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/app/services/store/store-query.ts src/app/services/store/store-query.spec.ts
-git commit -m "feat(client): store query parsing, sorting and city ranking helpers"
+git add src/app/services/store src/app/pages/create-store/create-store.ts
+git commit -m "feat(client): add 5 store categories and store query/sort/ranking helpers"
 ```
 
 ---
@@ -228,16 +232,19 @@ git commit -m "feat(client): public city stores page with URL-synced filters"
 
 **Files:**
 - Create: `src/app/pages/home/home.content.ts`
-- Modify: `src/app/pages/home/home.ts`, `home.html`, `home.css` (keep empty or delete and drop `styleUrl`), `README.md` (stack table row "UI Components | Spartan UI | …"; mention `/stores` public page in Key Features §1), `doc/AI-doc/CHANGELOG.md` (timestamped entry following the file's existing format)
+- Modify: `src/app/pages/home/home.ts`, `home.html`, `home.css` (keep empty or delete and drop `styleUrl`), `README.md` (stack table row "UI Components | Spartan UI | …"; mention `/stores` public page and the 5 new categories in Key Features §1; add "Zero commission" + "anyone can open a store" examples to The AasPass Solution), `doc/AI-doc/CHANGELOG.md` (timestamped entry following the file's existing format)
 - Test: `src/app/pages/home/home.spec.ts`
 
 **Interfaces:**
 - Consumes: `topStoresForCity` (Task 2), `StoreCardComponent` (Task 3), `StoreService.selectedCity/availableCities/isLoading/stores`, helm imports (Task 1).
 - Produces (in `home.content.ts`, typed `readonly` arrays):
-  - `HOME_CATEGORIES: { name: string; icon: string; description: string }[]` — 6 entries whose `name` equals `StoreService.categories` minus `'All'` exactly
+  - `HOME_CATEGORIES: { name: string; icon: string; description: string }[]` — 11 entries whose `name` equals `StoreService.categories` minus `'All'` exactly (icon = a lucide icon name)
+  - `SELLER_BENEFITS: { title: string; description: string; icon: string }[]` — the 4 benefits from spec §4.2.1, copy verbatim
+  - `EXAMPLE_SELLERS: { label: string; category: string }[]` — the 14 chips from spec §4.2 item 2a, each `category` one of the 11 names (e.g. `Pandit & puja services` → `Astrology & Spiritual`, `Car driver` → `Driving & Transport`, `Self-defense coach` → `Fitness & Self-Defense`, `Drawing & art teacher` → `Art, Music & Hobbies`, `Home tutor / teacher` → `Tutoring & Education`, `Home cook`/`Tailor`/`Mehendi artist` → `Home & Personal Services`)
+  - `SELLER_COPY: { heading: string; intro: string; ctaBody: string }` — verbatim from spec §4.2.1
   - `HIRE_STEPS`, `EARN_STEPS: { title: string; description: string }[]` (3 each)
   - `COMPARISONS: { problem: string; issue: string; aaspass: string }[]` (4: Global freelance sites, Service directories, Google Maps, Apartment / society groups)
-  - `VALUE_PROPS` (3), `TRUST_POINTS` (4), `FAQS: { question: string; answer: string }[]` (4)
+  - `VALUE_PROPS` (3), `TRUST_POINTS` (4), `FAQS: { question: string; answer: string }[]` (6, in spec §4.2 item 9 order; commission + store-type answers verbatim from §4.2.1)
 - `HomeComponent` members: `readonly topStores = computed(() => topStoresForCity(storeService.stores(), storeService.selectedCity()))`, `readonly heroSearch = new FormControl('', { nonNullable: true })`, `findTalent(): void` → `router.navigate(['/stores'], { queryParams: { city: selectedCity(), q: trimmed q || null } })`.
 
 - [ ] **Step 1: Write failing tests**
@@ -247,11 +254,13 @@ it('topStores is city-only, rating-ranked, max 6', ...)   // set category 'Photo
 it('findTalent navigates to /stores with city and q', ...) // heroSearch 'reels' → navigate(['/stores'], { queryParams: { city: 'Bengaluru', q: 'reels' } })
 it('findTalent omits empty q', ...)                         // q: null
 it('category cards match StoreService categories', ...)     // HOME_CATEGORIES names deep-equal service.categories.filter(c => c !== 'All')
+it('every example seller maps to a real category', ...)     // EXAMPLE_SELLERS.every(s => service.categories.includes(s.category)); length 14
+it('renders the zero-commission benefit and seller section', ...) // text contains 'AasPass takes no commission on your earnings' and SELLER_COPY.heading
 ```
 
 - [ ] **Step 2: Run** `npx ng test --watch=false --include src/app/pages/home/home.spec.ts` → FAIL.
 
-- [ ] **Step 3: Implement** the 9 sections from spec §4.2 in order (hero with city `hlm-select` bound to `selectedCity`/`setSelectedCity`, categories, `hlm-tabs` how-it-works, why AasPass, top stores with skeletons/empty state/"View all stores in {city} →", trust & safety, cities, earn CTA, `hlm-accordion` FAQ). Remove the old `searchControl` ↔ `searchQuery` sync from `home.ts`. Copy from README only.
+- [ ] **Step 3: Implement** the sections from spec §4.2 in order (hero with city `hlm-select` bound to `selectedCity`/`setSelectedCity` and stats incl. "0% commission", 11 categories, "Anyone can open a store" seller section with benefits + example chips + CTA, `hlm-tabs` how-it-works, why AasPass, top stores with skeletons/empty state/"View all stores in {city} →", trust & safety, cities, earn CTA, `hlm-accordion` FAQ). Remove the old `searchControl` ↔ `searchQuery` sync from `home.ts`. Copy from README only.
 
 - [ ] **Step 4: Run** the spec → PASS; `npx ng test --watch=false` → all pass; `npm run build` → success within budgets.
 
