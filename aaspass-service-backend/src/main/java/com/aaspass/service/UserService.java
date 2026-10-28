@@ -11,6 +11,7 @@ import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.AddressRepository;
 import com.aaspass.repository.UserRepository;
+import com.aaspass.security.crypto.KycFormat;
 import com.aaspass.service.mapper.DtoMapper;
 import com.aaspass.util.AvatarGenerator;
 import org.slf4j.Logger;
@@ -19,8 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -30,9 +29,6 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-
-    private static final Pattern AADHAAR_PATTERN = Pattern.compile("^\\d{12}$");
-    private static final Pattern PAN_PATTERN = Pattern.compile("^[A-Z]{5}[0-9]{4}[A-Z]$");
 
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
@@ -94,15 +90,15 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
         if (request != null && request.aadharNumber() != null) {
-            String aadhaar = request.aadharNumber().replaceAll("[\\s-]", "");
-            if (!AADHAAR_PATTERN.matcher(aadhaar).matches()) {
+            String aadhaar = KycFormat.normaliseAadhaar(request.aadharNumber());
+            if (!KycFormat.isValidAadhaar(aadhaar)) {
                 throw new BadRequestException("Aadhaar must be 12 digits");
             }
             user.setAadharNumber(aadhaar);
         }
         if (request != null && request.panNumber() != null) {
-            String pan = request.panNumber().trim().toUpperCase(Locale.ROOT);
-            if (!PAN_PATTERN.matcher(pan).matches()) {
+            String pan = KycFormat.normalisePan(request.panNumber());
+            if (!KycFormat.isValidPan(pan)) {
                 throw new BadRequestException("PAN must look like ABCDE1234F");
             }
             user.setPanNumber(pan);

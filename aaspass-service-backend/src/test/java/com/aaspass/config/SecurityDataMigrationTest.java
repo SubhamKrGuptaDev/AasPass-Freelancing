@@ -2,6 +2,8 @@ package com.aaspass.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.aaspass.security.crypto.KycCryptoService;
+import java.time.LocalDateTime;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,25 +25,45 @@ class SecurityDataMigrationTest {
     private JdbcTemplate jdbc;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private KycCryptoService kycCrypto;
 
-    @Test
-    @DisplayName("migrate() hashes legacy passwords, encrypts plaintext KYC, nulls pre-masked KYC and is idempotent")
-    void migratesLegacyRows() {
+    private void insertLegacy(String username, String password, String aadhaar, String pan) {
         jdbc.update("INSERT INTO users (name, username, email, password, aadhar_number, pan_number, has_store,"
                 + " creation_date_time, last_updated_date_time) VALUES (?,?,?,?,?,?,?,?,?)",
-                "Legacy", "legacy_user", "legacy@example.com", "plain123", "9999-1111-2222", "XXXX-XXXX-8921",
-                false, java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
+                "Legacy", username, username + "@example.com", password, aadhaar, pan,
+                false, LocalDateTime.now(), LocalDateTime.now());
+    }
+
+    private Map<String, Object> row(String username) {
+        return jdbc.queryForMap("SELECT password, aadhar_number, pan_number FROM users WHERE username = ?", username);
+    }
+
+    @Test
+    @DisplayName("migrate() hashes legacy passwords, encrypts valid KYC by format, nulls invalid/masked KYC, is idempotent")
+    void migratesLegacyRows() {
+        insertLegacy("legacy_one", "plain123", "9999-1111-2222", "XXXXXX234F");
+        insertLegacy("legacy_two", "plain456", "XXXX-XXXX-8921", " axxpk1234l ");
 
         int changed = migration.migrate();
 
-        assertThat(changed).isGreaterThanOrEqualTo(1);
-        Map<String, Object> row = jdbc.queryForMap(
-                "SELECT password, aadhar_number, pan_number FROM users WHERE username = 'legacy_user'");
-        String password = (String) row.get("PASSWORD");
+        assertThat(changed).isEqualTo(2);
+
+        Map<String, Object> one = row("legacy_one");
+        String password = (String) one.get("PASSWORD");
         assertThat(password).startsWith("$2");
         assertThat(passwordEncoder.matches("plain123", password)).isTrue();
-        assertThat((String) row.get("AADHAR_NUMBER")).startsWith("enc:v1:");
-        assertThat(row.get("PAN_NUMBER")).isNull();
+        String aadhaar = (String) one.get("AADHAR_NUMBER");
+        assertThat(aadhaar).startsWith("enc:v1:");
+        assertThat(kycCrypto.decrypt(aadhaar)).isEqualTo("999911112222");
+        assertThat(one.get("PAN_NUMBER")).isNull();
+
+        Map<String, Object> two = row("legacy_two");
+        assertThat(passwordEncoder.matches("plain456", (String) two.get("PASSWORD"))).isTrue();
+        assertThat(two.get("AADHAR_NUMBER")).isNull();
+        String pan = (String) two.get("PAN_NUMBER");
+        assertThat(pan).startsWith("enc:v1:");
+        assertThat(kycCrypto.decrypt(pan)).isEqualTo("AXXPK1234L");
 
         assertThat(migration.migrate()).isZero();
     }
