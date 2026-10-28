@@ -27,10 +27,14 @@ public class StoreServiceItemService {
 
     private final StoreServiceItemRepository serviceItemRepository;
     private final StoreRepository storeRepository;
+    private final StoreService storeService;
 
-    public StoreServiceItemService(StoreServiceItemRepository serviceItemRepository, StoreRepository storeRepository) {
+    public StoreServiceItemService(StoreServiceItemRepository serviceItemRepository,
+                                   StoreRepository storeRepository,
+                                   StoreService storeService) {
         this.serviceItemRepository = serviceItemRepository;
         this.storeRepository = storeRepository;
+        this.storeService = storeService;
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +49,8 @@ public class StoreServiceItemService {
     }
 
     @Transactional
-    public ServiceItemResponse addService(Long storeId, ServiceItemRequest request) {
+    public ServiceItemResponse addService(Long storeId, Long callerId, ServiceItemRequest request) {
+        storeService.assertStoreOwner(storeId, callerId);
         log.info("[SERVICE ITEM] Adding service item '{}' (price: {}) to store ID: {}",
                 request.name(), request.price(), storeId);
 
@@ -67,7 +72,8 @@ public class StoreServiceItemService {
     }
 
     @Transactional
-    public ServiceItemResponse updateService(Long storeId, Long serviceId, ServiceItemRequest request) {
+    public ServiceItemResponse updateService(Long storeId, Long serviceId, Long callerId, ServiceItemRequest request) {
+        storeService.assertStoreOwner(storeId, callerId);
         log.info("[SERVICE ITEM] Updating service item ID: {} for store ID: {}", serviceId, storeId);
 
         StoreServiceItem serviceItem = serviceItemRepository.findById(serviceId)
@@ -88,7 +94,8 @@ public class StoreServiceItemService {
     }
 
     @Transactional
-    public void deleteService(Long storeId, Long serviceId) {
+    public void deleteService(Long storeId, Long serviceId, Long callerId) {
+        storeService.assertStoreOwner(storeId, callerId);
         log.info("[SERVICE ITEM] Deleting service item ID: {} from store ID: {}", serviceId, storeId);
 
         StoreServiceItem serviceItem = serviceItemRepository.findById(serviceId)

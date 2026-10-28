@@ -1,5 +1,6 @@
 package com.aaspass.controller;
 
+import com.aaspass.config.security.CurrentUser;
 import com.aaspass.dto.request.StoreCreateRequest;
 import com.aaspass.dto.request.StoreUpdateRequest;
 import com.aaspass.dto.response.ApiResponse;
@@ -10,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,21 +23,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controller handling neighborhood storefront discovery, gig search, creation, updates, and view analytics.
  */
 @RestController
 @RequestMapping("/api/stores")
-@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"})
 public class StoreController {
 
     private static final Logger log = LoggerFactory.getLogger(StoreController.class);
 
     private final StoreService storeService;
+    private final CurrentUser currentUser;
 
-    public StoreController(StoreService storeService) {
+    public StoreController(StoreService storeService, CurrentUser currentUser) {
         this.storeService = storeService;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -82,10 +84,11 @@ public class StoreController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<StoreResponse>> createStore(@Valid @RequestBody StoreCreateRequest request) {
+        Long callerId = currentUser.requireUserId();
         log.info("[API-CALL] POST /api/stores - Creating store: '{}' for user: {}",
-                request.storeName(), request.userId());
+                request.storeName(), callerId);
 
-        StoreResponse response = storeService.createStore(request);
+        StoreResponse response = storeService.createStore(callerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Store created successfully"));
     }
@@ -98,7 +101,7 @@ public class StoreController {
             @PathVariable("id") Long id,
             @RequestBody StoreUpdateRequest request) {
         log.info("[API-CALL] PUT /api/stores/{} - Updating store", id);
-        StoreResponse response = storeService.updateStore(id, request);
+        StoreResponse response = storeService.updateStore(id, currentUser.requireUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(response, "Store updated successfully"));
     }
 
@@ -108,7 +111,7 @@ public class StoreController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStore(@PathVariable("id") Long id) {
         log.info("[API-CALL] DELETE /api/stores/{} - Deleting store", id);
-        storeService.deleteStore(id);
+        storeService.deleteStore(id, currentUser.requireUserId());
         return ResponseEntity.ok(ApiResponse.success(null, "Store deleted successfully"));
     }
 
@@ -118,7 +121,7 @@ public class StoreController {
     @PatchMapping("/{id}/toggle-status")
     public ResponseEntity<ApiResponse<StoreResponse>> toggleStoreAvailability(@PathVariable("id") Long id) {
         log.info("[API-CALL] PATCH /api/stores/{}/toggle-status - Toggling store availability", id);
-        StoreResponse response = storeService.toggleStoreAvailability(id);
+        StoreResponse response = storeService.toggleStoreAvailability(id, currentUser.requireUserId());
         return ResponseEntity.ok(ApiResponse.success(response, "Store availability updated successfully"));
     }
 
@@ -126,10 +129,9 @@ public class StoreController {
      * Record a view event on a store storefront (increments daily, weekly, monthly, lifetime counters).
      */
     @PostMapping("/{id}/views")
-    public ResponseEntity<ApiResponse<StoreResponse>> recordStoreView(
-            @PathVariable("id") Long id,
-            @RequestParam(value = "viewerId", required = false) String viewerId) {
-        log.info("[API-CALL] POST /api/stores/{}/views - Recording view from viewer: '{}'", id, viewerId);
+    public ResponseEntity<ApiResponse<StoreResponse>> recordStoreView(@PathVariable("id") Long id) {
+        Optional<Long> viewerId = currentUser.optionalUserId();
+        log.info("[API-CALL] POST /api/stores/{}/views - Recording view from viewer: '{}'", id, viewerId.orElse(null));
         StoreResponse response = storeService.recordStoreView(id, viewerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Store view recorded successfully"));
     }

@@ -4,7 +4,6 @@ import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -16,9 +15,6 @@ import java.util.List;
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record StoreCreateRequest(
-    @NotNull(message = "User ID is required to associate store with owner")
-    Long userId,
-
     String ownerName,
 
     @NotBlank(message = "Store name is required")

@@ -3,11 +3,20 @@
  * Only response interfaces and their respective response type aliases are defined here.
  */
 
+export type ApiErrorCode =
+  | 'TOKEN_EXPIRED'
+  | 'UNAUTHENTICATED'
+  | 'SESSION_REVOKED'
+  | 'INVALID_CREDENTIALS'
+  | 'FORBIDDEN'
+  | 'CSRF_INVALID';
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
   timestamp?: string;
+  code?: ApiErrorCode;
 }
 
 export interface BackendSocialMediaLinkResponse {
@@ -136,8 +145,6 @@ export interface BackendUserResponse {
 export interface BackendAuthResponse {
   success: boolean;
   message: string;
-  token?: string;
-  tokenType?: string;
   user: BackendUserResponse;
 }
 

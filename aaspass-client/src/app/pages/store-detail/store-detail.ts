@@ -1,9 +1,11 @@
 import { Component, inject, computed, signal, effect, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { 
   StoreProfile, 
@@ -32,7 +34,7 @@ export class StoreDetailComponent {
   private routeParamMap = toSignal(this.route.paramMap);
   storeService = inject(StoreService);
 
-  notificationMessage: string | null = null;
+  private toast = inject(ToastService);
 
   formatUrl = formatSocialUrl;
   authService = inject(AuthService);
@@ -59,10 +61,11 @@ export class StoreDetailComponent {
   }
 
   // Review Form state
-  reviewUserName: string = this.storeService.currentUser().name;
   reviewRating: number = 5.0;
   reviewMessage: string = '';
   reviewError: string | null = null;
+  /** True while a review POST is in flight; blocks double submits. */
+  readonly reviewSubmitting = signal(false);
 
   store = computed(() => {
     const params = this.routeParamMap();
@@ -136,12 +139,7 @@ export class StoreDetailComponent {
 
   submitReview(): void {
     const s = this.store();
-    if (!s) return;
-
-    if (!this.reviewUserName || !this.reviewUserName.trim()) {
-      this.reviewError = 'Please provide the Review User Name.';
-      return;
-    }
+    if (!s || this.reviewSubmitting()) return;
 
     if (this.reviewRating < 1.0 || this.reviewRating > 5.0) {
       this.reviewError = 'Rating must be between 1.0 (minimum) and 5.0 (maximum).';
@@ -154,38 +152,38 @@ export class StoreDetailComponent {
     }
 
     this.reviewError = null;
+    this.reviewSubmitting.set(true);
     this.storeService.addReview(s.id, {
-      userName: this.reviewUserName.trim(),
       rating: this.reviewRating,
       message: this.reviewMessage.trim()
+    }).pipe(
+      finalize(() => this.reviewSubmitting.set(false))
+    ).subscribe({
+      next: () => {
+        this.toast.success(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
+        this.reviewMessage = '';
+      },
+      error: () => {
+        // The error interceptor shows the toast; the form keeps the typed message.
+      }
     });
-
-    this.showToast(`Thank you! Your ${this.reviewRating.toFixed(1)}★ review for ${s.ownerName} was posted.`);
-    this.reviewMessage = '';
   }
 
   selectService(srv: StoreServiceItem): void {
-    this.showToast(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
+    this.toast.success(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
   }
 
   triggerInquiry(): void {
     const s = this.store();
     if (s) {
-      this.showToast(`Direct message sent to ${s.ownerName}! You can now coordinate nearby.`);
+      this.toast.success(`Direct message sent to ${s.ownerName}! You can now coordinate nearby.`);
     }
   }
 
   triggerCall(): void {
     const s = this.store();
     if (s) {
-      this.showToast(`Phone callback request shared with ${s.ownerName}.`);
+      this.toast.success(`Phone callback request shared with ${s.ownerName}.`);
     }
-  }
-
-  private showToast(msg: string): void {
-    this.notificationMessage = msg;
-    setTimeout(() => {
-      this.notificationMessage = null;
-    }, 4000);
   }
 }

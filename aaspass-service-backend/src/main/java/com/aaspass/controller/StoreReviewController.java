@@ -1,5 +1,6 @@
 package com.aaspass.controller;
 
+import com.aaspass.config.security.CurrentUser;
 import com.aaspass.dto.request.StoreReviewRequest;
 import com.aaspass.dto.response.ApiResponse;
 import com.aaspass.dto.response.StoreReviewResponse;
@@ -9,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,15 +24,16 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/stores/{storeId}/reviews")
-@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"})
 public class StoreReviewController {
 
     private static final Logger log = LoggerFactory.getLogger(StoreReviewController.class);
 
     private final StoreReviewService reviewService;
+    private final CurrentUser currentUser;
 
-    public StoreReviewController(StoreReviewService reviewService) {
+    public StoreReviewController(StoreReviewService reviewService, CurrentUser currentUser) {
         this.reviewService = reviewService;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -52,10 +53,11 @@ public class StoreReviewController {
     public ResponseEntity<ApiResponse<StoreReviewResponse>> addReview(
             @PathVariable("storeId") Long storeId,
             @Valid @RequestBody StoreReviewRequest request) {
+        Long callerId = currentUser.requireUserId();
         log.info("[API-CALL] POST /api/stores/{}/reviews - User '{}' submitting rating: {}",
-                storeId, request.userName(), request.rating());
+                storeId, callerId, request.rating());
 
-        StoreReviewResponse response = reviewService.addReview(storeId, request);
+        StoreReviewResponse response = reviewService.addReview(storeId, callerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Review submitted successfully"));
     }

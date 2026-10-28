@@ -1,6 +1,7 @@
 package com.aaspass.service;
 
 import com.aaspass.dto.request.AddressRequest;
+import com.aaspass.dto.request.KycUpdateRequest;
 import com.aaspass.dto.request.UserUpdateRequest;
 import com.aaspass.dto.response.AddressResponse;
 import com.aaspass.dto.response.UserResponse;
@@ -10,6 +11,7 @@ import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.AddressRepository;
 import com.aaspass.repository.UserRepository;
+import com.aaspass.security.crypto.KycFormat;
 import com.aaspass.service.mapper.DtoMapper;
 import com.aaspass.util.AvatarGenerator;
 import org.slf4j.Logger;
@@ -37,14 +39,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(Long id, boolean isSelf) {
         log.info("[USER SERVICE] Fetching user by ID: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("[USER SERVICE] User not found with ID: {}", id);
                     return new ResourceNotFoundException("User", "id", id);
                 });
-        return DtoMapper.toUserResponse(user, true, true);
+        return DtoMapper.toUserResponse(user, true, isSelf, isSelf);
     }
 
     @Transactional
@@ -58,8 +60,6 @@ public class UserService {
 
         if (request.name() != null) user.setName(request.name().trim());
         if (request.phone() != null) user.setPhone(request.phone().trim());
-        if (request.aadharNumber() != null) user.setAadharNumber(request.aadharNumber().trim());
-        if (request.panNumber() != null) user.setPanNumber(request.panNumber().trim());
         if (request.avatarUrl() != null) {
             String trimmedAvatar = request.avatarUrl().trim();
             user.setAvatarUrl(trimmedAvatar.isEmpty() ? AvatarGenerator.generateRandomAvatar(user.getUsername()) : trimmedAvatar);
@@ -76,7 +76,37 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
         log.info("[USER SERVICE] Successfully updated user profile for ID: {}", id);
-        return DtoMapper.toUserResponse(updatedUser, true, true);
+        return DtoMapper.toUserResponse(updatedUser, true, true, true);
+    }
+
+    /**
+     * Updates the caller's KYC identifiers after normalising and validating them. A {@code null}
+     * field is left unchanged. Values are encrypted at rest by the entity converter.
+     */
+    @Transactional
+    public UserResponse updateKyc(Long userId, KycUpdateRequest request) {
+        log.info("[USER SERVICE] Updating KYC for user ID: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        if (request != null && request.aadharNumber() != null) {
+            String aadhaar = KycFormat.normaliseAadhaar(request.aadharNumber());
+            if (!KycFormat.isValidAadhaar(aadhaar)) {
+                throw new BadRequestException("Aadhaar must be 12 digits");
+            }
+            user.setAadharNumber(aadhaar);
+        }
+        if (request != null && request.panNumber() != null) {
+            String pan = KycFormat.normalisePan(request.panNumber());
+            if (!KycFormat.isValidPan(pan)) {
+                throw new BadRequestException("PAN must look like ABCDE1234F");
+            }
+            user.setPanNumber(pan);
+        }
+
+        User saved = userRepository.save(user);
+        log.info("[USER SERVICE] KYC updated for user ID: {}", userId);
+        return DtoMapper.toUserResponse(saved, true, true, true);
     }
 
     @Transactional(readOnly = true)

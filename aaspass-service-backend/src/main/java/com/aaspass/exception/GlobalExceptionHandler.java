@@ -32,9 +32,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiResponse<Object>> handleUnauthorized(
             UnauthorizedException ex, HttpServletRequest request) {
-        log.warn("[API UNAUTHORIZED] Path: {} {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        log.warn("[API UNAUTHORIZED] Path: {} {}, Code: {}, Message: {}",
+                request.getMethod(), request.getRequestURI(), ex.code(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error(ex.getMessage()));
+                .body(ApiResponse.error(ex.getMessage(), ex.code()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleForbidden(
+            ForbiddenException ex, HttpServletRequest request) {
+        log.warn("[API FORBIDDEN] Path: {} {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage(), ErrorCode.FORBIDDEN));
     }
 
     @ExceptionHandler(BadRequestException.class)
@@ -70,10 +79,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Object>> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
-        log.warn("[API BAD REQUEST] Path: {} {}, Invalid message body: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-        String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        // Parser details can echo request content, so they stay out of the response and out of WARN logs.
+        log.warn("[API BAD REQUEST] Path: {} {}, Unreadable request body", request.getMethod(), request.getRequestURI());
+        log.debug("[API BAD REQUEST] Unreadable body cause: {}", ex.getMostSpecificCause().getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Invalid request body format: " + detail));
+                .body(ApiResponse.error("Invalid request body."));
     }
 
     @ExceptionHandler(Exception.class)

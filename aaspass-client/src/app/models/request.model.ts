@@ -1,4 +1,4 @@
-import type { HttpHeaders, HttpParams } from '@angular/common/http';
+import type { HttpContext, HttpHeaders, HttpParams } from '@angular/common/http';
 
 /**
  * Backend API request interfaces mapping Spring Boot REST DTOs and HTTP payloads.
@@ -8,6 +8,7 @@ import type { HttpHeaders, HttpParams } from '@angular/common/http';
 export interface RequestOptions {
   headers?: HttpHeaders | Record<string, string | string[]>;
   params?: HttpParams | Record<string, string | number | boolean | readonly (string | number | boolean)[]>;
+  context?: HttpContext;
 }
 
 export interface SocialMediaLinkRequest {
@@ -56,8 +57,6 @@ export interface RegisterRequest {
 export interface UserUpdateRequest {
   name?: string;
   phone?: string;
-  aadharNumber?: string;
-  panNumber?: string;
   avatarUrl?: string;
   city?: string;
   area?: string;
@@ -65,6 +64,11 @@ export interface UserUpdateRequest {
   bio?: string;
   userSocialMediaLinks?: UserSocialMediaLinksRequest | Record<string, string | undefined>;
   socialMediaLinks?: SocialMediaLinkRequest[] | Array<{ id?: number | string; name: string; url: string }>;
+}
+
+export interface KycUpdatePayload {
+  aadharNumber?: string;
+  panNumber?: string;
 }
 
 export interface AddressRequest {
@@ -88,7 +92,6 @@ export interface ServiceItemRequest {
 }
 
 export interface StoreCreateRequest {
-  userId: number | string;
   ownerName?: string;
   storeName: string;
   tagline?: string;
@@ -129,8 +132,6 @@ export interface StoreUpdateRequest {
 }
 
 export interface StoreReviewRequest {
-  userName: string;
-  userAvatar?: string;
   rating: number;
   message: string;
 }

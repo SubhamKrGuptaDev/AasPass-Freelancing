@@ -13,6 +13,7 @@ import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,9 +31,13 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
 
-    public DataInitializer(UserRepository userRepository, StoreRepository storeRepository) {
+    private final PasswordEncoder passwordEncoder;
+
+    public DataInitializer(UserRepository userRepository, StoreRepository storeRepository,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.storeRepository = storeRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -55,9 +60,9 @@ public class DataInitializer implements CommandLineRunner {
                 .name("Aman Sharma")
                 .username("aman")
                 .email("aman.sharma@example.com")
-                .password("password123")
+                .password(passwordEncoder.encode("password123"))
                 .phone("+91 98765 43210")
-                .aadharNumber("XXXX-XXXX-8921")
+                .aadharNumber("999988887777")
                 .panNumber("ABCDE1234F")
                 .avatarUrl("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80")
                 .city("Bengaluru")
@@ -94,9 +99,9 @@ public class DataInitializer implements CommandLineRunner {
                 .name("Priya Nair")
                 .username("priya")
                 .email("priya.nair@example.com")
-                .password("password123")
+                .password(passwordEncoder.encode("password123"))
                 .phone("+91 98111 22334")
-                .aadharNumber("XXXX-XXXX-4512")
+                .aadharNumber("888877776666")
                 .panNumber("PRYNR7890K")
                 .avatarUrl("https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80")
                 .city("Bengaluru")
@@ -181,9 +186,9 @@ public class DataInitializer implements CommandLineRunner {
                 .name("Rohan Gupta")
                 .username("rohan")
                 .email("rohan.gupta@example.com")
-                .password("password123")
+                .password(passwordEncoder.encode("password123"))
                 .phone("+91 98222 33445")
-                .aadharNumber("XXXX-XXXX-7834")
+                .aadharNumber("777766665555")
                 .panNumber("ROHNG5678L")
                 .avatarUrl("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80")
                 .city("Bengaluru")

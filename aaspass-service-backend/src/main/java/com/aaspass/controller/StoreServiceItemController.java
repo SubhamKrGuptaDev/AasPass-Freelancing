@@ -1,5 +1,6 @@
 package com.aaspass.controller;
 
+import com.aaspass.config.security.CurrentUser;
 import com.aaspass.dto.request.ServiceItemRequest;
 import com.aaspass.dto.response.ApiResponse;
 import com.aaspass.dto.response.ServiceItemResponse;
@@ -9,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,15 +26,16 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/stores/{storeId}/services")
-@CrossOrigin(origins = {"http://localhost:4200", "http://127.0.0.1:4200"})
 public class StoreServiceItemController {
 
     private static final Logger log = LoggerFactory.getLogger(StoreServiceItemController.class);
 
     private final StoreServiceItemService serviceItemService;
+    private final CurrentUser currentUser;
 
-    public StoreServiceItemController(StoreServiceItemService serviceItemService) {
+    public StoreServiceItemController(StoreServiceItemService serviceItemService, CurrentUser currentUser) {
         this.serviceItemService = serviceItemService;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -56,7 +57,7 @@ public class StoreServiceItemController {
             @Valid @RequestBody ServiceItemRequest request) {
         log.info("[API-CALL] POST /api/stores/{}/services - Adding service: '{}', price: {}",
                 storeId, request.name(), request.price());
-        ServiceItemResponse response = serviceItemService.addService(storeId, request);
+        ServiceItemResponse response = serviceItemService.addService(storeId, currentUser.requireUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Service package added successfully"));
     }
@@ -70,7 +71,7 @@ public class StoreServiceItemController {
             @PathVariable("serviceId") Long serviceId,
             @Valid @RequestBody ServiceItemRequest request) {
         log.info("[API-CALL] PUT /api/stores/{}/services/{} - Updating service", storeId, serviceId);
-        ServiceItemResponse response = serviceItemService.updateService(storeId, serviceId, request);
+        ServiceItemResponse response = serviceItemService.updateService(storeId, serviceId, currentUser.requireUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(response, "Service package updated successfully"));
     }
 
@@ -82,7 +83,7 @@ public class StoreServiceItemController {
             @PathVariable("storeId") Long storeId,
             @PathVariable("serviceId") Long serviceId) {
         log.info("[API-CALL] DELETE /api/stores/{}/services/{} - Deleting service", storeId, serviceId);
-        serviceItemService.deleteService(storeId, serviceId);
+        serviceItemService.deleteService(storeId, serviceId, currentUser.requireUserId());
         return ResponseEntity.ok(ApiResponse.success(null, "Service package deleted successfully"));
     }
 }

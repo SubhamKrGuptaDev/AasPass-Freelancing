@@ -1,9 +1,11 @@
-import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, Injector, afterNextRender } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { SocialMediaLinksComponent } from '../../components/social-media-links/social-media-links';
 import { 
   StoreProfile, 
@@ -33,13 +35,82 @@ import { getRandomAvatarUrl } from '../../models/user.model';
 export class ProfileComponent {
   storeService = inject(StoreService);
   authService = inject(AuthService);
+  private toast = inject(ToastService);
+  private injector = inject(Injector);
+  private document = inject(DOCUMENT);
+
+  // KYC (Aadhaar / PAN): stored values are masked by the backend and shown read-only;
+  // a new value is typed into a single inline input and saved through the dedicated KYC endpoint.
+  editingKyc = signal<'aadhaar' | 'pan' | null>(null);
+  kycInput = signal('');
+  kycSaving = signal(false);
+
+  startKycEdit(field: 'aadhaar' | 'pan'): void {
+    if (this.kycSaving()) {
+      return;
+    }
+    this.editingKyc.set(field);
+    this.kycInput.set('');
+    this.focusAfterRender(`kyc-${field}-input`);
+  }
+
+  cancelKycEdit(): void {
+    const field = this.editingKyc();
+    this.editingKyc.set(null);
+    this.kycInput.set('');
+    if (field) {
+      this.focusAfterRender(`kyc-${field}-update`);
+    }
+  }
+
+  /** Moves focus to the element with the given id once the next render has put it in the DOM. */
+  private focusAfterRender(id: string): void {
+    afterNextRender(() => this.document.getElementById(id)?.focus(), { injector: this.injector });
+  }
+
+  /** Stores the typed KYC value; PAN is uppercased as typed. */
+  setKycInput(value: string): void {
+    this.kycInput.set(this.editingKyc() === 'pan' ? value.toUpperCase() : value);
+  }
+
+  onKycInput(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) {
+      this.setKycInput(target.value);
+      if (target.value !== this.kycInput()) {
+        target.value = this.kycInput();
+      }
+    }
+  }
+
+  submitKyc(): void {
+    const field = this.editingKyc();
+    const value = this.kycInput().trim();
+    if (!field || !value || this.kycSaving()) {
+      return;
+    }
+    const payload = field === 'aadhaar' ? { aadharNumber: value } : { panNumber: value };
+    this.kycSaving.set(true);
+    this.authService.updateKyc(payload).subscribe({
+      next: () => {
+        this.kycSaving.set(false);
+        // Only close the editor if it still shows the field that was saved.
+        if (this.editingKyc() === field) {
+          this.cancelKycEdit();
+        }
+        this.toast.success(field === 'aadhaar' ? 'Aadhaar updated' : 'PAN updated');
+      },
+      error: () => {
+        // The error interceptor shows the toast; the editor stays open so the value can be corrected.
+        this.kycSaving.set(false);
+      }
+    });
+  }
 
   isEditingUser = false;
   editName = this.storeService.currentUser().name;
   editUsername = this.storeService.currentUser().username || '';
   editPhone = this.storeService.currentUser().phone;
-  editAadhar = this.storeService.currentUser().aadharNumber || '';
-  editPan = this.storeService.currentUser().panNumber || '';
   editArea = this.storeService.currentUser().area;
   editCity = this.storeService.currentUser().city;
   editCountry = this.storeService.currentUser().country || 'India';
@@ -71,8 +142,6 @@ export class ProfileComponent {
     this.editName = user.name;
     this.editUsername = user.username || '';
     this.editPhone = user.phone;
-    this.editAadhar = user.aadharNumber || '';
-    this.editPan = user.panNumber || '';
     this.editArea = user.area;
     this.editCity = user.city;
     this.editCountry = user.country || 'India';
@@ -114,7 +183,6 @@ export class ProfileComponent {
     this.selectedStoreId.set(id);
     this.isAddingReview = false;
     this.reviewFormError = null;
-    this.reviewSuccessMessage = null;
   }
 
   deleteStore(storeId: string): void {
@@ -133,11 +201,11 @@ export class ProfileComponent {
 
   // Review section for store owner
   isAddingReview = false;
-  newReviewUserName = '';
   newReviewRating = 5.0;
   newReviewMessage = '';
   reviewFormError: string | null = null;
-  reviewSuccessMessage: string | null = null;
+  /** True while a review POST is in flight; blocks double submits. */
+  readonly reviewSubmitting = signal(false);
 
   saveUserDetails(): void {
     const validSocial = this.editUserSocialLinks
@@ -160,8 +228,6 @@ export class ProfileComponent {
     this.storeService.updateUserProfile({
       name: this.editName,
       phone: this.editPhone,
-      aadharNumber: this.editAadhar,
-      panNumber: this.editPan ? this.editPan.toUpperCase() : '',
       area: this.editArea,
       city: this.editCity,
       country: this.editCountry,
@@ -185,11 +251,9 @@ export class ProfileComponent {
   }
 
   submitStoreReview(storeId: string): void {
-    if (!this.newReviewUserName || !this.newReviewUserName.trim()) {
-      this.reviewFormError = 'Please provide the Review User Name.';
+    if (this.reviewSubmitting()) {
       return;
     }
-
     if (this.newReviewRating < 1.0 || this.newReviewRating > 5.0) {
       this.reviewFormError = 'Rating must be between 1.0 (min) and 5.0 (max).';
       return;
@@ -201,21 +265,23 @@ export class ProfileComponent {
     }
 
     this.reviewFormError = null;
+    this.reviewSubmitting.set(true);
     this.storeService.addReview(storeId, {
-      userName: this.newReviewUserName.trim(),
       rating: this.newReviewRating,
       message: this.newReviewMessage.trim()
+    }).pipe(
+      finalize(() => this.reviewSubmitting.set(false))
+    ).subscribe({
+      next: review => {
+        this.toast.success(`Added ${review.rating.toFixed(1)}★ review as "${review.userName}".`);
+        this.newReviewRating = 5.0;
+        this.newReviewMessage = '';
+        this.isAddingReview = false;
+      },
+      error: () => {
+        // The error interceptor shows the toast; the form stays open so the review can be resent.
+      }
     });
-
-    this.reviewSuccessMessage = `Added ${this.newReviewRating.toFixed(1)}★ review from "${this.newReviewUserName.trim()}".`;
-    this.newReviewUserName = '';
-    this.newReviewRating = 5.0;
-    this.newReviewMessage = '';
-    this.isAddingReview = false;
-
-    setTimeout(() => {
-      this.reviewSuccessMessage = null;
-    }, 4000);
   }
 
   // Engagement tracking state for store owner (Daily, Weekly, Monthly, Lifetime)
@@ -223,7 +289,6 @@ export class ProfileComponent {
   selectedEngagementType = signal<EngagementViewType>(DEFAULT_ENGAGEMENT_TYPE);
   engagementOptions = ENABLED_ENGAGEMENT_TYPE_OPTIONS;
   readonly showViewSimulation = FEATURE_FLAGS.showViewSimulation;
-  viewSimulationToast: string | null = null;
 
   selectedEngagementOption = computed<EngagementTypeOption>(() => {
     const t = this.selectedEngagementType();
@@ -247,9 +312,6 @@ export class ProfileComponent {
     this.storeService.recordStoreView(storeId);
     const store = this.storeService.getStoreById(storeId);
     const storeName = store?.storeName || 'Store';
-    this.viewSimulationToast = `Recorded 1 new view for "${storeName}". Daily, weekly, monthly & lifetime updated!`;
-    setTimeout(() => {
-      this.viewSimulationToast = null;
-    }, 4000);
+    this.toast.info(`Recorded 1 new view for "${storeName}". Daily, weekly, monthly & lifetime updated!`);
   }
 }

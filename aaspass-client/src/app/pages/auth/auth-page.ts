@@ -1,14 +1,13 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth/auth.service';
-import { getRandomAvatarUrl } from '../../models/user.model';
+import { Observable } from 'rxjs';
+import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 
 @Component({
   selector: 'app-auth-page',
-  standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink],
   templateUrl: './auth-page.html',
   styleUrl: './auth-page.css'
 })
@@ -18,6 +17,9 @@ export class AuthPageComponent implements OnInit {
   private router = inject(Router);
 
   mode = signal<'login' | 'signup'>('login');
+  /** Client-side validation message only; server errors are shown as toasts by the error interceptor. */
+  readonly formError = signal<string | null>(null);
+  readonly isSubmitting = signal<boolean>(false);
   isLoginMode = computed(() => this.mode() === 'login');
 
   loginInput = '';
@@ -68,45 +70,82 @@ export class AuthPageComponent implements OnInit {
 
   setMode(mode: 'login' | 'signup'): void {
     this.mode.set(mode);
-    this.authService.authError.set(null);
-    this.authService.authSuccessMessage.set(null);
+    this.formError.set(null);
   }
 
   togglePasswordVisibility(): void {
     this.showPassword.update(v => !v);
   }
 
-  private navigateAfterAuth(): void {
-    const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/profile';
-    this.router.navigateByUrl(returnUrl);
+  private resolveReturnUrl(): string {
+    const fromQuery: unknown = this.route.snapshot.queryParams['returnUrl'];
+    return (typeof fromQuery === 'string' && fromQuery) || this.authService.returnUrl() || '/profile';
+  }
+
+  private submit(request$: Observable<UserProfile>): void {
+    // Read before subscribing: a successful login clears the service-held returnUrl.
+    const returnUrl = this.resolveReturnUrl();
+    this.isSubmitting.set(true);
+    request$.subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        void this.router.navigateByUrl(returnUrl);
+      },
+      error: () => {
+        // The error interceptor already shows a toast (invalid credentials, duplicate username, ...).
+        this.isSubmitting.set(false);
+      }
+    });
   }
 
   onLoginSubmit(event: Event): void {
     event.preventDefault();
-    const res = this.authService.login(this.loginInput, this.loginPassword);
-    if (res.success) {
-      this.navigateAfterAuth();
+    this.formError.set(null);
+    if (this.isSubmitting()) return;
+
+    if (!this.loginInput.trim()) {
+      this.formError.set('Please enter your username or email address.');
+      return;
     }
+    if (!this.loginPassword.trim()) {
+      this.formError.set('Please enter your password.');
+      return;
+    }
+
+    this.submit(this.authService.login(this.loginInput, this.loginPassword));
   }
 
   onSignupSubmit(event: Event): void {
     event.preventDefault();
-    if (!this.signupUsername || this.signupUsername.trim().length < 3) {
-      this.authService.authError.set('Please provide a username with at least 3 characters.');
+    this.formError.set(null);
+    if (this.isSubmitting()) return;
+
+    if (this.signupName.trim().length < 2) {
+      this.formError.set('Please provide your full name (minimum 2 characters).');
       return;
     }
 
-    if (!this.signupEmail || !this.signupEmail.includes('@')) {
-      this.authService.authError.set('Please enter a valid email address.');
+    if (this.signupUsername.trim().length < 3) {
+      this.formError.set('Please provide a username with at least 3 characters.');
+      return;
+    }
+
+    if (!this.signupEmail.includes('@')) {
+      this.formError.set('Please enter a valid email address.');
+      return;
+    }
+
+    if (this.signupPassword.trim().length < 6) {
+      this.formError.set('Password must be at least 6 characters long.');
       return;
     }
 
     if (this.signupPassword !== this.signupConfirmPassword) {
-      this.authService.authError.set('Passwords do not match. Please re-enter your password.');
+      this.formError.set('Passwords do not match. Please re-enter your password.');
       return;
     }
 
-    const res = this.authService.signup({
+    this.submit(this.authService.signup({
       name: this.signupName,
       username: this.signupUsername.trim(),
       email: this.signupEmail.trim(),
@@ -115,10 +154,6 @@ export class AuthPageComponent implements OnInit {
       area: this.signupArea,
       password: this.signupPassword,
       avatarUrl: this.signupAvatarUrl
-    });
-
-    if (res.success) {
-      this.navigateAfterAuth();
-    }
+    }));
   }
 }

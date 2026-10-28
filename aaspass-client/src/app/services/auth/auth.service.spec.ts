@@ -1,183 +1,265 @@
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { AuthService } from './auth.service';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
+import { API_BASE_URL } from '../../config/api.config';
 import { authGuard } from '../../guards/auth.guard';
-import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { authRefreshInterceptor } from '../../interceptors/auth-refresh.interceptor';
+import { errorToastInterceptor } from '../../interceptors/error-toast.interceptor';
+import { BackendUserResponse } from '../../models/response.model';
+import { ToastService } from '../toast/toast.service';
+import { AuthService } from './auth.service';
 
-describe('AuthService & AuthGuard', () => {
+const AMAN: BackendUserResponse = {
+  id: 1,
+  name: 'Aman Sharma',
+  username: 'aman',
+  email: 'aman.sharma@example.com',
+  city: 'Bengaluru',
+  area: 'Indiranagar'
+};
+
+const ME_URL = `${API_BASE_URL}/auth/me`;
+const LOGIN_URL = `${API_BASE_URL}/auth/login`;
+const REGISTER_URL = `${API_BASE_URL}/auth/register`;
+const LOGOUT_URL = `${API_BASE_URL}/auth/logout`;
+const REFRESH_URL = `${API_BASE_URL}/auth/refresh`;
+const UNAUTHORIZED = { status: 401, statusText: 'Unauthorized' };
+
+describe('AuthService', () => {
   let authService: AuthService;
+  let httpTesting: HttpTestingController;
+  let toast: ToastService;
   let router: Router;
-
-  const testUsers = [
-    {
-      id: 'user-001',
-      username: 'aman',
-      password: 'password123',
-      name: 'Aman Sharma',
-      email: 'aman.sharma@example.com',
-      phone: '+91 98765 43210',
-      avatarUrl: '',
-      city: 'Bengaluru',
-      area: 'Indiranagar',
-      bio: '',
-      memberSince: 'March 2026',
-      hasStore: false,
-      stores: [],
-      creationDateTime: new Date().toISOString(),
-      lastUpdateDateTime: new Date().toISOString()
-    },
-    {
-      id: 'user-101',
-      username: 'priya',
-      password: 'password123',
-      name: 'Priya Nair',
-      email: 'priya.nair@example.com',
-      phone: '+91 98111 22334',
-      avatarUrl: '',
-      city: 'Bengaluru',
-      area: 'Indiranagar',
-      bio: '',
-      memberSince: 'Jan 2026',
-      hasStore: true,
-      stores: [],
-      creationDateTime: new Date().toISOString(),
-      lastUpdateDateTime: new Date().toISOString()
-    }
-  ];
 
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('aaspass_registered_accounts', JSON.stringify(testUsers));
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(withInterceptors([errorToastInterceptor, authRefreshInterceptor])),
+        provideHttpClientTesting()
+      ]
+    });
     authService = TestBed.inject(AuthService);
+    httpTesting = TestBed.inject(HttpTestingController);
+    toast = TestBed.inject(ToastService);
     router = TestBed.inject(Router);
-    authService.logout();
   });
 
   afterEach(() => {
+    httpTesting.verify();
+    toast.clear();
     localStorage.clear();
   });
 
-  it('should initialize in unauthenticated guest state when no stored session exists', () => {
-    expect(authService.isLoggedIn()).toBe(false);
+  it('starts as a guest without touching storage', () => {
     expect(authService.currentUser()).toBeNull();
-    expect(authService.isModalOpen()).toBe(false);
-  });
-
-  it('should authenticate user with valid username and password', () => {
-    const result = authService.login('aman', 'password123');
-    expect(result.success).toBe(true);
-    expect(result.user?.name).toBe('Aman Sharma');
-    expect(authService.isLoggedIn()).toBe(true);
-    expect(authService.currentUser()?.id).toBe('user-001');
-  });
-
-  it('should authenticate user with valid email and password (case-insensitive)', () => {
-    const result = authService.login('AMAN.SHARMA@EXAMPLE.COM', 'password123');
-    expect(result.success).toBe(true);
-    expect(authService.isLoggedIn()).toBe(true);
-  });
-
-  it('should reject login with wrong password', () => {
-    const result = authService.login('aman', 'wrongpassword');
-    expect(result.success).toBe(false);
     expect(authService.isLoggedIn()).toBe(false);
-    expect(authService.authError()).toContain('Invalid credentials');
+    expect(authService.sessionRestored()).toBe(false);
+    expect(localStorage.length).toBe(0);
   });
 
-  it('should reject login with non-existent username', () => {
-    const result = authService.login('unknown_user_999', 'password123');
-    expect(result.success).toBe(false);
-    expect(authService.isLoggedIn()).toBe(false);
-  });
+  it('loginSetsUserFromBackendOnly', () => {
+    let result: string | undefined;
+    authService.login('aman', 'password123').subscribe(u => (result = u.username));
 
-  it('should reject login when username or password is empty', () => {
-    const res1 = authService.login('', 'password123');
-    expect(res1.success).toBe(false);
-    expect(authService.authError()).toContain('username or email');
+    const req = httpTesting.expectOne(LOGIN_URL);
+    expect(req.request.body).toEqual({ usernameOrEmail: 'aman', password: 'password123' });
+    req.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
 
-    const res2 = authService.login('aman', '');
-    expect(res2.success).toBe(false);
-    expect(authService.authError()).toContain('password');
-  });
-
-  it('should allow quick-login for demo accounts', () => {
-    const success = authService.quickLogin('user-101');
-    expect(success).toBe(true);
+    expect(result).toBe('aman');
+    expect(authService.currentUser()?.username).toBe('aman');
     expect(authService.isLoggedIn()).toBe(true);
-    expect(authService.currentUser()?.name).toBe('Priya Nair');
-    expect(authService.currentUser()?.hasStore).toBe(true);
+    expect(toast.toasts().map(t => t.message)).toEqual(['Welcome back, Aman Sharma!']);
+    expect(localStorage.length).toBe(0);
   });
 
-  it('should register a new user with signup and log them in', () => {
-    const signupResult = authService.signup({
-      name: 'Vikram Malhotra',
-      usernameOrEmail: 'vikram.dev',
-      password: 'password123',
-      city: 'Bengaluru',
-      area: 'HSR Layout'
-    });
+  it('loginAndSignupSendPasswordsVerbatim', () => {
+    authService.login(' aman ', '  pass word  ').subscribe();
+    const login = httpTesting.expectOne(LOGIN_URL);
+    expect(login.request.body).toEqual({ usernameOrEmail: 'aman', password: '  pass word  ' });
+    login.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
 
-    expect(signupResult.success).toBe(true);
-    expect(signupResult.user?.name).toBe('Vikram Malhotra');
+    authService.signup({ name: 'Aman Sharma', username: 'aman', email: 'aman@example.com', password: ' secret12 ' }).subscribe();
+    const register = httpTesting.expectOne(REGISTER_URL);
+    expect(register.request.body.password).toBe(' secret12 ');
+    register.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
+  });
+
+  it('loginFailureLeavesGuest', () => {
+    let failed = false;
+    authService.login('aman', 'wrong').subscribe({ error: () => (failed = true) });
+
+    httpTesting.expectOne(LOGIN_URL)
+      .flush({ success: false, message: 'Invalid username or password', code: 'INVALID_CREDENTIALS' }, UNAUTHORIZED);
+
+    expect(failed).toBe(true);
+    expect(authService.currentUser()).toBeNull();
+    expect(localStorage.length).toBe(0);
+    httpTesting.expectNone(REFRESH_URL);
+    expect(toast.toasts().map(t => t.message)).toEqual(['Invalid username or password.']);
+  });
+
+  it('signupSetsUserFromBackend', () => {
+    let name: string | undefined;
+    authService.signup({ name: 'Aman Sharma', username: 'Aman', email: 'Aman.Sharma@example.com', password: 'password123' })
+      .subscribe(u => (name = u.name));
+
+    const req = httpTesting.expectOne(REGISTER_URL);
+    expect(req.request.body.username).toBe('aman');
+    expect(req.request.body.email).toBe('aman.sharma@example.com');
+    req.flush({ success: true, message: 'ok', data: { success: true, message: 'ok', user: AMAN } });
+
+    expect(name).toBe('Aman Sharma');
+    expect(authService.currentUser()?.id).toBe('1');
+    expect(toast.toasts().map(t => t.message))
+      .toEqual(['Account created successfully! Welcome to AasPass, Aman Sharma!']);
+  });
+
+  it('restoreSessionLoadsUser', async () => {
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL).flush({ success: true, message: 'ok', data: AMAN });
+    await restore;
+
+    expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()?.username).toBe('aman');
+  });
+
+  it('restoreWithExpiredAccessCookieRefreshes', async () => {
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL).flush({ success: true, message: 'Session refreshed', data: AMAN });
+    await restore;
+
+    expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()?.username).toBe('aman');
+    expect(toast.toasts()).toEqual([]);
+  });
+
+  it('restoreGuestRefresh401IsSilent', async () => {
+    const navigate = vi.spyOn(router, 'navigate');
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    await restore;
+
+    expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()).toBeNull();
+    expect(toast.toasts()).toEqual([]);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('restoreRefreshServerErrorIsSilentGuest', async () => {
+    const navigate = vi.spyOn(router, 'navigate');
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'down' }, { status: 503, statusText: 'Service Unavailable' });
+    await restore;
+
+    expect(authService.currentUser()).toBeNull();
+    expect(toast.toasts()).toEqual([]);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('restoreSessionRefreshFailureIsSilentGuest', async () => {
+    const navigate = vi.spyOn(router, 'navigate');
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'expired', code: 'TOKEN_EXPIRED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'revoked', code: 'SESSION_REVOKED' }, UNAUTHORIZED);
+    await restore;
+
+    expect(authService.sessionRestored()).toBe(true);
+    expect(authService.currentUser()).toBeNull();
+    expect(toast.toasts()).toEqual([]);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('restoreSessionPurgesLegacyStorage', async () => {
+    localStorage.setItem('aaspass_auth_user', '{"name":"Aman"}');
+    localStorage.setItem('aaspass_auth_token', 'legacy-token');
+    localStorage.setItem('aaspass_registered_accounts', '[{"username":"aman","password":"password123"}]');
+    localStorage.setItem('unrelated_key', 'keep');
+
+    const restore = authService.restoreSession();
+    expect(localStorage.getItem('aaspass_auth_user')).toBeNull();
+    expect(localStorage.getItem('aaspass_auth_token')).toBeNull();
+    expect(localStorage.getItem('aaspass_registered_accounts')).toBeNull();
+    expect(localStorage.getItem('unrelated_key')).toBe('keep');
+
+    httpTesting.expectOne(ME_URL)
+      .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    httpTesting.expectOne(REFRESH_URL)
+      .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+    await restore;
+  });
+
+  it('restoreSessionIsMemoised', async () => {
+    const first = authService.restoreSession();
+    const second = authService.restoreSession();
+    expect(second).toBe(first);
+    httpTesting.expectOne(ME_URL).flush({ success: true, message: 'ok', data: AMAN });
+    await first;
+  });
+
+  it('logoutClearsUser', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(AMAN));
     expect(authService.isLoggedIn()).toBe(true);
-    expect(authService.currentUser()?.name).toBe('Vikram Malhotra');
-    expect(authService.currentUser()?.city).toBe('Bengaluru');
-    expect(authService.currentUser()?.area).toBe('HSR Layout');
 
-    // Logging out and logging back in with newly created account
     authService.logout();
+    expect(authService.currentUser()).toBeNull();
     expect(authService.isLoggedIn()).toBe(false);
 
-    const reLoginResult = authService.login('vikram.dev', 'password123');
-    expect(reLoginResult.success).toBe(true);
-    expect(authService.isLoggedIn()).toBe(true);
+    httpTesting.expectOne(LOGOUT_URL).flush({ success: true, message: 'ok', data: null });
+    expect(toast.toasts().map(t => t.message)).toEqual(["You've been logged out."]);
   });
 
-  it('should register a new user with separate username, email, and country', () => {
-    const signupResult = authService.signup({
-      name: 'Aditi Rao',
-      username: 'aditi_rao',
-      email: 'aditi.rao@example.com',
-      country: 'India',
-      city: 'Mumbai',
-      area: 'Bandra',
-      password: 'password123'
-    });
+  it('handleSessionEndedRedirectsToLogin', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(AMAN));
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    expect(signupResult.success).toBe(true);
-    expect(signupResult.user?.name).toBe('Aditi Rao');
-    expect(signupResult.user?.username).toBe('aditi_rao');
-    expect(signupResult.user?.email).toBe('aditi.rao@example.com');
-    expect(signupResult.user?.country).toBe('India');
-    expect(authService.currentUser()?.country).toBe('India');
+    authService.handleSessionEnded();
+
+    expect(authService.currentUser()).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/' } });
   });
 
-  it('should prevent duplicate signup with existing username or email', () => {
-    const duplicateResult = authService.signup({
-      name: 'Duplicate Aman',
-      usernameOrEmail: 'aman',
-      password: 'password123'
-    });
+  it('updateUserProfileUsesCurrentIdAndBackendResponse', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(AMAN));
+    let updatedName: string | undefined;
+    authService.updateUserProfile({ name: 'Aman S', aadharNumber: '123412341234' }).subscribe(u => (updatedName = u.name));
 
-    expect(duplicateResult.success).toBe(false);
-    expect(authService.authError()).toContain('already exists');
+    const req = httpTesting.expectOne(`${API_BASE_URL}/users/1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.name).toBe('Aman S');
+    expect(req.request.body.aadharNumber).toBeUndefined();
+    expect(authService.currentUser()?.name).toBe('Aman Sharma');
+    req.flush({ success: true, message: 'ok', data: { ...AMAN, name: 'Aman S' } });
+
+    expect(updatedName).toBe('Aman S');
+    expect(authService.currentUser()?.name).toBe('Aman S');
   });
 
-  it('should validate signup password length of at least 6 characters', () => {
-    const shortPassResult = authService.signup({
-      name: 'Short Pass User',
-      usernameOrEmail: 'shortpass',
-      password: '123'
-    });
+  it('updateKycPutsToMeKyc', () => {
+    authService.setCurrentUser(authService.mapBackendUserToProfile(AMAN));
+    authService.updateKyc({ panNumber: 'ABCDE1234F' }).subscribe();
 
-    expect(shortPassResult.success).toBe(false);
-    expect(authService.authError()).toContain('at least 6 characters');
+    const req = httpTesting.expectOne(`${API_BASE_URL}/users/me/kyc`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ panNumber: 'ABCDE1234F' });
+    req.flush({ success: true, message: 'ok', data: { ...AMAN, panNumber: 'XXXXXX234F' } });
+
+    expect(authService.currentUser()?.panNumber).toBe('XXXXXX234F');
   });
 
-  it('should manage auth popup modal states correctly', () => {
-    expect(authService.isModalOpen()).toBe(false);
-
+  it('manages modal state', () => {
     authService.openLoginModal('/profile');
     expect(authService.isModalOpen()).toBe(true);
     expect(authService.modalMode()).toBe('login');
@@ -190,60 +272,38 @@ describe('AuthService & AuthGuard', () => {
     expect(authService.isModalOpen()).toBe(false);
   });
 
-  it('should assign a random avatar when signing up without providing an image', () => {
-    const uniqueUser = 'newuser_' + Date.now();
-    const result = authService.signup({
-      name: 'Random Avatar User',
-      usernameOrEmail: uniqueUser,
-      password: 'password123'
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.user?.avatarUrl).toBeDefined();
-    expect(result.user?.avatarUrl).toContain('dicebear.com');
-  });
-
-  it('should use the provided image avatar when user specifies an image URL', () => {
-    const uniqueUser = 'custom_user_' + Date.now();
-    const customImage = 'https://example.com/custom-photo.jpg';
-    const result = authService.signup({
-      name: 'Custom Photo User',
-      usernameOrEmail: uniqueUser,
-      password: 'password123',
-      avatarUrl: customImage
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.user?.avatarUrl).toBe(customImage);
-  });
-
-  it('should reset user session on logout', () => {
-    authService.login('aman', 'password123');
-    expect(authService.isLoggedIn()).toBe(true);
-
-    authService.logout();
-    expect(authService.isLoggedIn()).toBe(false);
-    expect(authService.currentUser()).toBeNull();
-  });
-
   describe('authGuard', () => {
-    it('should allow access to protected route when user is logged in', () => {
-      authService.login('aman', 'password123');
-      const route = {} as ActivatedRouteSnapshot;
-      const state = { url: '/profile' } as RouterStateSnapshot;
+    const route = {} as ActivatedRouteSnapshot;
 
-      const result = TestBed.runInInjectionContext(() => authGuard(route, state));
-      expect(result).toBe(true);
+    it('guardWaitsForRestore', async () => {
+      let settled = false;
+      const result = TestBed.runInInjectionContext(
+        () => authGuard(route, { url: '/profile' } as RouterStateSnapshot)
+      ) as Promise<boolean | UrlTree>;
+      void result.then(() => (settled = true));
+
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      httpTesting.expectOne(ME_URL).flush({ success: true, message: 'ok', data: AMAN });
+      await expect(result).resolves.toBe(true);
     });
 
-    it('should redirect to login with returnUrl and block access when user is not logged in', () => {
-      authService.logout();
-      const route = {} as ActivatedRouteSnapshot;
-      const state = { url: '/create-store' } as RouterStateSnapshot;
+    it('redirects guests to /login with returnUrl', async () => {
+      const result = TestBed.runInInjectionContext(
+        () => authGuard(route, { url: '/create-store' } as RouterStateSnapshot)
+      ) as Promise<boolean | UrlTree>;
 
-      const urlTree = TestBed.runInInjectionContext(() => authGuard(route, state));
+      httpTesting.expectOne(ME_URL)
+        .flush({ success: false, message: 'Authentication required', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+      httpTesting.expectOne(REFRESH_URL)
+        .flush({ success: false, message: 'Missing refresh token', code: 'UNAUTHENTICATED' }, UNAUTHORIZED);
+
+      const tree = await result;
+      expect(tree instanceof UrlTree).toBe(true);
+      expect(router.serializeUrl(tree as UrlTree)).toBe('/login?returnUrl=%2Fcreate-store');
       expect(authService.returnUrl()).toBe('/create-store');
-      expect(urlTree).toBeDefined();
     });
   });
 });

@@ -12,6 +12,7 @@ import com.aaspass.entity.Store;
 import com.aaspass.entity.StoreReview;
 import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.User;
+import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
 
 import java.util.Collections;
@@ -26,7 +27,14 @@ public final class DtoMapper {
     private DtoMapper() {
     }
 
-    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses) {
+    /**
+     * Maps a user to its response DTO.
+     *
+     * @param includePrivate true only for the user themself: adds email, phone and the masked KYC
+     *                       identifiers (otherwise they are null)
+     */
+    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
+                                          boolean includePrivate) {
         if (user == null) return null;
 
         List<StoreResponse> storeResponses = Collections.emptyList();
@@ -47,10 +55,10 @@ public final class DtoMapper {
                 .id(user.getId())
                 .name(user.getName())
                 .username(user.getUsername())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .aadharNumber(user.getAadharNumber())
-                .panNumber(user.getPanNumber())
+                .email(includePrivate ? user.getEmail() : null)
+                .phone(includePrivate ? user.getPhone() : null)
+                .aadharNumber(includePrivate ? KycMasking.maskAadhaar(user.getAadharNumber()) : null)
+                .panNumber(includePrivate ? KycMasking.maskPan(user.getPanNumber()) : null)
                 .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
                 .city(user.getCity())
                 .area(user.getArea())

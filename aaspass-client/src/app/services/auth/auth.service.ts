@@ -1,134 +1,90 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { AuthResult, SignupRequest, UserAccount, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
-import { BackendUserResponse } from '../../models/response.model';
+import { Observable, catchError, firstValueFrom, map, tap, throwError, timeout } from 'rxjs';
+import { SignupRequest, UserProfile, getRandomAvatarUrl } from '../../models/user.model';
+import { ApiResponse, BackendUserResponse } from '../../models/response.model';
+import { KycUpdatePayload } from '../../models/request.model';
+import { ToastService } from '../toast/toast.service';
+import { errorCode } from '../../interceptors/error-toast.interceptor';
 import { AuthHttpService } from './auth-http.service';
+import { SessionRefreshService } from './session-refresh.service';
 
-const STORAGE_KEY_AUTH_USER = 'aaspass_auth_user';
-const STORAGE_KEY_AUTH_TOKEN = 'aaspass_auth_token';
-const STORAGE_KEY_USERS = 'aaspass_registered_accounts';
+/** Upper bound for the startup session check so a hung backend never blocks bootstrap. */
+const RESTORE_TIMEOUT_MS = 10_000;
 
-export interface DemoAccount {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
-  password: string;
-  role: string;
-  avatarUrl: string;
-  country?: string;
-}
+/** localStorage keys used by builds before cookie auth; purged on startup. */
+const LEGACY_STORAGE_KEYS = ['aaspass_auth_user', 'aaspass_auth_token', 'aaspass_registered_accounts'] as const;
 
+/**
+ * Holds the signed-in user. Auth state comes only from backend responses: the session itself lives in
+ * HttpOnly cookies, so nothing is persisted client-side. On startup {@link restoreSession} asks
+ * GET /auth/me and, when the access cookie is gone or expired, renews the session once through the
+ * shared refresh; any failure means guest.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private router = inject(Router);
-  private authHttpService = inject(AuthHttpService);
+  private readonly router = inject(Router);
+  private readonly authHttpService = inject(AuthHttpService);
+  private readonly sessionRefresh = inject(SessionRefreshService);
+  private readonly toast = inject(ToastService);
 
-  // Available Demo accounts for 1-click test login
-  readonly demoAccounts: DemoAccount[] = [
-    {
-      id: 'user-001',
-      name: 'Aman Sharma',
-      username: 'aman',
-      email: 'aman.sharma@example.com',
-      password: 'password123',
-      role: 'Freelancer & Store Owner',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      id: 'user-101',
-      name: 'Priya Nair',
-      username: 'priya',
-      email: 'priya.nair@example.com',
-      password: 'password123',
-      role: 'PixelCraft Studios (Reels Editor)',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80'
-    },
-    {
-      id: 'user-102',
-      name: 'Rohan Gupta',
-      username: 'rohan',
-      email: 'rohan.gupta@example.com',
-      password: 'password123',
-      role: 'CodeSpark Lab (Full Stack Dev)',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80'
-    }
-  ];
-
-  // Active authenticated user signal (null when guest / unauthenticated)
-  readonly currentUser = signal<UserProfile | null>(this.loadStoredSession());
+  private readonly _currentUser = signal<UserProfile | null>(null);
+  /** Active authenticated user (null when guest / unauthenticated). */
+  readonly currentUser = this._currentUser.asReadonly();
 
   // Reactive logged-in state
-  readonly isLoggedIn = computed(() => this.currentUser() !== null);
+  readonly isLoggedIn = computed(() => this._currentUser() !== null);
+
+  private readonly _sessionRestored = signal<boolean>(false);
+  /** True once the startup session check has finished, whatever its outcome. */
+  readonly sessionRestored = this._sessionRestored.asReadonly();
+  private restorePromise: Promise<void> | null = null;
 
   // Modal / Popup state
   readonly isModalOpen = signal<boolean>(false);
   readonly modalMode = signal<'login' | 'signup'>('login');
   readonly returnUrl = signal<string | null>(null);
-  readonly authError = signal<string | null>(null);
-  readonly authSuccessMessage = signal<string | null>(null);
 
-  constructor() {
-    this.initDefaultAccounts();
-  }
-
-  // Initialize user database if not already in localStorage
-  private initDefaultAccounts(): void {
-    if (!this.isBrowser()) return;
-
-    try {
-      const existing = localStorage.getItem(STORAGE_KEY_USERS);
-      if (!existing) {
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify([]));
-      }
-    } catch {
-      // Ignore localStorage exceptions in restricted test environments
+  /**
+   * Restores the cookie session once per app; every caller (app initializer, guard) awaits the same
+   * promise. A 401 UNAUTHENTICATED from GET /auth/me (the browser already dropped the expired access
+   * cookie) runs the shared refresh once and takes the user from its response; an expired-but-present
+   * access cookie (TOKEN_EXPIRED) is renewed by the refresh interceptor instead. Never rejects: any
+   * failure, including a rejected or failed refresh, leaves the app as a silent guest (no toast, no redirect).
+   */
+  restoreSession(): Promise<void> {
+    if (!this.restorePromise) {
+      this.purgeLegacyStorage();
+      this.restorePromise = firstValueFrom(
+        this.authHttpService.me().pipe(
+          catchError((err: unknown) => {
+            if (err instanceof HttpErrorResponse && err.status === 401 && errorCode(err) === 'UNAUTHENTICATED') {
+              return this.sessionRefresh.refresh();
+            }
+            return throwError(() => err);
+          }),
+          timeout({ first: RESTORE_TIMEOUT_MS })
+        ),
+        { defaultValue: null }
+      )
+        .then(resp => {
+          this._currentUser.set(resp?.data ? this.mapBackendUserToProfile(resp.data) : null);
+        })
+        .catch(() => {
+          this._currentUser.set(null);
+        })
+        .finally(() => {
+          this._sessionRestored.set(true);
+        });
     }
+    return this.restorePromise;
   }
 
-  private isBrowser(): boolean {
-    return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
-  }
-
-  // Load active session from localStorage
-  private loadStoredSession(): UserProfile | null {
-    if (!this.isBrowser()) return null;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_AUTH_USER);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return (parsed && typeof parsed === 'object') ? (parsed as UserProfile) : null;
-      }
-    } catch {
-      // Ignore parse errors
-    }
-    return null;
-  }
-
-  // Map Backend User DTO to frontend UserProfile
+  /** Maps the backend UserResponse DTO to the frontend UserProfile. */
   mapBackendUserToProfile(u: BackendUserResponse): UserProfile {
-    if (!u) {
-      return {
-        id: '1',
-        name: 'User',
-        username: 'user',
-        email: 'user@example.com',
-        phone: '+91 98000 00000',
-        avatarUrl: getRandomAvatarUrl('user'),
-        city: 'Bengaluru',
-        area: 'Indiranagar',
-        country: 'India',
-        bio: '',
-        memberSince: 'March 2026',
-        hasStore: false,
-        stores: [],
-        creationDateTime: new Date().toISOString(),
-        lastUpdateDateTime: new Date().toISOString()
-      };
-    }
-
     return {
       id: String(u.id ?? ''),
       name: u.name || '',
@@ -201,271 +157,64 @@ export class AuthService {
     };
   }
 
-  // Retrieve all registered accounts (local cache fallback)
-  getRegisteredAccounts(): UserAccount[] {
-    if (!this.isBrowser()) {
-      return [];
-    }
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_USERS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? (parsed as UserAccount[]) : [];
-      }
-    } catch {
-      // fallback
-    }
-    return [];
-  }
-
-  // Authenticate user with username or email and password (supports live Spring REST API via AuthHttpService & local fallback)
-  login(usernameOrEmail: string, password: string): AuthResult {
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
-
-    const cleanInput = (usernameOrEmail || '').trim();
-    const cleanPassword = (password || '').trim();
-
-    if (!cleanInput) {
-      const err = 'Please enter your username or email address.';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    if (!cleanPassword) {
-      const err = 'Please enter your password.';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    // Call Spring Boot REST API via AuthHttpService: POST /api/auth/login
-    this.authHttpService.login({
-      usernameOrEmail: cleanInput,
-      password: cleanPassword
-    }).subscribe({
-      next: (resp) => {
-        if (resp?.data?.user) {
-          const mapped = this.mapBackendUserToProfile(resp.data.user);
-          this.saveSession(mapped, resp.data.token);
-          this.authSuccessMessage.set(`Welcome back, ${mapped.name}!`);
-          const targetUrl = this.returnUrl();
-          this.isModalOpen.set(false);
-          this.returnUrl.set(null);
-          if (targetUrl) {
-            this.router.navigateByUrl(targetUrl);
-          }
-        }
-      },
-      error: (err) => {
-        if (err?.error?.message) {
-          this.authError.set(err.error.message);
-        }
-      }
-    });
-
-    // Local evaluation fallback for test runner & offline mode
-    const accounts = this.getRegisteredAccounts();
-    const matched = accounts.find(acc => 
-      (acc.username?.toLowerCase() === cleanInput.toLowerCase() || acc.email?.toLowerCase() === cleanInput.toLowerCase()) &&
-      acc.password === cleanPassword
+  /** Signs in via POST /auth/login; the user is set only from the backend response. */
+  login(usernameOrEmail: string, password: string): Observable<UserProfile> {
+    return this.authHttpService.login({
+      usernameOrEmail: (usernameOrEmail ?? '').trim(),
+      // Passwords are sent verbatim: surrounding spaces are part of the secret.
+      password: password ?? ''
+    }).pipe(
+      map(resp => this.profileFromAuthResponse(resp?.data?.user)),
+      tap(profile => {
+        this.completeAuthentication(profile);
+        this.toast.success(`Welcome back, ${profile.name}!`);
+      })
     );
-
-    if (!matched) {
-      const err = 'Invalid credentials. Please verify your username/email and password.';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    const { password: _, ...userProfile } = matched;
-    this.saveSession(userProfile);
-    this.authSuccessMessage.set(`Welcome back, ${userProfile.name}!`);
-
-    // Handle post-login redirection
-    const targetUrl = this.returnUrl();
-    this.isModalOpen.set(false);
-    this.returnUrl.set(null);
-
-    if (targetUrl) {
-      this.router.navigateByUrl(targetUrl);
-    }
-
-    const successResult: AuthResult = { success: true, user: userProfile };
-    return Object.assign(Promise.resolve(successResult), successResult);
   }
 
-  // Quick 1-click test login using a known demo account ID
-  quickLogin(userId: string): boolean {
-    const demo = this.demoAccounts.find(d => d.id === userId);
-    if (!demo) return false;
-    const res = this.login(demo.username, demo.password);
-    return res.success;
-  }
-
-  // Register a new user account with username, email, country and password (supports live Spring REST API via AuthHttpService & local fallback)
-  signup(request: SignupRequest): AuthResult {
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
-
-    const name = (request.name || '').trim();
+  /** Registers via POST /auth/register (which also signs the user in); the user comes from the response. */
+  signup(request: SignupRequest): Observable<UserProfile> {
+    const name = (request.name ?? '').trim();
     const rawUsername = (request.username || (request.usernameOrEmail && !request.usernameOrEmail.includes('@') ? request.usernameOrEmail : '')).trim();
     const rawEmail = (request.email || (request.usernameOrEmail && request.usernameOrEmail.includes('@') ? request.usernameOrEmail : '')).trim();
-    const password = (request.password || '').trim();
-    const country = (request.country || 'India').trim();
-
-    if (!name || name.length < 2) {
-      const err = 'Please provide your full name (minimum 2 characters).';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
 
     // Determine username & email with backward-compatible fallback
-    const username = rawUsername || (rawEmail ? rawEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : (request.usernameOrEmail || '').trim());
+    const username = rawUsername || (rawEmail ? rawEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') : (request.usernameOrEmail ?? '').trim());
     const email = rawEmail || (username ? (username.includes('@') ? username : `${username}@aaspass.local`) : '');
+    const avatar = request.avatarUrl?.trim() ? request.avatarUrl.trim() : getRandomAvatarUrl(username || name);
 
-    if (!username || username.length < 3) {
-      const err = 'Please provide a valid username (minimum 3 characters).';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    if (!email || !email.includes('@')) {
-      const err = 'Please provide a valid email address.';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    if (!password || password.length < 6) {
-      const err = 'Password must be at least 6 characters long.';
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    const accounts = this.getRegisteredAccounts();
-    const usernameTaken = accounts.some(acc => acc.username?.toLowerCase() === username.toLowerCase());
-    if (usernameTaken) {
-      const err = `An account with username "${username}" already exists. Please log in instead.`;
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    const emailTaken = accounts.some(acc => acc.email?.toLowerCase() === email.toLowerCase());
-    if (emailTaken) {
-      const err = `An account with email "${email}" already exists. Please log in instead.`;
-      this.authError.set(err);
-      const failResult: AuthResult = { success: false, message: err };
-      return Object.assign(Promise.resolve(failResult), failResult);
-    }
-
-    const avatar = (request.avatarUrl && request.avatarUrl.trim())
-      ? request.avatarUrl.trim()
-      : getRandomAvatarUrl(username || name);
-
-    // Call Spring Boot REST API via AuthHttpService: POST /api/auth/register
-    this.authHttpService.register({
-      name: name,
+    return this.authHttpService.register({
+      name,
       username: username.toLowerCase(),
       email: email.toLowerCase(),
-      password: password,
-      phone: (request.phone || '').trim() || '+91 98000 00000',
+      password: request.password ?? '',
+      phone: (request.phone ?? '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',
-      country: country,
+      country: (request.country || 'India').trim(),
       avatarUrl: avatar
-    }).subscribe({
-      next: (resp) => {
-        if (resp?.data?.user) {
-          const mapped = this.mapBackendUserToProfile(resp.data.user);
-          this.saveSession(mapped, resp.data.token);
-          this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
-        }
-      },
-      error: (err) => {
-        if (err?.error?.message) {
-          this.authError.set(err.error.message);
-        }
-      }
-    });
-
-    const nowIso = new Date().toISOString();
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const now = new Date();
-    const memberSince = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
-
-    const newAccount: UserAccount = {
-      id: `user-${Date.now()}`,
-      username: username.toLowerCase(),
-      password: password,
-      name: name,
-      email: email.toLowerCase(),
-      phone: (request.phone || '').trim() || '+91 98000 00000',
-      city: request.city || 'Bengaluru',
-      area: request.area || 'Indiranagar',
-      country: country,
-      avatarUrl: avatar,
-      bio: 'Neighborhood talent and active community gig member.',
-      memberSince: memberSince,
-      hasStore: false,
-      stores: [],
-      creationDateTime: nowIso,
-      lastUpdateDateTime: nowIso
-    };
-
-    // Save to registered accounts list
-    accounts.push(newAccount);
-    if (this.isBrowser()) {
-      try {
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(accounts));
-      } catch {
-        // Ignore
-      }
-    }
-
-    // Auto-login newly registered user
-    const { password: _, ...userProfile } = newAccount;
-    this.saveSession(userProfile);
-    this.authSuccessMessage.set(`Account created successfully! Welcome to AasPass, ${name}!`);
-
-    // Handle post-signup redirection
-    const targetUrl = this.returnUrl();
-    this.isModalOpen.set(false);
-    this.returnUrl.set(null);
-
-    if (targetUrl) {
-      this.router.navigateByUrl(targetUrl);
-    }
-
-    const successResult: AuthResult = { success: true, user: userProfile };
-    return Object.assign(Promise.resolve(successResult), successResult);
+    }).pipe(
+      map(resp => this.profileFromAuthResponse(resp?.data?.user)),
+      tap(profile => {
+        this.completeAuthentication(profile);
+        this.toast.success(`Account created successfully! Welcome to AasPass, ${profile.name}!`);
+      })
+    );
   }
 
-  // Update user profile in active session, accounts store, and backend REST API via AuthHttpService
-  updateUserProfile(updated: Partial<UserProfile>): void {
-    const current = this.currentUser();
-    if (!current) return;
-
-    const merged: UserProfile = {
-      ...current,
-      ...updated,
-      lastUpdateDateTime: new Date().toISOString()
-    };
-
-    this.saveSession(merged);
-
-    // Call Spring Boot REST API via AuthHttpService: PUT /api/users/{id}
-    const numId = parseInt(String(current.id ?? '').replace(/\D/g, '') || '1', 10);
-    this.authHttpService.updateUser(numId, {
+  /**
+   * Saves general profile fields via PUT /users/{id} (KYC goes through {@link updateKyc}).
+   * The current user is replaced only with the backend response; nothing is applied optimistically.
+   */
+  updateUserProfile(updated: Partial<UserProfile>): Observable<UserProfile> {
+    const current = this._currentUser();
+    if (!current?.id) {
+      return throwError(() => new Error('Cannot update profile: no signed-in user.'));
+    }
+    const merged: UserProfile = { ...current, ...updated };
+    return this.authHttpService.updateUser(current.id, {
       name: merged.name,
       phone: merged.phone,
-      aadharNumber: merged.aadharNumber,
-      panNumber: merged.panNumber,
       avatarUrl: merged.avatarUrl,
       city: merged.city,
       area: merged.area,
@@ -473,66 +222,98 @@ export class AuthService {
       bio: merged.bio,
       userSocialMediaLinks: merged.userSocialMediaLinks,
       socialMediaLinks: merged.socialMediaLinks
-    }).subscribe({
-      error: () => {} // Keep optimistic update
-    });
-
-    // Also update in registered accounts list
-    if (this.isBrowser()) {
-      try {
-        const accounts = this.getRegisteredAccounts();
-        const updatedAccounts = accounts.map(acc => {
-          if (acc.id === current.id) {
-            return { ...acc, ...updated, lastUpdateDateTime: merged.lastUpdateDateTime };
-          }
-          return acc;
-        });
-        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updatedAccounts));
-      } catch {
-        // Ignore
-      }
-    }
+    }).pipe(
+      map(resp => this.profileFromUserResponse(resp)),
+      tap(profile => this._currentUser.set(profile))
+    );
   }
 
-  // Save authenticated session to signal and localStorage
-  saveSession(user: UserProfile, token?: string): void {
-    this.currentUser.set(user);
-    if (this.isBrowser()) {
-      try {
-        localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(user));
-        if (token) {
-          localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, token);
-        }
-      } catch {
-        // Ignore
-      }
-    }
+  /** Updates Aadhaar / PAN via PUT /users/me/kyc; the response carries the masked values. */
+  updateKyc(payload: KycUpdatePayload): Observable<UserProfile> {
+    return this.authHttpService.updateKyc(payload).pipe(
+      map(resp => this.profileFromUserResponse(resp)),
+      tap(profile => this._currentUser.set(profile))
+    );
   }
 
-  // Log out active user and reset to guest state (calls POST /api/auth/logout via AuthHttpService)
+  /** Replaces the in-memory current user (e.g. after a store change confirmed by the backend). */
+  setCurrentUser(user: UserProfile | null): void {
+    this._currentUser.set(user);
+  }
+
+  /** Logs out via POST /auth/logout (server revokes the session and clears cookies) and resets to guest. */
   logout(): void {
     this.authHttpService.logout().subscribe({
-      error: () => {}
-    });
-
-    this.currentUser.set(null);
-    if (this.isBrowser()) {
-      try {
-        localStorage.removeItem(STORAGE_KEY_AUTH_USER);
-        localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN);
-      } catch {
-        // Ignore
+      error: () => {
+        // Local state is cleared regardless; a session the server could not revoke still expires on its own.
       }
-    }
+    });
+    this._currentUser.set(null);
     this.closeModal();
-    this.router.navigate(['/']);
+    this.toast.success("You've been logged out.");
+    void this.router.navigate(['/']);
+  }
+
+  /**
+   * Called when a silent refresh fails. Clears the user and, only if a user was signed in and the app is
+   * not already on /login, sends them to /login with the current URL as returnUrl. A guest (for example
+   * during the startup session check) is left alone, so restore never redirects or loops.
+   */
+  handleSessionEnded(): void {
+    const wasLoggedIn = this.isLoggedIn();
+    this._currentUser.set(null);
+    if (!wasLoggedIn) {
+      return;
+    }
+    this.toast.warning('Your session has ended. Please log in again.');
+    const currentUrl = this.router.url || '/';
+    const currentPath = currentUrl.split(/[?#]/)[0];
+    if (currentPath === '/login') {
+      return;
+    }
+    void this.router.navigate(['/login'], { queryParams: { returnUrl: currentUrl } });
+  }
+
+  /**
+   * Removes auth data written by older builds (cached user, token and a local account list that held
+   * plaintext passwords). Auth state now lives only in HttpOnly cookies.
+   */
+  private purgeLegacyStorage(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    try {
+      for (const key of LEGACY_STORAGE_KEYS) {
+        localStorage.removeItem(key);
+      }
+    } catch {
+      // Storage can be unavailable (privacy mode, blocked site data); nothing to purge then.
+    }
+  }
+
+  private profileFromAuthResponse(user: BackendUserResponse | null | undefined): UserProfile {
+    if (!user) {
+      throw new Error('Authentication response did not include a user.');
+    }
+    return this.mapBackendUserToProfile(user);
+  }
+
+  private profileFromUserResponse(resp: ApiResponse<BackendUserResponse> | null | undefined): UserProfile {
+    if (!resp?.data) {
+      throw new Error('User response did not include a user.');
+    }
+    return this.mapBackendUserToProfile(resp.data);
+  }
+
+  private completeAuthentication(profile: UserProfile): void {
+    this._currentUser.set(profile);
+    this.isModalOpen.set(false);
+    this.returnUrl.set(null);
   }
 
   // Modal / Popup controls
   openLoginModal(returnUrl?: string): void {
     this.modalMode.set('login');
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
     if (returnUrl) {
       this.returnUrl.set(returnUrl);
     }
@@ -541,8 +322,6 @@ export class AuthService {
 
   openSignupModal(returnUrl?: string): void {
     this.modalMode.set('signup');
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
     if (returnUrl) {
       this.returnUrl.set(returnUrl);
     }
@@ -551,13 +330,9 @@ export class AuthService {
 
   closeModal(): void {
     this.isModalOpen.set(false);
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
   }
 
   setModalMode(mode: 'login' | 'signup'): void {
     this.modalMode.set(mode);
-    this.authError.set(null);
-    this.authSuccessMessage.set(null);
   }
 }

@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
+import { SKIP_AUTH_REFRESH, SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import { ApiResponse, BackendAuthResponse, BackendUserResponse } from '../../models/response.model';
-import { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
+import { KycUpdatePayload, LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
 export type { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
@@ -43,21 +44,37 @@ export class AuthHttpService {
     return this.http.delete<ApiResponse<T>>(this.buildUrl(endpoint), options);
   }
 
-  // Authentication & User HTTP endpoints
+  // Authentication & User HTTP endpoints. Credential calls never trigger the silent refresh flow;
+  // background session calls (refresh, me, logout) never raise error toasts.
   login(credentials: LoginPayload): Observable<ApiResponse<BackendAuthResponse>> {
-    return this.post<BackendAuthResponse>('/auth/login', credentials);
+    return this.post<BackendAuthResponse>('/auth/login', credentials, { context: skipRefresh() });
   }
 
   register(payload: RegisterPayload): Observable<ApiResponse<BackendAuthResponse>> {
-    return this.post<BackendAuthResponse>('/auth/register', payload);
+    return this.post<BackendAuthResponse>('/auth/register', payload, { context: skipRefresh() });
+  }
+
+  refresh(): Observable<ApiResponse<BackendUserResponse>> {
+    return this.post<BackendUserResponse>('/auth/refresh', {}, { context: skipRefresh().set(SKIP_ERROR_TOAST, true) });
+  }
+
+  me(): Observable<ApiResponse<BackendUserResponse>> {
+    return this.get<BackendUserResponse>('/auth/me', { context: new HttpContext().set(SKIP_ERROR_TOAST, true) });
   }
 
   updateUser(id: number | string, payload: UpdateUserPayload): Observable<ApiResponse<BackendUserResponse>> {
-    const cleanId = typeof id === 'number' ? id : parseInt(String(id ?? '').replace(/\D/g, '') || '1', 10);
-    return this.put<BackendUserResponse>(`/users/${cleanId}`, payload);
+    return this.put<BackendUserResponse>(`/users/${encodeURIComponent(String(id))}`, payload);
+  }
+
+  updateKyc(payload: KycUpdatePayload): Observable<ApiResponse<BackendUserResponse>> {
+    return this.put<BackendUserResponse>('/users/me/kyc', payload);
   }
 
   logout(): Observable<ApiResponse<void>> {
-    return this.post<void>('/auth/logout', {});
+    return this.post<void>('/auth/logout', {}, { context: skipRefresh().set(SKIP_ERROR_TOAST, true) });
   }
+}
+
+function skipRefresh(): HttpContext {
+  return new HttpContext().set(SKIP_AUTH_REFRESH, true);
 }
