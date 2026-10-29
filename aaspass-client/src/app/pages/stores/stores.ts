@@ -11,6 +11,8 @@ import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSwitchImports } from '@spartan-ng/helm/switch';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
+import { CityPickerComponent } from '../../components/location-picker/city-picker';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { StoreCardComponent } from '../../components/store-card/store-card';
 import { StoreProfile } from '../../models/store.model';
 import { COUNTRIES } from '../../geo/countries.generated';
@@ -32,6 +34,8 @@ import { StoreService } from '../../services/store/store.service';
     RouterLink,
     NgIcon,
     StoreCardComponent,
+    CountryPickerComponent,
+    CityPickerComponent,
     HlmButtonImports,
     HlmInputImports,
     HlmSelectImports,
@@ -63,28 +67,30 @@ export class StoresComponent {
   });
 
   readonly otherCities = computed(() =>
-    this.storeService.availableCities.filter(city => city !== this.storeService.selectedCity())
+    this.storeService.citiesWithStores().filter(city => city !== this.storeService.selectedCity())
   );
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
       const query = parseStoresQuery(params, COUNTRIES, this.storeService.categories);
+      // Country first: a real country change resets the city, which the URL city then re-applies.
       if (query.country) {
         this.storeService.setSelectedCountry(query.country);
       }
-      // Until the city picker lands, only known cities are accepted (canonicalised case-insensitively).
-      const city = this.storeService.availableCities.find(c => c.toLowerCase() === (query.city ?? '').toLowerCase());
-      if (city) {
-        this.storeService.setSelectedCity(city);
+      if (query.city) {
+        this.storeService.setSelectedCity(query.city);
       }
       this.storeService.setSelectedCategory(query.category);
       this.storeService.setSearchQuery(query.q);
       this.sort.set(query.sort);
       this.openOnly.set(query.openOnly);
       this.searchControl.setValue(query.q, { emitEvent: false });
-      // Re-canonicalise the URL (e.g. bare /stores or a lower-case city) once state has been applied.
-      // After syncing, the raw param equals the canonical city, so this cannot loop.
-      if ((params.get('city') ?? '') !== this.storeService.selectedCity()) {
+      // Re-canonicalise the URL (bare /stores, lower-case country, unknown country, over-long city) once state
+      // has been applied. After syncing, the raw params equal the state, so this cannot loop.
+      if (
+        (params.get('country') ?? '') !== this.storeService.selectedCountry() ||
+        (params.get('city') ?? '') !== this.storeService.selectedCity()
+      ) {
         this.syncUrl();
       }
     });
@@ -96,15 +102,21 @@ export class StoresComponent {
         this.syncUrl();
       });
 
-    // Follow city changes made elsewhere (e.g. the navbar). Only navigates when the URL is out of date,
-    // which also writes the city into the URL on first load and prevents URL <-> state loops.
+    // Follow country/city changes made elsewhere (e.g. the navbar). Only navigates when the URL is out of date,
+    // which also writes them into the URL on first load and prevents URL <-> state loops.
     effect(() => {
+      const country = this.storeService.selectedCountry();
       const city = this.storeService.selectedCity();
-      const urlCity = untracked(() => this.route.snapshot.queryParamMap.get('city') ?? '');
-      if (city !== urlCity) {
+      const urlParams = untracked(() => this.route.snapshot.queryParamMap);
+      if (country !== (urlParams.get('country') ?? '') || city !== (urlParams.get('city') ?? '')) {
         untracked(() => this.syncUrl());
       }
     });
+  }
+
+  setCountry(country: string): void {
+    this.storeService.setSelectedCountry(country);
+    this.syncUrl();
   }
 
   setCity(city: string): void {
@@ -136,8 +148,15 @@ export class StoresComponent {
   }
 
   // Template handlers: helm components emit loosely typed values, so narrow before use.
-  onCityChange(value: unknown): void {
-    if (typeof value === 'string' && value) {
+  // Pickers emit '' when cleared: a blank country is ignored by the store; a blank city means "all cities".
+  onCountryChange(value: string): void {
+    if (value && value !== this.storeService.selectedCountry()) {
+      this.setCountry(value);
+    }
+  }
+
+  onCityChange(value: string): void {
+    if (value !== this.storeService.selectedCity()) {
       this.setCity(value);
     }
   }

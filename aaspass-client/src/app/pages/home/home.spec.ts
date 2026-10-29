@@ -17,6 +17,20 @@ function makeStore(id: number, city: string, rating: number, category = 'Photogr
   } as StoreProfile;
 }
 
+// jsdom lacks ResizeObserver and scrollIntoView, which the location pickers' overlay uses.
+beforeAll(() => {
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
+  if (typeof globalThis.ResizeObserver !== 'function') {
+    globalThis.ResizeObserver = class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+  }
+});
+
 describe('HomeComponent', () => {
   let fixture: ComponentFixture<HomeComponent>;
   let component: HomeComponent;
@@ -48,18 +62,54 @@ describe('HomeComponent', () => {
     expect(top[0].id).toBe('8');
   });
 
-  it('findTalent navigates to /stores with city and q', () => {
+  it('findTalent navigates to /stores with country, city and q', () => {
     const nav = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.heroSearch.setValue('  reels ');
     component.findTalent();
-    expect(nav).toHaveBeenCalledWith(['/stores'], { queryParams: { city: 'Bengaluru', q: 'reels' } });
+    expect(nav).toHaveBeenCalledWith(['/stores'], { queryParams: { country: 'India', city: 'Bengaluru', q: 'reels' } });
   });
 
   it('findTalent omits empty q', () => {
     const nav = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.heroSearch.setValue('   ');
     component.findTalent();
-    expect(nav).toHaveBeenCalledWith(['/stores'], { queryParams: { city: 'Bengaluru', q: null } });
+    expect(nav).toHaveBeenCalledWith(['/stores'], { queryParams: { country: 'India', city: 'Bengaluru', q: null } });
+  });
+
+  it('findTalent sends null for an empty city', () => {
+    const nav = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    service.setSelectedCity('');
+    component.findTalent();
+    expect(nav).toHaveBeenCalledWith(['/stores'], { queryParams: { country: 'India', city: null, q: null } });
+  });
+
+  it('topStores falls back to the whole country when no city is selected', () => {
+    service.stores.set([makeStore(1, 'Pune', 4), makeStore(2, 'Mumbai', 5), { ...makeStore(3, 'Toronto', 5), country: 'Canada' }]);
+    service.setSelectedCity('');
+    expect(component.topStores().map(s => s.id)).toEqual(['2', '1']);
+  });
+
+  it('Cities stat and chips come from citiesWithStores', () => {
+    service.stores.set([makeStore(1, 'Pune', 4), makeStore(2, 'Mumbai', 5), makeStore(3, 'Pune', 3)]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('2 cities');
+    const chips = Array.from(el.querySelectorAll('#cities-heading + ul a'));
+    expect(chips.map(a => a.textContent?.trim())).toEqual(['Mumbai', 'Pune']);
+    const href = chips[1].getAttribute('href') ?? '';
+    expect(href).toContain('country=India');
+    expect(href).toContain('city=Pune');
+  });
+
+  it('shows "No stores in {country} yet" when the country has no stores', () => {
+    service.stores.set([makeStore(1, 'Pune', 4)]);
+    service.setSelectedCountry('Canada');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const section = el.querySelector('#cities-heading')?.parentElement;
+    expect(section?.textContent).toContain('No stores in Canada yet');
+    expect(section?.querySelectorAll('ul a').length).toBe(0);
+    expect(el.textContent).toContain('0 cities');
   });
 
   it('category cards match StoreService categories', () => {

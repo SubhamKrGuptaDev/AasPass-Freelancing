@@ -1,13 +1,17 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
-import { CommonModule } from '@angular/common';
+import { CityPickerComponent } from '../location-picker/city-picker';
+import { CountryPickerComponent } from '../location-picker/country-picker';
 
 @Component({
   selector: 'app-navbar',
-  standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, CountryPickerComponent, CityPickerComponent],
+  host: {
+    '(document:click)': 'onDocumentClick($event)',
+    '(document:keydown.escape)': 'onEscape()'
+  },
   templateUrl: './navbar.html',
   styleUrl: './navbar.css'
 })
@@ -18,6 +22,16 @@ export class NavbarComponent {
   isDropdownOpen = signal<boolean>(false);
   isProfileMenuOpen = signal<boolean>(false);
   isLocationDropdownOpen = signal<boolean>(false);
+
+  private readonly locationTrigger = viewChild<ElementRef<HTMLButtonElement>>('locationTrigger');
+  private readonly locationPopover = viewChild<ElementRef<HTMLElement>>('locationPopover');
+
+  /** "{city}, {country}", or just "{country}" when browsing all cities. */
+  locationLabel = computed(() => {
+    const city = this.storeService.selectedCity().trim();
+    const country = this.storeService.selectedCountry();
+    return city ? `${city}, ${country}` : country;
+  });
 
   userFirstName = computed(() => {
     const name = this.storeService.currentUser()?.name;
@@ -54,9 +68,23 @@ export class NavbarComponent {
     this.isLocationDropdownOpen.update(v => !v);
   }
 
-  selectCity(city: string): void {
+  // Pickers emit '' when cleared: a blank country is ignored by the store; a blank city means "all cities".
+  onCountryChange(country: string): void {
+    this.storeService.setSelectedCountry(country);
+  }
+
+  onCityChange(city: string): void {
     this.storeService.setSelectedCity(city);
+  }
+
+  closeLocationPopover(restoreFocus = false): void {
+    if (!this.isLocationDropdownOpen()) {
+      return;
+    }
     this.isLocationDropdownOpen.set(false);
+    if (restoreFocus) {
+      this.locationTrigger()?.nativeElement.focus();
+    }
   }
 
   toggleDropdown(event?: Event): void {
@@ -92,8 +120,23 @@ export class NavbarComponent {
     this.authService.logout();
   }
 
-  @HostListener('document:click')
-  onDocumentClick(): void {
+  onDocumentClick(event: Event): void {
+    // The pickers' option lists render in the CDK overlay, outside this component: not an "outside" click.
+    const target = event.target;
+    const inOverlay = target instanceof Element && target.closest('.cdk-overlay-container') !== null;
+    if (inOverlay && this.isLocationDropdownOpen()) {
+      this.isDropdownOpen.set(false);
+      this.isProfileMenuOpen.set(false);
+      return;
+    }
     this.closeDropdowns();
+  }
+
+  onEscape(): void {
+    // While a picker's list is open, Escape only closes that list.
+    const listOpen = this.locationPopover()?.nativeElement.querySelector('[aria-expanded="true"]') != null;
+    if (!listOpen) {
+      this.closeLocationPopover(true);
+    }
   }
 }
