@@ -1,0 +1,101 @@
+<section class="space-y-6">
+  <p>
+    <a routerLink="/users" class="text-sm font-medium text-indigo-700 underline underline-offset-2">Back to users</a>
+  </p>
+
+  @if (user(); as u) {
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ u.summary.name }}</h1>
+      <p class="text-sm text-slate-700">{{ '@' + u.summary.username }} &middot; {{ u.summary.email }}</p>
+      <p class="mt-1 text-sm text-slate-700">
+        {{ u.summary.city }}, {{ u.summary.country }} &middot; Joined {{ u.summary.creationDateTime | date: 'mediumDate' }}
+      </p>
+      @if (u.bio) {
+        <p class="mt-2 whitespace-pre-line text-sm text-slate-900">{{ u.bio }}</p>
+      }
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+      <section class="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2" aria-labelledby="verification-heading">
+        <h2 id="verification-heading" class="text-lg font-semibold text-slate-900">Verification</h2>
+        <app-verification-panel [detail]="u" (changed)="onVerificationChanged($event)" />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="suspension-heading">
+        <h2 id="suspension-heading" class="text-lg font-semibold text-slate-900">Suspension</h2>
+        @if (suspendedUntil(); as until) {
+          <p class="mt-3 text-sm text-slate-900">
+            <app-status-chip status="suspended" />
+            Suspended until {{ until | date: 'medium' }}@if (u.suspensionReason) {
+              &mdash; {{ u.suspensionReason }}
+            }
+          </p>
+          <button
+            type="button"
+            class="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            [disabled]="busy()"
+            (click)="lift()"
+          >
+            Lift suspension
+          </button>
+        } @else {
+          <p class="mt-3 text-sm text-slate-900"><app-status-chip status="active" /> Active</p>
+          <button
+            type="button"
+            class="mt-4 rounded-md bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800 disabled:opacity-50"
+            [disabled]="busy()"
+            (click)="openSuspendDialog()"
+          >
+            Suspend user
+          </button>
+        }
+      </section>
+    </div>
+
+    <section class="rounded-xl border border-slate-200 bg-white" aria-labelledby="stores-heading">
+      <h2 id="stores-heading" class="px-4 pt-4 text-lg font-semibold text-slate-900">Stores</h2>
+      <div class="overflow-x-auto">
+        <table class="mt-2 w-full text-left text-sm">
+          <caption class="sr-only">Stores owned by {{ u.summary.name }}</caption>
+          <thead class="bg-slate-50 text-slate-700">
+            <tr>
+              <th scope="col" class="px-4 py-3 font-medium">Store</th>
+              <th scope="col" class="px-4 py-3 font-medium">Location</th>
+              <th scope="col" class="px-4 py-3 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (store of u.stores; track store.id) {
+              <tr>
+                <td class="px-4 py-3">
+                  <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ store.storeName }}</a>
+                  <p class="text-xs text-slate-600">{{ store.category }}</p>
+                </td>
+                <td class="px-4 py-3 text-slate-800">{{ store.city }}, {{ store.country }}</td>
+                <td class="px-4 py-3">
+                  <app-status-chip [status]="store.adminBlocked ? 'blocked' : store.isActive ? 'active' : 'inactive'" />
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3" class="px-4 py-6 text-center text-slate-700">This user has no stores.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else if (loadFailed()) {
+    <p role="alert" class="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+      This user could not be loaded. They may not exist anymore.
+    </p>
+  } @else {
+    <div class="space-y-3" aria-busy="true">
+      <span class="sr-only" role="status">Loading user</span>
+      <div hlmSkeleton data-testid="skeleton" class="h-8 w-64"></div>
+      <div hlmSkeleton data-testid="skeleton" class="h-40"></div>
+    </div>
+  }
+
+  <app-suspend-dialog (confirmed)="suspend($event)" />
+</section>
