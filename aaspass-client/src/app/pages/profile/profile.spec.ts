@@ -79,6 +79,20 @@ describe('ProfileComponent verification states', () => {
     expect(chip(el, 'aadhar')).toBeNull();
   });
 
+  it('shows Not provided and no phone chip when the user has no phone', () => {
+    const el = render({ phone: '' });
+    expect(el.querySelector('[data-testid="phone-value"]')?.textContent).toContain('Not provided');
+    expect(chip(el, 'phone')).toBeNull();
+  });
+
+  it('shows Pending verification for an unverified phone', () => {
+    const el = render({
+      phone: '+91 99999 11111',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'UNVERIFIED' }, aadhar: { status: 'UNVERIFIED' } }
+    });
+    expect(chip(el, 'phone')?.textContent).toContain('Pending verification');
+  });
+
   it('shows the blocked-store notice and disables Activate', () => {
     const store = TestBed.inject(StoreService).mapBackendStoreToProfile({
       id: 5, userId: 1, storeName: 'Blocked Shop', category: 'c', area: 'a', city: 'Pune',

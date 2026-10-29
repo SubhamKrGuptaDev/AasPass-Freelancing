@@ -37,12 +37,12 @@
                 <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <h1 class="text-xl sm:text-2xl font-black text-slate-900 leading-tight truncate">{{ s.storeName }}</h1>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 whitespace-nowrap flex-shrink-0">
-                      VERIFIED
-                    </span>
+                    @if (s.ownerVerified) {
+                      <app-verified-badge size="md" />
+                    }
                   </div>
                   <p class="text-sm font-medium text-slate-500 mt-0.5 truncate">
-                    Managed by <span class="text-slate-800 font-semibold">{{ s.ownerName }}</span>@if (s.ownerVerified) { <app-verified-badge /> } • {{ s.experienceYears }} years experience
+                    Managed by <span class="text-slate-800 font-semibold">{{ s.ownerName }}</span> • {{ s.experienceYears }} years experience
                   </p>
                   <div class="flex flex-wrap items-center gap-2 mt-1">
                     <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1 whitespace-nowrap">

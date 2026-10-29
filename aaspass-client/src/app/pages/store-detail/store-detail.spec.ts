@@ -63,3 +63,40 @@ describe('StoreDetailComponent reviews', () => {
     httpTesting.expectOne(REVIEWS_URL).flush({ success: true, message: 'ok', data: {} });
   });
 });
+
+describe('StoreDetailComponent verified badge', () => {
+  function render(ownerVerified: boolean): HTMLElement {
+    const params = convertToParamMap({ storeKey: 'store-7' });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(withInterceptors([errorToastInterceptor])),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { paramMap: of(params), snapshot: { paramMap: params } } }
+      ]
+    });
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(StoreDetailComponent);
+    httpTesting.match(() => true).forEach(r => r.flush({ success: true, message: 'ok', data: [] }));
+    fixture.componentInstance.storeService.stores.set([{
+      id: 'store-7', userId: '2', ownerName: 'Priya', storeName: 'S', tagline: '', category: 'C', skills: [],
+      experienceYears: 1, hourlyRate: 1, startingPrice: 1, area: 'A', city: 'B', country: 'India', serviceRadiusKm: 1,
+      socialMediaLinks: [], description: '', services: [], rating: 5, reviewCount: 0, reviews: [],
+      avatarUrl: '', bannerGradient: '', isAvailable: true, ownerVerified, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
+    }]);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('shows no verified badge or VERIFIED pill when the owner is not verified', () => {
+    const el = render(false);
+    expect(el.querySelector('app-verified-badge')).toBeNull();
+    expect(el.textContent).not.toContain('VERIFIED');
+  });
+
+  it('shows exactly one verified badge when the owner is verified', () => {
+    const el = render(true);
+    expect(el.querySelectorAll('app-verified-badge').length).toBe(1);
+    expect(el.querySelector('app-verified-badge')?.getAttribute('aria-label')).toBe('Verified');
+  });
+});
