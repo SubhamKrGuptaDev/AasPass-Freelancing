@@ -1,8 +1,11 @@
 import {
+  DestroyRef,
   Directive,
+  ElementRef,
   Signal,
   booleanAttribute,
   computed,
+  inject,
   input,
   linkedSignal,
   model,
@@ -40,6 +43,11 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
   readonly hideLabel = input(false, { transform: booleanAttribute });
   /** HTML autofill token for the input (e.g. `country-name`, `address-level2`); `off` by default. */
   readonly autocomplete = input<string>('off');
+  /**
+   * Enter submits the enclosing form while the suggestion list is closed. Off by default: the
+   * autocomplete swallows every Enter, which data-entry forms (signup, profile) rely on.
+   */
+  readonly submitOnEnter = input(false, { transform: booleanAttribute });
 
   /** Full list to search in. */
   protected abstract readonly source: Signal<readonly string[]>;
@@ -54,6 +62,23 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
   private onTouched: () => void = () => undefined;
   /** An option was picked since the panel opened, so the closing text must not override it. */
   private pickedWhileOpen = false;
+  /** Mirrors the panel state from `stateChanged`, so Enter can tell a pick from a submit. */
+  private panelOpen = false;
+
+  constructor() {
+    const host: HTMLElement = inject(ElementRef).nativeElement;
+    // Capture phase: runs before the autocomplete input, which prevents every Enter and closes the
+    // panel synchronously on a pick (so a bubbling listener could not tell a pick from a submit).
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (!this.submitOnEnter() || event.key !== 'Enter' || event.isComposing || this.panelOpen) {
+        return;
+      }
+      const form = event.target instanceof HTMLInputElement ? event.target.form : null;
+      form?.requestSubmit();
+    };
+    host.addEventListener('keydown', onKeydown, true);
+    inject(DestroyRef).onDestroy(() => host.removeEventListener('keydown', onKeydown, true));
+  }
 
   /** Brain value changes: an option was picked, or the text was cleared / Escape reset it. */
   protected onSelect(selected: string | null | undefined): void {
@@ -79,6 +104,7 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
    * that canonical option is committed instead, so the field never shows an uncommitted name.
    */
   protected onPanelState(state: string): void {
+    this.panelOpen = state === 'open';
     if (state === 'open') {
       this.pickedWhileOpen = false;
       this.onListOpen();
