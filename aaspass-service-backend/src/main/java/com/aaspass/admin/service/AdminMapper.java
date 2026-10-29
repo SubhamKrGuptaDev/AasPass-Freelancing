@@ -2,6 +2,7 @@ package com.aaspass.admin.service;
 
 import com.aaspass.admin.dto.AdminOwnerSummary;
 import com.aaspass.admin.dto.AdminStoreSummary;
+import com.aaspass.admin.dto.AdminUserSummary;
 import com.aaspass.entity.Store;
 import com.aaspass.entity.User;
 import org.springframework.stereotype.Component;
@@ -30,6 +31,26 @@ public class AdminMapper {
                 Boolean.TRUE.equals(store.getAdminBlocked()),
                 store.getAdminReviewedAt() != null,
                 store.getCreationDateTime());
+    }
+
+    /** Maps a user to a list row; touches the lazy {@code stores} collection, so call inside a transaction. */
+    public AdminUserSummary toUserSummary(User user) {
+        if (user == null) {
+            return null;
+        }
+        return new AdminUserSummary(
+                user.getId(),
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getCity(),
+                user.getCountry(),
+                user.getPhoneVerification().getStatus(),
+                user.getPanVerification().getStatus(),
+                user.getAadharVerification().getStatus(),
+                user.getSuspendedUntil(),
+                user.getStores() == null ? 0 : user.getStores().size(),
+                user.getCreationDateTime());
     }
 
     public AdminOwnerSummary toOwnerSummary(User user) {
