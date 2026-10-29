@@ -1,4 +1,4 @@
-import { Component, Injector, computed, afterNextRender, effect, inject, linkedSignal, untracked } from '@angular/core';
+import { Component, Injector, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -61,6 +61,21 @@ export class HomeComponent {
   readonly trustPoints = TRUST_POINTS;
   readonly faqs = FAQS;
   readonly skeletons = [1, 2, 3, 4, 5, 6];
+
+  /** Collapsed category grid shows 4 cards on mobile/tablet and 8 from the lg breakpoint up. */
+  readonly showAllCategories = signal(false);
+
+  toggleCategories(): void {
+    this.showAllCategories.update(shown => !shown);
+  }
+
+  /** Display classes for the card at `index`: CSS breakpoints decide visibility, so no resize listener is needed. */
+  categoryCardVisibility(index: number): string {
+    if (this.showAllCategories() || index < 4) {
+      return 'flex';
+    }
+    return index < 8 ? 'hidden lg:flex' : 'hidden';
+  }
 
   /** Two-way bound to the country picker; mirrors the store and is reset when the picker emits a blank/unknown value. */
   private readonly injector = inject(Injector);
