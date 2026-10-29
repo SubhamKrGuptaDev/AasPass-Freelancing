@@ -16,9 +16,22 @@ public class CookieBearerTokenResolver implements BearerTokenResolver {
     private static final Set<String> SKIPPED_PATHS = Set.of(
             "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout");
 
+    private final String cookieName;
+    private final Set<String> skippedPaths;
+
+    public CookieBearerTokenResolver() {
+        this(AuthCookieService.ACCESS_COOKIE, SKIPPED_PATHS);
+    }
+
+    /** For other cookie-JWT chains (e.g. admin): reads only {@code cookieName}, skipping {@code skippedPaths}. */
+    protected CookieBearerTokenResolver(String cookieName, Set<String> skippedPaths) {
+        this.cookieName = cookieName;
+        this.skippedPaths = Set.copyOf(skippedPaths);
+    }
+
     @Override
     public String resolve(HttpServletRequest request) {
-        if (SKIPPED_PATHS.contains(pathWithinApplication(request))) {
+        if (skippedPaths.contains(pathWithinApplication(request))) {
             return null;
         }
         Cookie[] cookies = request.getCookies();
@@ -26,7 +39,7 @@ public class CookieBearerTokenResolver implements BearerTokenResolver {
             return null;
         }
         for (Cookie cookie : cookies) {
-            if (AuthCookieService.ACCESS_COOKIE.equals(cookie.getName())) {
+            if (cookieName.equals(cookie.getName())) {
                 String value = cookie.getValue();
                 return value == null || value.isBlank() ? null : value;
             }

@@ -37,7 +37,7 @@ public class AuthCookieService {
     }
 
     public ResponseCookie accessCookie(HttpServletRequest req, String jwt) {
-        return base(ACCESS_COOKIE, jwt, "Lax", ACCESS_PATH, properties.accessTokenTtl(), req).build();
+        return buildCookie(ACCESS_COOKIE, jwt, "Lax", ACCESS_PATH, properties.accessTokenTtl(), req);
     }
 
     public ResponseCookie refreshCookie(HttpServletRequest req, String token, Instant sessionExpiresAt) {
@@ -45,15 +45,15 @@ public class AuthCookieService {
         if (remaining.isNegative()) {
             remaining = Duration.ZERO;
         }
-        return base(REFRESH_COOKIE, token, "Strict", REFRESH_PATH, remaining, req).build();
+        return buildCookie(REFRESH_COOKIE, token, "Strict", REFRESH_PATH, remaining, req);
     }
 
     public ResponseCookie clearAccessCookie(HttpServletRequest req) {
-        return base(ACCESS_COOKIE, "", "Lax", ACCESS_PATH, Duration.ZERO, req).build();
+        return buildCookie(ACCESS_COOKIE, "", "Lax", ACCESS_PATH, Duration.ZERO, req);
     }
 
     public ResponseCookie clearRefreshCookie(HttpServletRequest req) {
-        return base(REFRESH_COOKIE, "", "Strict", REFRESH_PATH, Duration.ZERO, req).build();
+        return buildCookie(REFRESH_COOKIE, "", "Strict", REFRESH_PATH, Duration.ZERO, req);
     }
 
     /** @return true for {@code localhost}, {@code 127.0.0.1}, {@code ::1} and {@code [::1]} (case-insensitive). */
@@ -96,14 +96,18 @@ public class AuthCookieService {
         res.addHeader(HttpHeaders.SET_COOKIE, clearRefreshCookie(req).toString());
     }
 
-    private ResponseCookie.ResponseCookieBuilder base(String name, String value, String sameSite,
-                                                      String path, Duration maxAge, HttpServletRequest req) {
+    /**
+     * Builds an HttpOnly cookie with the given attributes plus the host-dependent {@code Secure} and
+     * {@code Domain} rules. Shared by the user and admin auth cookies so both follow one policy.
+     */
+    public ResponseCookie buildCookie(String name, String value, String sameSite,
+                                      String path, Duration maxAge, HttpServletRequest req) {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .sameSite(sameSite)
                 .path(path)
                 .maxAge(maxAge);
         applyHostRules(builder, req);
-        return builder;
+        return builder.build();
     }
 }
