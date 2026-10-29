@@ -7,6 +7,7 @@ import com.aaspass.dto.response.AddressResponse;
 import com.aaspass.dto.response.UserResponse;
 import com.aaspass.entity.Address;
 import com.aaspass.entity.User;
+import com.aaspass.entity.VerificationCheck;
 import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.AddressRepository;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -93,24 +95,43 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
+        // Validate every field before applying any, so a rejected request changes nothing.
+        String aadhaar = null;
+        String pan = null;
         if (request != null && request.aadharNumber() != null) {
-            String aadhaar = KycFormat.normaliseAadhaar(request.aadharNumber());
+            aadhaar = KycFormat.normaliseAadhaar(request.aadharNumber());
             if (!KycFormat.isValidAadhaar(aadhaar)) {
                 throw new BadRequestException("Aadhaar must be 12 digits");
             }
-            user.updateAadharNumber(aadhaar);
+            assertChangeable(user.getAadharVerification(), user.getAadharNumber(), aadhaar, "Aadhaar");
         }
         if (request != null && request.panNumber() != null) {
-            String pan = KycFormat.normalisePan(request.panNumber());
+            pan = KycFormat.normalisePan(request.panNumber());
             if (!KycFormat.isValidPan(pan)) {
                 throw new BadRequestException("PAN must look like ABCDE1234F");
             }
+            assertChangeable(user.getPanVerification(), user.getPanNumber(), pan, "PAN");
+        }
+        if (aadhaar != null) {
+            user.updateAadharNumber(aadhaar);
+        }
+        if (pan != null) {
             user.updatePanNumber(pan);
         }
 
         User saved = userRepository.save(user);
         log.info("[USER SERVICE] KYC updated for user ID: {}", userId);
         return DtoMapper.toUserResponse(saved, true, true, true);
+    }
+
+    /**
+     * A verified KYC identifier is locked: replacing it would silently discard the admin's
+     * verification. Re-sending the same value is a harmless no-op. An admin rejection unlocks it.
+     */
+    private static void assertChangeable(VerificationCheck check, String current, String next, String label) {
+        if (check != null && check.isVerified() && !Objects.equals(current, next)) {
+            throw new BadRequestException(label + " is verified and can no longer be changed");
+        }
     }
 
     @Transactional(readOnly = true)

@@ -172,7 +172,9 @@
                     @if (storeService.currentUser().aadharNumber) {
                       <ng-container *ngTemplateOutlet="kycChipTpl; context: { $implicit: 'aadhar' }" />
                     }
-                    @if (editingKyc() !== 'aadhaar') {
+                    @if (kycLocked('aadhar')) {
+                      <span class="text-[11px] font-bold text-slate-600" data-testid="kyc-aadhaar-locked" title="A verified Aadhaar can't be changed">Locked<span class="sr-only"> — a verified Aadhaar can't be changed</span></span>
+                    } @else if (editingKyc() !== 'aadhaar') {
                       <button
                         type="button"
                         id="kyc-aadhaar-update"
@@ -228,7 +230,9 @@
                     @if (storeService.currentUser().panNumber) {
                       <ng-container *ngTemplateOutlet="kycChipTpl; context: { $implicit: 'pan' }" />
                     }
-                    @if (editingKyc() !== 'pan') {
+                    @if (kycLocked('pan')) {
+                      <span class="text-[11px] font-bold text-slate-600" data-testid="kyc-pan-locked" title="A verified PAN can't be changed">Locked<span class="sr-only"> — a verified PAN can't be changed</span></span>
+                    } @else if (editingKyc() !== 'pan') {
                       <button
                         type="button"
                         id="kyc-pan-update"

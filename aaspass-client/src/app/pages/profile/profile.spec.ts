@@ -74,6 +74,26 @@ describe('ProfileComponent verification states', () => {
     expect(chip(el, 'aadhar')?.textContent).toContain('✓ Verified');
   });
 
+  it('locks a verified Aadhaar but keeps an unverified PAN editable', () => {
+    const el = render({
+      aadharNumber: 'XXXX XXXX 9012',
+      panNumber: 'XXXXX1234X',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'UNVERIFIED' }, aadhar: { status: 'VERIFIED' } }
+    });
+    expect(el.querySelector('#kyc-aadhaar-update')).toBeNull();
+    expect(el.querySelector('[data-testid="kyc-aadhaar-locked"]')?.textContent).toContain('Locked');
+    expect(el.querySelector('#kyc-pan-update')).not.toBeNull();
+    expect(el.querySelector('[data-testid="kyc-pan-locked"]')).toBeNull();
+  });
+
+  it('keeps a rejected PAN editable', () => {
+    const el = render({
+      panNumber: 'XXXXX1234X',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'REJECTED', reason: 'Blurry' }, aadhar: { status: 'UNVERIFIED' } }
+    });
+    expect(el.querySelector('#kyc-pan-update')).not.toBeNull();
+  });
+
   it('shows no Aadhaar chip when Aadhaar is absent', () => {
     const el = render({ aadharNumber: undefined });
     expect(chip(el, 'aadhar')).toBeNull();
