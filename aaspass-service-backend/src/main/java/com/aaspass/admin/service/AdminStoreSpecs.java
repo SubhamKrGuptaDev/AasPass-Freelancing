@@ -36,14 +36,7 @@ public final class AdminStoreSpecs {
         if (statusSpec != null) {
             specs.add(statusSpec);
         }
-        if (country != null && !country.isBlank()) {
-            String c = country.trim().toLowerCase(Locale.ROOT);
-            specs.add((root, q, cb) -> cb.equal(cb.lower(root.get("country")), c));
-        }
-        if (city != null && !city.isBlank()) {
-            String c = city.trim().toLowerCase(Locale.ROOT);
-            specs.add((root, q, cb) -> cb.equal(cb.lower(root.get("city")), c));
-        }
+        specs.addAll(AdminLocationSpecs.<Store>of(country, city));
         if (name != null && !name.isBlank()) {
             String n = "%" + escapeLike(name.trim().toLowerCase(Locale.ROOT)) + "%";
             specs.add((root, q, cb) -> cb.like(cb.lower(root.get("storeName")), n, LIKE_ESCAPE));
