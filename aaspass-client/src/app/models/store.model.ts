@@ -213,6 +213,8 @@ export interface StoreProfile {
   views?: StoreEngagementStats;
   viewHistory?: StoreViewRecord[];
   avatarUrl: string;
+  /** Owner's uploaded profile picture (versioned URL); shown on the card instead of avatarUrl when set. */
+  ownerProfilePictureUrl?: string;
   bannerGradient: string;
   isAvailable: boolean;
   /** Published and visible in store search. New stores start inactive until the owner activates them. */

@@ -10,6 +10,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -84,6 +87,23 @@ public class GlobalExceptionHandler {
         log.debug("[API BAD REQUEST] Unreadable body cause: {}", ex.getMostSpecificCause().getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error("Invalid request body."));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        log.warn("[API PAYLOAD TOO LARGE] Path: {} {}", request.getMethod(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.error("Uploaded file is too large. Maximum size is 1 MB."));
+    }
+
+    @ExceptionHandler({MultipartException.class, MissingServletRequestPartException.class})
+    public ResponseEntity<ApiResponse<Object>> handleMultipart(
+            Exception ex, HttpServletRequest request) {
+        log.warn("[API BAD REQUEST] Path: {} {}, Invalid multipart request: {}",
+                request.getMethod(), request.getRequestURI(), ex.getClass().getSimpleName());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid file upload. Please choose an image and try again."));
     }
 
     @ExceptionHandler(Exception.class)

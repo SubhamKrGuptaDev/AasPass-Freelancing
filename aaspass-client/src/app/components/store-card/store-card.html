@@ -16,7 +16,8 @@
 
     <div class="mb-3 flex items-start gap-3">
       <img
-        [src]="store().avatarUrl"
+        [src]="imageUrl()"
+        (error)="fallbackToAvatar($event, store().avatarUrl)"
         [alt]="store().ownerName"
         class="h-12 w-12 flex-shrink-0 rounded-xl object-cover ring-2 ring-slate-100"
       />

@@ -14,6 +14,7 @@ import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.User;
 import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
+import com.aaspass.util.ProfilePictureUrls;
 
 import java.util.Collections;
 import java.util.List;
@@ -60,6 +61,7 @@ public final class DtoMapper {
                 .aadharNumber(includePrivate ? KycMasking.maskAadhaar(user.getAadharNumber()) : null)
                 .panNumber(includePrivate ? KycMasking.maskPan(user.getPanNumber()) : null)
                 .avatarUrl(AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()))
+                .profilePictureUrl(ProfilePictureUrls.of(user.getId(), user.getProfilePictureUpdatedAt()))
                 .city(user.getCity())
                 .area(user.getArea())
                 .country(user.getCountry() != null && !user.getCountry().isBlank() ? user.getCountry() : "India")
@@ -128,6 +130,9 @@ public final class DtoMapper {
                 .reviewCount(reviewCount)
                 .description(store.getDescription())
                 .avatarUrl(store.getAvatarUrl())
+                .ownerProfilePictureUrl(store.getUser() != null
+                        ? ProfilePictureUrls.of(store.getUser().getId(), store.getUser().getProfilePictureUpdatedAt())
+                        : null)
                 .bannerGradient(store.getBannerGradient())
                 .isAvailable(store.getIsAvailable())
                 .isActive(store.getIsActive())

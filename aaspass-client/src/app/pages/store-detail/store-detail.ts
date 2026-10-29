@@ -23,6 +23,7 @@ import {
 } from '../../models/store.model';
 import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS } from '../../config/feature-flags';
 
+import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 @Component({
   selector: 'app-store-detail',
   standalone: true,
@@ -31,6 +32,8 @@ import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS } from '../../
   styleUrl: './store-detail.css'
 })
 export class StoreDetailComponent {
+  protected readonly displayImageUrl = displayImageUrl;
+  protected readonly fallbackToAvatar = fallbackToAvatar;
   private route = inject(ActivatedRoute);
   private routeParamMap = toSignal(this.route.paramMap);
   storeService = inject(StoreService);

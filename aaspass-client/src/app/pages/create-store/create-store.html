@@ -253,7 +253,8 @@
 
             <div class="flex items-start gap-3 mb-3">
               <img 
-                [src]="storeService.currentUser().avatarUrl" 
+                [src]="displayImageUrl(storeService.currentUser().profilePictureUrl, storeService.currentUser().avatarUrl)" 
+                (error)="fallbackToAvatar($event, storeService.currentUser().avatarUrl)"
                 alt="Avatar" 
                 class="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-100"
               />

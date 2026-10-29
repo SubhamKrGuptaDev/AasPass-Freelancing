@@ -113,6 +113,7 @@ export interface BackendStoreResponse {
   reviewCount?: number;
   description?: string;
   avatarUrl?: string;
+  ownerProfilePictureUrl?: string | null;
   bannerGradient?: string;
   isAvailable?: boolean;
   isActive?: boolean;
@@ -135,6 +136,7 @@ export interface BackendUserResponse {
   aadharNumber?: string;
   panNumber?: string;
   avatarUrl?: string;
+  profilePictureUrl?: string | null;
   city?: string;
   area?: string;
   country?: string;
@@ -163,3 +165,7 @@ export type AddressResponse = BackendAddressResponse;
 export type ServiceItemResponse = BackendStoreServiceResponse;
 export type StoreReviewResponse = BackendStoreReviewResponse;
 export type SocialMediaLinkResponse = BackendSocialMediaLinkResponse;
+
+export interface BackendProfilePictureResponse {
+  profilePictureUrl?: string | null;
+}

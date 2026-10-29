@@ -6,6 +6,7 @@ import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { StoreProfile } from '../../models/store.model';
+import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 import { StoreService } from '../../services/store/store.service';
 
 @Component({
@@ -21,6 +22,10 @@ export class StoreCardComponent {
 
   /** "Area, City" with empty parts skipped (no distance: viewer location is not known). */
   readonly location = computed(() => [this.store().area, this.store().city].filter(Boolean).join(', '));
+
+  /** Owner's uploaded picture when set, otherwise the store avatar. */
+  readonly imageUrl = computed(() => displayImageUrl(this.store().ownerProfilePictureUrl, this.store().avatarUrl));
+  protected readonly fallbackToAvatar = fallbackToAvatar;
 
   storeKey(): string {
     return this.storeService.getStoreUrlKey(this.store());

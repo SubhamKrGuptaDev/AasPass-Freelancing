@@ -174,6 +174,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/stores/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/stores/*/views").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/profile-picture").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated());
         return http.build();

@@ -33,6 +33,7 @@ public record StoreResponse(
     Integer reviewCount,
     String description,
     String avatarUrl,
+    String ownerProfilePictureUrl,
     String bannerGradient,
     Boolean isAvailable,
     Boolean isActive,

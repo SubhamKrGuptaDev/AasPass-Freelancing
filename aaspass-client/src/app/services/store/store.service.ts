@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import { BackendStoreResponse } from '../../models/response.model';
 import {
   StoreProfile,
@@ -188,6 +188,7 @@ export class StoreService {
         lifetime: s.views?.lifetime ?? 0
       },
       avatarUrl: (s.avatarUrl && s.avatarUrl.trim()) ? s.avatarUrl.trim() : getRandomAvatarUrl(s.storeName || s.ownerName),
+      ownerProfilePictureUrl: s.ownerProfilePictureUrl || undefined,
       bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
       isAvailable: s.isAvailable !== false,
       isActive: s.isActive === true,
@@ -804,6 +805,26 @@ export class StoreService {
         }
       });
     }
+  }
+
+  /** Uploads the user's profile picture and shows it on their store cards without a reload. */
+  uploadProfilePicture(image: Blob, fileName: string): Observable<string | undefined> {
+    return this.authService.uploadProfilePicture(image, fileName).pipe(
+      tap(url => this.applyOwnerProfilePicture(url))
+    );
+  }
+
+  /** Removes the user's profile picture; their store cards fall back to the store avatar. */
+  removeProfilePicture(): Observable<void> {
+    return this.authService.removeProfilePicture().pipe(
+      tap(() => this.applyOwnerProfilePicture(undefined))
+    );
+  }
+
+  private applyOwnerProfilePicture(url: string | undefined): void {
+    const ownerId = this.currentUser().id;
+    if (!ownerId) return;
+    this.stores.update(list => list.map(s => String(s.userId) === String(ownerId) ? { ...s, ownerProfilePictureUrl: url } : s));
   }
 
   // Toggle store active/available status for a specific store or default to active
