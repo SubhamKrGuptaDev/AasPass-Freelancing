@@ -123,6 +123,8 @@ AasPass-Freelancing/
 
 ## 🚀 Getting Started
 
+> Day-to-day commands (build, test, cache cleanup, troubleshooting) are listed in [COMMANDS.md](COMMANDS.md).
+
 ### Prerequisites
 * **Java 17 LTS** (JDK 17) & **Maven**
 * **Node.js** (v20+ recommended) & **npm**
