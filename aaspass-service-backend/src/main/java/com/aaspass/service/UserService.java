@@ -59,7 +59,7 @@ public class UserService {
                 });
 
         if (request.name() != null) user.setName(request.name().trim());
-        if (request.phone() != null) user.setPhone(request.phone().trim());
+        if (request.phone() != null) user.updatePhone(request.phone().trim());
         if (request.avatarUrl() != null) {
             String trimmedAvatar = request.avatarUrl().trim();
             user.setAvatarUrl(trimmedAvatar.isEmpty() ? AvatarGenerator.generateRandomAvatar(user.getUsername()) : trimmedAvatar);
@@ -94,14 +94,14 @@ public class UserService {
             if (!KycFormat.isValidAadhaar(aadhaar)) {
                 throw new BadRequestException("Aadhaar must be 12 digits");
             }
-            user.setAadharNumber(aadhaar);
+            user.updateAadharNumber(aadhaar);
         }
         if (request != null && request.panNumber() != null) {
             String pan = KycFormat.normalisePan(request.panNumber());
             if (!KycFormat.isValidPan(pan)) {
                 throw new BadRequestException("PAN must look like ABCDE1234F");
             }
-            user.setPanNumber(pan);
+            user.updatePanNumber(pan);
         }
 
         User saved = userRepository.save(user);
