@@ -1,8 +1,8 @@
-import { HttpClient, HttpContext } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, finalize, map, shareReplay, tap } from 'rxjs';
-import { SKIP_ERROR_TOAST } from '../interceptors/http-context';
+import { Observable, catchError, finalize, firstValueFrom, map, shareReplay, tap, throwError } from 'rxjs';
+import { SKIP_AUTH_REFRESH, SKIP_ERROR_TOAST } from '../interceptors/http-context';
 import { AdminProfile, ApiResponse } from '../models/admin.models';
 import { ToastService } from './toast.service';
 
@@ -22,25 +22,26 @@ export class AdminAuthService {
   private restorePromise: Promise<void> | null = null;
   private refreshInFlight$: Observable<AdminProfile> | null = null;
 
-  /** Checks the cookie session once per app load; a failure simply means "guest". */
+  /**
+   * Checks the cookie session once per app load. The access cookie lives 15 minutes but the refresh
+   * session 12 hours, so a 401 from GET /me (cookie gone or expired) renews the session once through
+   * the shared refresh and takes the admin from its response. Never rejects: any failure, including a
+   * rejected refresh, simply means "guest" (no toast, no redirect).
+   */
   restore(): Promise<void> {
     if (!this.restorePromise) {
-      this.restorePromise = new Promise<void>((resolve) => {
-        this.http
-          .get<ApiResponse<AdminProfile>>(`${AUTH_URL}/me`, {
-            context: new HttpContext().set(SKIP_ERROR_TOAST, true)
-          })
-          .subscribe({
-            next: (res) => {
-              this.admin.set(res?.data ?? null);
-              resolve();
-            },
-            error: () => {
-              this.admin.set(null);
-              resolve();
-            }
-          });
-      });
+      const context = new HttpContext().set(SKIP_ERROR_TOAST, true).set(SKIP_AUTH_REFRESH, true);
+      this.restorePromise = firstValueFrom(
+        this.http.get<ApiResponse<AdminProfile>>(`${AUTH_URL}/me`, { context }).pipe(
+          map((res) => res?.data ?? null),
+          catchError((err: unknown) =>
+            err instanceof HttpErrorResponse && err.status === 401 ? this.refresh() : throwError(() => err)
+          )
+        ),
+        { defaultValue: null }
+      )
+        .then((profile) => this.admin.set(profile ?? null))
+        .catch(() => this.admin.set(null));
     }
     return this.restorePromise;
   }
@@ -65,7 +66,7 @@ export class AdminAuthService {
     if (!this.refreshInFlight$) {
       this.refreshInFlight$ = this.http
         .post<ApiResponse<AdminProfile>>(`${AUTH_URL}/refresh`, {}, {
-          context: new HttpContext().set(SKIP_ERROR_TOAST, true)
+          context: new HttpContext().set(SKIP_ERROR_TOAST, true).set(SKIP_AUTH_REFRESH, true)
         })
         .pipe(
           map((res) => res.data),

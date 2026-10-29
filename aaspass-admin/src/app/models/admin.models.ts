@@ -36,9 +36,10 @@ export interface AdminStoreSummary {
   id: number;
   storeName: string;
   category: string;
-  ownerId: number;
-  ownerName: string;
-  ownerUsername: string;
+  /** Owner fields are null when the store has no owner (orphaned row). */
+  ownerId: number | null;
+  ownerName: string | null;
+  ownerUsername: string | null;
   city: string;
   country: string;
   area: string;
@@ -65,7 +66,8 @@ export interface AdminStoreDetail {
   adminBlockReason: string | null;
   adminBlockedAt: string | null;
   adminReviewedAt: string | null;
-  owner: AdminOwnerSummary;
+  /** Null when the store has no owner (orphaned row). */
+  owner: AdminOwnerSummary | null;
 }
 
 export interface AdminUserSummary {

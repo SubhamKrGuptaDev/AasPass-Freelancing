@@ -81,6 +81,13 @@ describe('StoreDetailPage', () => {
     expect(el.querySelector('a[href="http://localhost:4200/stores/5"]')).not.toBeNull();
   });
 
+  it('showsNoOwnerNoticeWhenOwnerIsNull', async () => {
+    await setup(detail({ owner: null }, { ownerId: null, ownerName: null, ownerUsername: null }));
+    expect(el.querySelector('a[href^="/users/"]')).toBeNull();
+    expect(el.textContent).toContain('This store has no owner account.');
+    expect(el.textContent).not.toContain('@null');
+  });
+
   it('unblocksStore', async () => {
     await setup(detail({ adminBlockReason: 'x' }, { adminBlocked: true, reviewed: true }));
     button('Unblock store')!.click();

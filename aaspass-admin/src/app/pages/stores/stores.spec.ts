@@ -22,8 +22,8 @@ describe('StoresPage', () => {
   let harness: RouterTestingHarness;
   let el: HTMLElement;
 
-  const setup = async (url: string) => {
-    searchStores = vi.fn().mockReturnValue(of(pageOf([store])));
+  const setup = async (url: string, rows: AdminStoreSummary[] = [store]) => {
+    searchStores = vi.fn().mockReturnValue(of(pageOf(rows)));
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -43,6 +43,13 @@ describe('StoresPage', () => {
     expect(searchStores).toHaveBeenCalledWith(expect.objectContaining({ city: 'Bengaluru', status: 'blocked' }));
     expect(el.querySelector<HTMLSelectElement>('#filter-status')!.value).toBe('blocked');
     expect(el.querySelector<HTMLSelectElement>('#filter-city')!.value).toBe('Bengaluru');
+  });
+
+  it('rendersOwnerlessStoreWithoutNullText', async () => {
+    await setup('/stores', [{ ...store, ownerId: null, ownerName: null, ownerUsername: null }]);
+    const row = el.querySelector('tbody tr')!;
+    expect(row.textContent).toContain('No owner');
+    expect(row.textContent).not.toContain('null');
   });
 
   it('updatesUrlAndResetsPageWhenStatusChanges', async () => {

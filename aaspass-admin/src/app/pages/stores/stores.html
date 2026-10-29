@@ -81,8 +81,10 @@
                 <p class="text-xs text-slate-600">{{ store.category }}</p>
               </td>
               <td class="px-4 py-3 text-slate-800">
-                {{ store.ownerName }}
-                <p class="text-xs text-slate-600">{{ '@' + store.ownerUsername }}</p>
+                {{ store.ownerName ?? 'No owner' }}
+                @if (store.ownerUsername) {
+                  <p class="text-xs text-slate-600">{{ '@' + store.ownerUsername }}</p>
+                }
               </td>
               <td class="px-4 py-3 text-slate-800">{{ store.city }}, {{ store.country }}</td>
               <td class="px-4 py-3 text-slate-800">{{ store.creationDateTime | date: 'mediumDate' }}</td>

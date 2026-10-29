@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { AdminUserDetail } from '../../models/admin.models';
 import { AdminApiService } from '../../services/admin-api.service';
+import { ToastService } from '../../services/toast.service';
 import { UserDetailPage } from './user-detail';
 
 const detail = (summary: Partial<AdminUserDetail['summary']> = {}, over: Partial<AdminUserDetail> = {}): AdminUserDetail => ({
@@ -86,5 +87,38 @@ describe('UserDetailPage', () => {
     harness.detectChanges();
     expect(api.suspendUser).toHaveBeenCalledWith(9, expect.any(String), 'Abuse');
     expect(button('Lift suspension')).toBeDefined();
+  });
+
+  it.each(['/users/0', '/users/-3', '/users/1.5', '/users/1e3', '/users/%20'])('rejectsNonPositiveIntegerId %s', async (url) => {
+    await setup(detail(), url);
+    expect(api.getUser).not.toHaveBeenCalled();
+    expect(el.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  it('dropsStaleMutationResponseAfterRouteChange', async () => {
+    await setup(detail({ suspendedUntil: '2030-01-01T10:00:00' }, { suspensionReason: 'Abuse' }));
+    const pendingLift = new Subject<AdminUserDetail>();
+    api.liftSuspension.mockReturnValue(pendingLift);
+    api.getUser.mockReturnValue(of(detail({ id: 10, name: 'Ravi Kumar', username: 'ravi', suspendedUntil: '2030-01-01T10:00:00' })));
+    const toast = TestBed.inject(ToastService);
+
+    button('Lift suspension')!.click();
+    harness.detectChanges();
+    expect(button('Lift suspension')!.disabled).toBe(true);
+
+    await harness.navigateByUrl('/users/10', UserDetailPage);
+    harness.detectChanges();
+    expect(api.getUser).toHaveBeenLastCalledWith(10);
+    // The new user's actions are usable even though user 9's request is still pending.
+    expect(button('Lift suspension')!.disabled).toBe(false);
+
+    // User 9's late response must not replace user 10.
+    pendingLift.next(detail());
+    pendingLift.complete();
+    harness.detectChanges();
+    expect(el.textContent).toContain('Ravi Kumar');
+    expect(el.textContent).not.toContain('Asha Rao');
+    expect(el.textContent).toContain('Suspended until');
+    expect(toast.toasts()).toEqual([]);
   });
 });

@@ -11,6 +11,9 @@ import { HlmSkeleton } from '../../ui/skeleton/src';
 import { SuspendDialogComponent, SuspensionRequest } from './suspend-dialog/suspend-dialog';
 import { VerificationPanelComponent } from './verification-panel/verification-panel';
 
+/** Route ids are plain positive decimal integers (no sign, exponent, fraction or whitespace). */
+const POSITIVE_INTEGER = /^\d+$/;
+
 /** Moderation view of one user: profile, verification review, stores and suspension. */
 @Component({
   selector: 'app-user-detail',
@@ -44,10 +47,13 @@ export class UserDetailPage {
           this.user.set(null);
           this.loadFailed.set(false);
           this.userId.set(null);
+          // A mutation still pending for the previous user must not block this one; run() drops its response.
+          this.busy.set(false);
         }),
         switchMap((p) => {
-          const id = Number(p.get('id'));
-          if (!p.get('id') || !Number.isFinite(id)) {
+          const raw = p.get('id') ?? '';
+          const id = POSITIVE_INTEGER.test(raw) ? Number(raw) : NaN;
+          if (!Number.isSafeInteger(id) || id <= 0) {
             this.loadFailed.set(true);
             return of(null);
           }
@@ -65,7 +71,9 @@ export class UserDetailPage {
   }
 
   protected onVerificationChanged(updated: AdminUserDetail): void {
-    this.user.set(updated);
+    if (this.isCurrent(updated)) {
+      this.user.set(updated);
+    }
   }
 
   protected openSuspendDialog(): void {
@@ -86,18 +94,36 @@ export class UserDetailPage {
     }
   }
 
+  /**
+   * Runs one mutation for the current user. If the route moves to another user while it is pending,
+   * its response (or error) is dropped so it cannot overwrite the newly loaded user or their busy state.
+   */
   private run(request: Observable<AdminUserDetail>, successMessage: string): void {
     if (this.busy()) {
       return;
     }
+    const requestedFor = this.userId();
     this.busy.set(true);
     request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (updated) => {
+        if (this.userId() !== requestedFor || !this.isCurrent(updated)) {
+          return;
+        }
         this.user.set(updated);
         this.busy.set(false);
         this.toast.success(successMessage);
       },
-      error: () => this.busy.set(false)
+      error: () => {
+        if (this.userId() === requestedFor) {
+          this.busy.set(false);
+        }
+      }
     });
+  }
+
+  /** @return true when {@code updated} belongs to the user currently shown by the route. */
+  private isCurrent(updated: AdminUserDetail | null | undefined): updated is AdminUserDetail {
+    const id = this.userId();
+    return id !== null && updated?.summary?.id === id;
   }
 }

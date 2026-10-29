@@ -76,7 +76,7 @@
                   <td class="py-2 pr-2">
                     <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ store.storeName }}</a>
                   </td>
-                  <td class="py-2 pr-2 text-slate-700">{{ store.ownerName }}</td>
+                  <td class="py-2 pr-2 text-slate-700">{{ store.ownerName ?? 'No owner' }}</td>
                   <td class="py-2 pr-2 text-slate-700">{{ store.creationDateTime | date: 'mediumDate' }}</td>
                   <td class="py-2"><app-status-chip status="unreviewed" /></td>
                 </tr>
