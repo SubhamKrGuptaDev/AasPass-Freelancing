@@ -179,4 +179,22 @@ describe('HomeComponent', () => {
     expect(links.length).toBe(31);
     expect(links[0].getAttribute('href')).toContain('category=Video');
   });
+
+  it('collapses categories to 4 (mobile/tablet) or 8 (lg+) until "Show all" is clicked', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const cards = () => Array.from(el.querySelectorAll('a[data-testid="category-card"]'));
+    const toggle = el.querySelector<HTMLButtonElement>('button[data-testid="category-toggle"]');
+
+    expect(cards().filter(c => !c.classList.contains('hidden')).length).toBe(4);
+    expect(cards().filter(c => c.classList.contains('lg:flex')).length).toBe(4);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.textContent?.trim()).toBe('Show all 31 categories');
+
+    toggle?.click();
+    fixture.detectChanges();
+    expect(cards().every(c => !c.classList.contains('hidden'))).toBe(true);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle?.textContent?.trim()).toBe('Show fewer categories');
+  });
 });
