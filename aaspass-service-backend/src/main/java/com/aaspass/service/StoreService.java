@@ -281,6 +281,13 @@ public class StoreService {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
 
+        // An owner visiting their own storefront is not engagement, so it is neither counted nor logged
+        Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
+        if (ownerId != null && viewerId.isPresent() && ownerId.equals(viewerId.get())) {
+            log.info("[STORE SERVICE] Store ID: {} viewed by its owner; view not counted", id);
+            return DtoMapper.toStoreResponse(store, true);
+        }
+
         StoreEngagementStats stats = store.getViews();
         if (stats == null) {
             stats = new StoreEngagementStats();

@@ -297,14 +297,19 @@ export class StoreService {
     this.storeHttpService.getStoreById(numId).subscribe({
       next: (res) => {
         if (res && res.data) {
-          const profile = this.mapBackendStoreToProfile(res.data);
-          this.stores.update(list => {
-            const exists = list.some(s => String(s.id) === String(profile.id));
-            return exists ? list.map(s => String(s.id) === String(profile.id) ? profile : s) : [profile, ...list];
-          });
+          this.upsertStore(this.mapBackendStoreToProfile(res.data));
         }
       },
       error: () => {}
+    });
+  }
+
+  // Replace a store in the master list with fresh backend data (or add it when not loaded yet)
+  private upsertStore(profile: StoreProfile): void {
+    if (!profile.id) return;
+    this.stores.update(list => {
+      const exists = list.some(s => String(s.id) === String(profile.id));
+      return exists ? list.map(s => String(s.id) === String(profile.id) ? profile : s) : [profile, ...list];
     });
   }
 
@@ -562,8 +567,16 @@ export class StoreService {
     );
   }
 
-  // Record view count at store level (increments daily, weekly, monthly, lifetime counters)
+  // Record view count at store level (increments daily, weekly, monthly, lifetime counters).
+  // An owner viewing their own store is not counted (the backend enforces the same rule).
+  // The master list is loaded once at startup, so either way the store is reloaded from the backend
+  // to show views recorded by other visitors since then.
   recordStoreView(storeId: string, viewerId?: string): void {
+    if (this.authService.isLoggedIn() && this.userStores().some(s => s.id === storeId)) {
+      this.fetchStoreById(storeId);
+      return;
+    }
+
     const nowIso = new Date().toISOString();
     const newRecord: StoreViewRecord = {
       id: 'view-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -599,26 +612,17 @@ export class StoreService {
       };
     }));
 
-    // If this store belongs to the current user, update currentUser as well
-    const user = this.currentUser();
-    const userStoreIds = (user.stores || (user.store ? [user.store] : [])).map(s => s.id);
-    if (userStoreIds.includes(storeId)) {
-      const updatedStore = this.getStoreById(storeId);
-      if (updatedStore) {
-        this.patchCurrentUser(u => {
-          const updatedStores = (u.stores || []).map(s => s.id === storeId ? updatedStore : s);
-          return {
-            ...u,
-            store: u.store?.id === storeId ? updatedStore : u.store,
-            stores: updatedStores
-          };
-        });
-      }
-    }
-
     // Call Spring Boot REST API via StoreHttpService: POST /api/stores/{id}/views
     const numId = parseInt(String(storeId ?? '').replace(/\D/g, '') || '1', 10);
-    this.storeHttpService.recordStoreView(numId).subscribe({ error: () => {} });
+    // The response carries the authoritative counters; it replaces the optimistic increment above
+    this.storeHttpService.recordStoreView(numId).subscribe({
+      next: (res) => {
+        if (res?.data) {
+          this.upsertStore(this.mapBackendStoreToProfile(res.data));
+        }
+      },
+      error: () => {}
+    });
   }
 
   // Get view metrics for a specific store

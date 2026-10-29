@@ -112,6 +112,22 @@ class OwnershipAndKycTest {
     }
 
     @Test
+    @DisplayName("Owner viewing their own store does not count as a view")
+    void ownerViewIsNotCounted() throws Exception {
+        Long storeId = priyaStoreId();
+        var views = storeRepository.findById(storeId).orElseThrow().getViews();
+        int expected = (views != null && views.getLifetime() != null) ? views.getLifetime() : 0;
+
+        mockMvc.perform(post("/api/stores/" + storeId + "/views").with(csrf()).cookie(login("priya")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.views.lifetime", is(expected)));
+
+        mockMvc.perform(post("/api/stores/" + storeId + "/views").with(csrf()).cookie(login("aman")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.views.lifetime", is(expected + 1)));
+    }
+
+    @Test
     @DisplayName("Write without CSRF token is rejected")
     void writeWithoutCsrfIsRejected() throws Exception {
         mockMvc.perform(put("/api/users/" + id("aman")).cookie(login("aman"))
