@@ -17,6 +17,7 @@ import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
 import com.aaspass.util.ProfilePictureUrls;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,11 +38,20 @@ public final class DtoMapper {
      */
     public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
                                           boolean includePrivate) {
+        return toUserResponse(user, includeStores, includeAddresses, includePrivate, Instant.now());
+    }
+
+    /**
+     * @param now used to hide admin-hidden (blocked or suspended-owner) stores from non-private views
+     */
+    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
+                                          boolean includePrivate, Instant now) {
         if (user == null) return null;
 
         List<StoreResponse> storeResponses = Collections.emptyList();
         if (includeStores && user.getStores() != null) {
             storeResponses = user.getStores().stream()
+                    .filter(store -> includePrivate || !store.isAdminHidden(now))
                     .map(store -> toStoreResponse(store, false, includePrivate))
                     .collect(Collectors.toList());
         }

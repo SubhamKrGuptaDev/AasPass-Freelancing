@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,9 +34,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
 
-    public UserService(UserRepository userRepository, AddressRepository addressRepository) {
+    private final Clock clock;
+
+    public UserService(UserRepository userRepository, AddressRepository addressRepository, Clock clock) {
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -46,7 +50,7 @@ public class UserService {
                     log.warn("[USER SERVICE] User not found with ID: {}", id);
                     return new ResourceNotFoundException("User", "id", id);
                 });
-        return DtoMapper.toUserResponse(user, true, isSelf, isSelf);
+        return DtoMapper.toUserResponse(user, true, isSelf, isSelf, clock.instant());
     }
 
     @Transactional

@@ -200,6 +200,46 @@ class ModerationEnforcementTest {
     }
 
     @Test
+    void blockedStoreOmittedFromPublicProfileButShownToOwner() throws Exception {
+        Long priyaId = user("priya").getId();
+        blockPriyaStore();
+        mockMvc.perform(get("/api/users/" + priyaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stores", hasSize(0)));
+        mockMvc.perform(get("/api/auth/me").cookie(login("priya")))
+                .andExpect(jsonPath("$.data.stores", hasSize(1)))
+                .andExpect(jsonPath("$.data.stores[0].adminBlocked").value(true));
+    }
+
+    @Test
+    void suspendedOwnerStoresOmittedFromPublicProfile() throws Exception {
+        suspend("priya", Instant.now().plus(1, ChronoUnit.DAYS));
+        mockMvc.perform(get("/api/users/" + user("priya").getId()))
+                .andExpect(jsonPath("$.data.stores", hasSize(0)));
+    }
+
+    @Test
+    void viewsOnBlockedStoreIs404ForAnonymousAnd200ForOwner() throws Exception {
+        Long id = priyaStore().getId();
+        blockPriyaStore();
+        mockMvc.perform(post("/api/stores/" + id + "/views").with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/stores/" + id + "/views").with(csrf()).cookie(login("priya")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void ownerSuspensionAloneHidesStoreFromOthers() throws Exception {
+        Long id = priyaStore().getId();
+        Long priyaId = user("priya").getId();
+        suspend("priya", Instant.now().plus(1, ChronoUnit.DAYS));
+        mockMvc.perform(get("/api/stores/" + id)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/stores/user/" + priyaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
     void userWithNullEmbeddedChecksMapsSafely() {
         User u = new User();
         u.setPhoneVerification(null);
