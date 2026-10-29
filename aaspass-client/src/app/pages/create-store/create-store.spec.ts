@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { API_BASE_URL } from '../../config/api.config';
 import { UserProfile } from '../../models/user.model';
 import { AuthService } from '../../services/auth/auth.service';
+import { ToastService } from '../../services/toast/toast.service';
 import { EMPTY_USER_PROFILE } from '../../services/store/store.service';
 import { CreateStoreComponent } from './create-store';
 
@@ -58,5 +59,19 @@ describe('CreateStoreComponent country', () => {
     fixture.componentInstance.onSubmit();
     const req = http.expectOne(r => r.method === 'POST' && r.url === `${API_BASE_URL}/stores`);
     expect((req.request.body as { country?: string }).country).toBe('Canada');
+  });
+
+  it.each([
+    ['country', 'Please select your country and city.'],
+    ['city', 'Please select your country and city.']
+  ] as const)('blocks submit with a toast and no request when the %s is blank', (field, message) => {
+    const { fixture, http } = setup({ country: 'Canada', city: 'Toronto' });
+    const cmp = fixture.componentInstance;
+    cmp.storeForm.controls[field].setValue('   ');
+    cmp.onSubmit();
+    http.expectNone(r => r.method === 'POST');
+    expect(cmp.isSubmitting()).toBe(false);
+    expect(cmp.storeForm.controls[field].touched).toBe(true);
+    expect(TestBed.inject(ToastService).toasts().some(t => t.type === 'error' && t.message === message)).toBe(true);
   });
 });

@@ -45,6 +45,36 @@ describe('GeoService', () => {
     expect(toast.toasts().filter((t) => t.type === 'error')).toHaveLength(1);
   });
 
+  it('refetches a failed country on retry, with one toast per failure, and fills the list on success', () => {
+    const cities = service.citiesFor('India');
+    http.expectOne('geo/cities/IN.json').flush('nope', { status: 500, statusText: 'Server Error' });
+    expect(toast.toasts().filter((t) => t.type === 'error')).toHaveLength(1);
+
+    // Repeated reads must not refetch.
+    service.citiesFor('India')();
+    service.isLoading('India')();
+    http.expectNone('geo/cities/IN.json');
+
+    service.retry('India');
+    expect(service.isLoading('India')()).toBe(true);
+    http.expectOne('geo/cities/IN.json').flush(['Pune']);
+    expect(cities()).toEqual(['Pune']);
+    expect(service.isLoading('India')()).toBe(false);
+    expect(toast.toasts().filter((t) => t.type === 'error')).toHaveLength(1);
+  });
+
+  it('retry does nothing for a loading, loaded, never-requested or unknown country', () => {
+    service.retry('India');
+    http.expectNone(() => true);
+
+    service.citiesFor('India');
+    service.retry('India');
+    http.expectOne('geo/cities/IN.json').flush(['Pune']);
+    service.retry('India');
+    service.retry('Atlantis');
+    http.expectNone(() => true);
+  });
+
   it('returns an empty list without a request for an unknown country', () => {
     expect(service.citiesFor('Atlantis')()).toEqual([]);
     expect(service.isLoading('Atlantis')()).toBe(false);

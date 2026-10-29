@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth/auth.service';
 import { Observable, catchError, defaultIfEmpty, forkJoin, of, tap } from 'rxjs';
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { matchingFields, minTrimmedLength, notBlank } from '../../forms/validators';
+import { DEFAULT_COUNTRY } from '../../geo/country';
 
 /** Result of the live signup availability check for one field. */
 export type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
@@ -39,7 +40,7 @@ export class AuthPageComponent implements OnInit {
     name: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(2)] }),
     username: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(3)] }),
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/@/)] }),
-    country: new FormControl('India', { nonNullable: true }),
+    country: new FormControl(DEFAULT_COUNTRY, { nonNullable: true }),
     city: new FormControl('Bengaluru', { nonNullable: true }),
     area: new FormControl('Indiranagar', { nonNullable: true }),
     password: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(6)] }),

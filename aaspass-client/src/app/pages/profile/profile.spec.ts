@@ -63,6 +63,8 @@ describe('ProfileComponent KYC', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('app-country-picker')).not.toBeNull();
     expect(el.querySelector('app-city-picker')).not.toBeNull();
+    expect(el.querySelector('#profileCountry')?.getAttribute('autocomplete')).toBe('country-name');
+    expect(el.querySelector('#profileCity')?.getAttribute('autocomplete')).toBe('address-level2');
   });
 
   it('profileSaveSendsNoKyc', () => {

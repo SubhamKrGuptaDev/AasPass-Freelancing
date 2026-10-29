@@ -38,6 +38,8 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
   readonly placeholder = input<string>('');
   /** Keeps the label for screen readers only (e.g. compact navbar placement). */
   readonly hideLabel = input(false, { transform: booleanAttribute });
+  /** HTML autofill token for the input (e.g. `country-name`, `address-level2`); `off` by default. */
+  readonly autocomplete = input<string>('off');
 
   /** Full list to search in. */
   protected abstract readonly source: Signal<readonly string[]>;
@@ -47,28 +49,51 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
   protected readonly options = computed(() => filterCities(this.source(), this.search()));
   protected readonly labelId = computed(() => `${this.inputId()}-label`);
 
-  private readonly autocomplete = viewChild(BrnAutocomplete);
+  private readonly brnAutocomplete = viewChild(BrnAutocomplete);
   private onChange: (value: string) => void = () => undefined;
   private onTouched: () => void = () => undefined;
+  /** An option was picked since the panel opened, so the closing text must not override it. */
+  private pickedWhileOpen = false;
 
   /** Brain value changes: an option was picked, or the text was cleared / Escape reset it. */
   protected onSelect(selected: string | null | undefined): void {
+    this.pickedWhileOpen = !!selected;
     this.commit(selected ?? '');
+  }
+
+  /** Hook run whenever the suggestion list opens (pointer or keyboard); subclasses may refresh data. */
+  protected onListOpen(): void {
+    // no-op by default
   }
 
   /** Opens the suggestion list on pointer interaction (keyboard opens via typing / arrows). */
   protected openList(): void {
-    this.autocomplete()?.open();
+    this.onListOpen();
+    this.brnAutocomplete()?.open();
   }
 
   /**
    * The panel started closing (pick, Tab, Escape, outside click): show the committed value again.
    * Uses `stateChanged` rather than `closed`, which only fires after the exit animation.
+   * If the text exactly matches one option (browser autofill, or typing a full name and leaving),
+   * that canonical option is committed instead, so the field never shows an uncommitted name.
    */
   protected onPanelState(state: string): void {
-    if (state === 'closed') {
-      this.search.set(this.value());
+    if (state === 'open') {
+      this.pickedWhileOpen = false;
+      this.onListOpen();
+      return;
     }
+    if (state !== 'closed') {
+      return;
+    }
+    const typed = this.search().trim().toLowerCase();
+    const exact = !this.pickedWhileOpen && typed ? this.source().find((o) => o.toLowerCase() === typed) : undefined;
+    this.pickedWhileOpen = false;
+    if (exact) {
+      this.commit(exact);
+    }
+    this.search.set(this.value());
   }
 
   protected onFocusOut(event: FocusEvent): void {

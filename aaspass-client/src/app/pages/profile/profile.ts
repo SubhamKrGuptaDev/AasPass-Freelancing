@@ -33,6 +33,7 @@ import {
 import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS, FEATURE_FLAGS } from '../../config/feature-flags';
 import { getRandomAvatarUrl } from '../../models/user.model';
 import { clampRating, notBlank } from '../../forms/validators';
+import { DEFAULT_COUNTRY } from '../../geo/country';
 
 @Component({
   selector: 'app-profile',
@@ -114,7 +115,7 @@ export class ProfileComponent {
   readonly profileForm = new FormGroup({
     name: new FormControl(this.storeService.currentUser().name, { nonNullable: true }),
     phone: new FormControl(this.storeService.currentUser().phone, { nonNullable: true }),
-    country: new FormControl(this.storeService.currentUser().country || 'India', { nonNullable: true }),
+    country: new FormControl(this.storeService.currentUser().country || DEFAULT_COUNTRY, { nonNullable: true }),
     city: new FormControl(this.storeService.currentUser().city, { nonNullable: true }),
     area: new FormControl(this.storeService.currentUser().area, { nonNullable: true }),
     bio: new FormControl(this.storeService.currentUser().bio, { nonNullable: true }),
@@ -147,7 +148,7 @@ export class ProfileComponent {
       phone: user.phone,
       area: user.area,
       city: user.city,
-      country: user.country || 'India',
+      country: user.country || DEFAULT_COUNTRY,
       bio: user.bio,
       avatarUrl: user.avatarUrl || getRandomAvatarUrl(user.name)
     });

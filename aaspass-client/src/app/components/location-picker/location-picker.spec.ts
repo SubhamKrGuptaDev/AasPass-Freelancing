@@ -199,6 +199,29 @@ describe('CountryPickerComponent', () => {
     await settle(fixture);
     expect(inputOf(fixture).disabled).toBe(true);
   });
+
+  it('commits an exactly typed name (any case) when the list closes, but not a partial one', async () => {
+    const fixture = TestBed.createComponent(CountrySignalHost);
+    await settle(fixture);
+
+    await type(fixture, 'ind');
+    inputOf(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await settle(fixture);
+    expect(fixture.componentInstance.country()).toBe('');
+    expect(inputOf(fixture).value).toBe('');
+
+    await type(fixture, ' india ');
+    inputOf(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await settle(fixture);
+    expect(fixture.componentInstance.country()).toBe('India');
+    expect(inputOf(fixture).value).toBe('India');
+  });
+
+  it('puts the autofill hint on the input, defaulting to off', async () => {
+    const fixture = TestBed.createComponent(CountrySignalHost);
+    await settle(fixture);
+    expect(inputOf(fixture).getAttribute('autocomplete')).toBe('off');
+  });
 });
 
 describe('CityPickerComponent', () => {
@@ -308,6 +331,9 @@ describe('CityPickerComponent', () => {
     expect(inputOf(fixture).value).toBe('Pune');
 
     await type(fixture, 'p');
+    // opening the list retries the failed load; it fails again here
+    http.expectOne('geo/cities/NP.json').flush('nope', { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
     expect(optionLabels(fixture)).toEqual([]);
   });
 
@@ -387,5 +413,23 @@ describe('CityPickerComponent', () => {
     expect(label?.textContent?.trim()).toBe('City');
     expect(input.getAttribute('role')).toBe('combobox');
     expect(input.hasAttribute('aria-expanded')).toBe(true);
+  });
+
+  it('retries a failed city list when the list is opened, and commits an exact name', async () => {
+    const fixture = TestBed.createComponent(CitySignalHost);
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush('nope', { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
+
+    inputOf(fixture).click();
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush(['Kanpur', 'Pune']);
+    await settle(fixture);
+
+    await type(fixture, 'pune');
+    inputOf(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('Pune');
+    expect(inputOf(fixture).value).toBe('Pune');
   });
 });

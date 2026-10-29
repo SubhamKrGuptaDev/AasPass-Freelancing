@@ -200,10 +200,10 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <app-country-picker formControlName="country" inputId="signupCountry" label="Country *" />
+              <app-country-picker formControlName="country" autocomplete="country-name" inputId="signupCountry" label="Country *" />
             </div>
             <div>
-              <app-city-picker formControlName="city" [country]="signupForm.controls.country.value" inputId="signupCity" label="City" />
+              <app-city-picker formControlName="city" autocomplete="address-level2" [country]="signupForm.controls.country.value" inputId="signupCity" label="City" />
             </div>
           </div>
 

@@ -34,5 +34,7 @@ describe('AuthPageComponent signup location', () => {
     expect(el.querySelector('app-country-picker')).not.toBeNull();
     expect(el.querySelector('app-city-picker')).not.toBeNull();
     expect(fixture.componentInstance.signupForm.controls.country.value).toBe('India');
+    expect(el.querySelector('#signupCountry')?.getAttribute('autocomplete')).toBe('country-name');
+    expect(el.querySelector('#signupCity')?.getAttribute('autocomplete')).toBe('address-level2');
   });
 });

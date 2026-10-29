@@ -143,11 +143,11 @@
               </div>
 
               <div>
-                <app-country-picker formControlName="country" inputId="storeCountry" label="Country *" />
+                <app-country-picker formControlName="country" autocomplete="country-name" inputId="storeCountry" label="Country *" />
               </div>
 
               <div>
-                <app-city-picker formControlName="city" [country]="storeForm.controls.country.value" inputId="storeCity" label="City *" />
+                <app-city-picker formControlName="city" autocomplete="address-level2" [country]="storeForm.controls.country.value" inputId="storeCity" label="City *" />
               </div>
 
               <div>

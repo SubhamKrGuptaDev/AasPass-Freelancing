@@ -93,10 +93,12 @@ export class StoresComponent {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
       const query = parseStoresQuery(params, COUNTRIES, this.storeService.categories);
       // Country first: a real country change resets the city, which the URL city then re-applies.
+      // A URL naming a country but no city means "all cities", not the default city. A bare /stores keeps
+      // the current state.
       if (query.country) {
         this.storeService.setSelectedCountry(query.country);
-      }
-      if (query.city) {
+        this.storeService.setSelectedCity(query.city ?? '');
+      } else if (query.city) {
         this.storeService.setSelectedCity(query.city);
       }
       this.storeService.setSelectedCategory(query.category);

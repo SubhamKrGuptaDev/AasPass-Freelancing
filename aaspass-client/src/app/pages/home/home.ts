@@ -21,6 +21,7 @@ import { StoreCardComponent } from '../../components/store-card/store-card';
 import { StoreProfile } from '../../models/store.model';
 import { StoreService } from '../../services/store/store.service';
 import { sortStores, topStoresForCity } from '../../services/store/store-query';
+import { normalizeCountry } from '../../geo/country';
 import {
   COMPARISONS, EARN_STEPS, EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES,
   SELLER_BENEFITS, SELLER_COPY, TRUST_POINTS, VALUE_PROPS
@@ -104,7 +105,6 @@ export class HomeComponent {
   }
 
   private inSelectedCountry(store: StoreProfile): boolean {
-    const country = (store.country ?? '').trim().toLowerCase() || 'india';
-    return country === this.storeService.selectedCountry().trim().toLowerCase();
+    return normalizeCountry(store.country) === normalizeCountry(this.storeService.selectedCountry());
   }
 }

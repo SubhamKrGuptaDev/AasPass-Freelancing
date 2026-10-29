@@ -19,12 +19,7 @@ import {
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { AuthService } from '../auth/auth.service';
 import { StoreHttpService } from './store-http.service';
-import { COUNTRIES } from '../../geo/countries.generated';
-
-/** Lower-cases/trims a store country; missing or blank counts as India. */
-function normalizeCountry(country: string | null | undefined): string {
-  return (country ?? '').trim().toLowerCase() || 'india';
-}
+import { DEFAULT_COUNTRY, findCountryByName, normalizeCountry } from '../../geo/country';
 
 export const EMPTY_USER_PROFILE: UserProfile = {
   id: '',
@@ -35,7 +30,7 @@ export const EMPTY_USER_PROFILE: UserProfile = {
   avatarUrl: '',
   city: 'Bengaluru',
   area: '',
-  country: 'India',
+  country: DEFAULT_COUNTRY,
   bio: '',
   memberSince: '',
   hasStore: false,
@@ -118,7 +113,7 @@ export class StoreService {
         startingPrice: 0,
         area: '',
         city: '',
-        country: 'India',
+        country: DEFAULT_COUNTRY,
         serviceRadiusKm: 10,
         socialMediaLinks: [],
         description: '',
@@ -149,7 +144,7 @@ export class StoreService {
       startingPrice: s.startingPrice || 0,
       area: s.area || '',
       city: s.city || '',
-      country: s.country || 'India',
+      country: s.country || DEFAULT_COUNTRY,
       serviceRadiusKm: s.serviceRadiusKm || 10,
       socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
       storeSocialMediaLinks: s.storeSocialMediaLinks,
@@ -192,7 +187,7 @@ export class StoreService {
   readonly selectedCategory = signal<string>('All');
   readonly selectedMaxDistanceKm = signal<number>(50);
   readonly selectedCity = signal<string>('Bengaluru');
-  readonly selectedCountry = signal<string>('India');
+  readonly selectedCountry = signal<string>(DEFAULT_COUNTRY);
 
   // Categories list
   readonly categories = [
@@ -378,7 +373,7 @@ export class StoreService {
     const storeSocialLinks = storeData.storeSocialMediaLinks || (storeData.socialMediaLinks ? toStoreSocialMediaLinks(storeData.socialMediaLinks) : storeData.userSocialLinks);
     const newStore: StoreProfile = {
       ...storeData,
-      country: (storeData.country ?? '').trim() || 'India',
+      country: (storeData.country ?? '').trim() || DEFAULT_COUNTRY,
       storeSocialMediaLinks: storeSocialLinks,
       userSocialLinks: storeSocialLinks,
       socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeSocialLinks),
@@ -423,7 +418,7 @@ export class StoreService {
       startingPrice: Number(newStore.startingPrice) || 0,
       area: newStore.area.trim(),
       city: newStore.city.trim(),
-      country: (newStore.country ?? '').trim() || 'India',
+      country: (newStore.country ?? '').trim() || DEFAULT_COUNTRY,
       serviceRadiusKm: Number(newStore.serviceRadiusKm) || 10,
       description: newStore.description || '',
       avatarUrl: (newStore.avatarUrl && newStore.avatarUrl.trim()) ? newStore.avatarUrl.trim() : (user.avatarUrl || ''),
@@ -679,7 +674,7 @@ export class StoreService {
       startingPrice: updated.startingPrice !== undefined ? updated.startingPrice : updatedStore.startingPrice,
       area: updated.area || updatedStore.area,
       city: updated.city || updatedStore.city,
-      country: updated.country || updatedStore.country || 'India',
+      country: updated.country || updatedStore.country || DEFAULT_COUNTRY,
       serviceRadiusKm: updated.serviceRadiusKm !== undefined ? updated.serviceRadiusKm : updatedStore.serviceRadiusKm,
       description: updated.description !== undefined ? updated.description : updatedStore.description,
       avatarUrl: updated.avatarUrl || updatedStore.avatarUrl,
@@ -799,11 +794,7 @@ export class StoreService {
 
   /** Selects a country by (case-insensitive) name; blank/unknown names are ignored. Changing country resets the city to "all". */
   setSelectedCountry(name: string): void {
-    const needle = (name ?? '').trim().toLowerCase();
-    if (!needle) {
-      return;
-    }
-    const match = COUNTRIES.find(country => country.name.toLowerCase() === needle);
+    const match = findCountryByName(name);
     if (!match || match.name === this.selectedCountry()) {
       return;
     }

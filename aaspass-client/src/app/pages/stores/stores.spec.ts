@@ -87,6 +87,27 @@ describe('StoresComponent', () => {
     expect(router.url).toContain('country=United%20States');
   });
 
+  it('treats a URL with a country but no city as all cities, not the default city', async () => {
+    expect(service.selectedCity()).toBe('Bengaluru');
+    await open('/stores?country=India');
+    expect(service.selectedCity()).toBe('');
+    expect(router.url).not.toContain('city=');
+  });
+
+  it('hides the "Try another city" prompt when no other city has stores', async () => {
+    await open('/stores?country=India&city=Pune');
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('No stores match your filters');
+    expect(el.textContent).not.toContain('Try another city');
+  });
+
+  it('offers other cities that have stores when the selected city has none', async () => {
+    await open('/stores?country=India&city=Pune', [backendStore(1, { city: 'Mumbai' })]);
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('Try another city');
+    expect(el.textContent).toContain('Mumbai');
+  });
+
   it('re-canonicalises a lower-case country in the URL', async () => {
     await open('/stores?country=india&city=Pune');
     expect(service.selectedCountry()).toBe('India');
@@ -115,14 +136,12 @@ describe('StoresComponent', () => {
     await open('/stores?country=India&city=Pune');
     const picker = harness.fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
     picker.value.set('');
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-    harness.detectChanges();
-    await harness.fixture.whenStable();
-    harness.detectChanges();
+    await vi.waitFor(() => {
+      harness.detectChanges();
+      expect(picker.value()).toBe('India');
+      expect((harness.routeNativeElement as HTMLElement).querySelector<HTMLInputElement>('input#stores-country')?.value).toBe('India');
+    });
     expect(service.selectedCountry()).toBe('India');
-    expect(picker.value()).toBe('India');
-    expect((harness.routeNativeElement as HTMLElement).querySelector<HTMLInputElement>('input#stores-country')?.value).toBe('India');
   });
 
   it('shows a country-neutral subtitle', async () => {

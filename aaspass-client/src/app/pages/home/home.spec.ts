@@ -123,18 +123,26 @@ describe('HomeComponent', () => {
     expect(component.topStores().map(s => s.id)).toEqual(['99']);
   });
 
+  it('pluralises the cities stat', () => {
+    const stat = (): string => (fixture.nativeElement as HTMLElement).querySelector('dl dd')?.textContent?.trim() ?? '';
+    service.stores.set([makeStore(1, 'Pune', 4)]);
+    fixture.detectChanges();
+    expect(stat()).toBe('1 city');
+    service.stores.set([makeStore(1, 'Pune', 4), makeStore(2, 'Mumbai', 4)]);
+    fixture.detectChanges();
+    expect(stat()).toBe('2 cities');
+  });
+
   it('restores the country text when the country picker is cleared', async () => {
     fixture.detectChanges();
     const picker = fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
     picker.value.set('');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(picker.value()).toBe('India');
+      expect((fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input#home-country')?.value).toBe('India');
+    });
     expect(service.selectedCountry()).toBe('India');
-    expect(picker.value()).toBe('India');
-    expect((fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input#home-country')?.value).toBe('India');
   });
 
   it('category cards match StoreService categories', () => {

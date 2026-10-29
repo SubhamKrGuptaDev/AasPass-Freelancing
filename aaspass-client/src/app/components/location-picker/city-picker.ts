@@ -40,6 +40,11 @@ export class CityPickerComponent extends LocationPickerBase {
    */
   private checkedCode: string | undefined;
 
+  /** Re-requests the list when opening after a failed load, so a transient error is recoverable. */
+  protected override onListOpen(): void {
+    this.geo.retry(this.country());
+  }
+
   constructor() {
     super();
     effect(() => {

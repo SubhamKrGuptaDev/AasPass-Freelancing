@@ -66,13 +66,11 @@ describe('NavbarComponent location popover', () => {
     fixture.detectChanges();
     const picker = fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
     picker.value.set('');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(picker.value()).toBe('India');
+    });
     expect(service.selectedCountry()).toBe('India');
-    expect(picker.value()).toBe('India');
   });
 
   it('closes on Escape and returns focus to the trigger', () => {
