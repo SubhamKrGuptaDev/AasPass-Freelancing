@@ -43,6 +43,7 @@ function makeStore(overrides: Partial<StoreProfile> = {}): StoreProfile {
     avatarUrl: '',
     bannerGradient: '',
     isAvailable: true,
+    ownerVerified: false,
     memberSince: '',
     creationDateTime: '',
     lastUpdateDateTime: '',

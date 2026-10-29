@@ -43,6 +43,7 @@ const fixtureStore1: StoreProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
   bannerGradient: 'from-pink-500 to-rose-600',
   isAvailable: true,
+  ownerVerified: false,
   views: { daily: 42, weekly: 285, monthly: 1140, lifetime: 3820 },
   memberSince: 'Jan 2026',
   creationDateTime: '2026-01-10T08:30:00.000Z',
@@ -82,6 +83,7 @@ const fixtureStore2: StoreProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
   bannerGradient: 'from-blue-600 to-indigo-700',
   isAvailable: true,
+  ownerVerified: false,
   views: { daily: 64, weekly: 410, monthly: 1680, lifetime: 5200 },
   memberSince: 'Feb 2026',
   creationDateTime: '2026-02-05T09:15:00.000Z',
@@ -499,6 +501,18 @@ describe('StoreService Reviews & Ratings', () => {
       expect(service.citiesWithStores()).toEqual(['Aurangabad', 'Bengaluru']);
       service.setSelectedCountry('United States');
       expect(service.citiesWithStores()).toEqual(['Austin']);
+    });
+
+    it('defaults ownerVerified and adminBlocked fields when missing', () => {
+      const raw = { id: 1, userId: 2, storeName: 'S', category: 'c', area: 'a', city: 'Pune' };
+      const mapped = service.mapBackendStoreToProfile(raw);
+      expect(mapped.ownerVerified).toBe(false);
+      expect(mapped.adminBlocked).toBe(false);
+      expect(mapped.adminBlockReason).toBeNull();
+      const flagged = service.mapBackendStoreToProfile({ ...raw, ownerVerified: true, adminBlocked: true, adminBlockReason: 'Spam' });
+      expect(flagged.ownerVerified).toBe(true);
+      expect(flagged.adminBlocked).toBe(true);
+      expect(flagged.adminBlockReason).toBe('Spam');
     });
 
     it('maps a backend store without country to India', () => {

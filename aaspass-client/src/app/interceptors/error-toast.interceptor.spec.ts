@@ -33,6 +33,16 @@ describe('toastMessageFor', () => {
     expect(toastMessageFor(err(403, { code: 'FORBIDDEN' })))
       .toEqual({ type: 'error', message: "You don't have permission to do that." });
   });
+  it('403 ACCOUNT_SUSPENDED shows the server message', () => {
+    expect(toastMessageFor(err(403, { code: 'ACCOUNT_SUSPENDED', message: 'Account suspended until 2026-11-01 10:00 UTC: spam' })))
+      .toEqual({ type: 'error', message: 'Account suspended until 2026-11-01 10:00 UTC: spam' });
+  });
+  it('403 STORE_BLOCKED_BY_ADMIN shows the server message, with a fallback', () => {
+    expect(toastMessageFor(err(403, { code: 'STORE_BLOCKED_BY_ADMIN', message: 'Blocked by admin' })))
+      .toEqual({ type: 'error', message: 'Blocked by admin' });
+    expect(toastMessageFor(err(403, { code: 'STORE_BLOCKED_BY_ADMIN' })))
+      .toEqual({ type: 'error', message: "You don't have permission to do that." });
+  });
   it('403 CSRF_INVALID', () => {
     expect(toastMessageFor(err(403, { code: 'CSRF_INVALID' })))
       .toEqual({ type: 'error', message: 'Security check failed. Please refresh the page and try again.' });

@@ -102,6 +102,9 @@ export class AuthService {
       bio: u.bio || '',
       memberSince: u.memberSince || 'March 2026',
       hasStore: Boolean(u.hasStore),
+      verified: u.verified ?? false,
+      verification: u.verification ?? undefined,
+      suspendedUntil: u.suspendedUntil ?? null,
       stores: (u.stores || []).filter(Boolean).map(s => ({
         id: String(s.id ?? ''),
         userId: String(s.userId || u.id || ''),
@@ -150,6 +153,9 @@ export class AuthService {
         bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
         isAvailable: s.isAvailable !== false,
         isActive: s.isActive === true,
+        ownerVerified: s.ownerVerified ?? false,
+        adminBlocked: s.adminBlocked ?? false,
+        adminBlockReason: s.adminBlockReason ?? null,
         memberSince: s.memberSince || u.memberSince || 'March 2026',
         creationDateTime: s.creationDateTime || new Date().toISOString(),
         lastUpdateDateTime: s.lastUpdateDateTime || new Date().toISOString()

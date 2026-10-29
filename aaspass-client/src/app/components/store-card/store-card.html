@@ -26,7 +26,7 @@
           {{ store().storeName }}
         </h3>
         <p class="text-xs font-medium text-slate-500">
-          by {{ store().ownerName }} • {{ store().experienceYears }} yrs exp
+          by {{ store().ownerName }}@if (store().ownerVerified) { <app-verified-badge /> } • {{ store().experienceYears }} yrs exp
         </p>
         <div class="mt-1 flex items-center gap-3 text-xs">
           <span class="flex items-center gap-1 font-bold text-amber-500">

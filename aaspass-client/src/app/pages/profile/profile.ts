@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { VerifiedBadgeComponent } from '../../components/verified-badge/verified-badge';
 import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { StoreService } from '../../services/store/store.service';
@@ -40,7 +41,7 @@ import { DEFAULT_COUNTRY } from '../../geo/country';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, VerifiedBadgeComponent],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
@@ -64,6 +65,28 @@ export class ProfileComponent {
         this.kycControl.setValue(value.toUpperCase(), { emitEvent: false });
       }
     });
+  }
+
+  /** Verification chip state for a KYC item; null when the user has no value for it. */
+  kycChip(item: 'phone' | 'pan' | 'aadhar'): 'verified' | 'pending' | 'rejected' | null {
+    const user = this.storeService.currentUser();
+    const value = item === 'phone' ? user.phone : item === 'pan' ? user.panNumber : user.aadharNumber;
+    if (!value) {
+      return null;
+    }
+    switch (user.verification?.[item]?.status) {
+      case 'VERIFIED':
+        return 'verified';
+      case 'REJECTED':
+        return 'rejected';
+      default:
+        return 'pending';
+    }
+  }
+
+  /** Admin-provided rejection reason for a KYC item, or a neutral fallback. */
+  kycReason(item: 'phone' | 'pan' | 'aadhar'): string {
+    return this.storeService.currentUser().verification?.[item]?.reason ?? 'no reason given';
   }
 
   startKycEdit(field: 'aadhaar' | 'pan'): void {

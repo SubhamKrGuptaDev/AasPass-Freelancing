@@ -1,3 +1,4 @@
+import type { VerificationView } from './user.model';
 /**
  * Backend API response interfaces mapping Spring Boot REST DTOs.
  * Only response interfaces and their respective response type aliases are defined here.
@@ -117,6 +118,9 @@ export interface BackendStoreResponse {
   bannerGradient?: string;
   isAvailable?: boolean;
   isActive?: boolean;
+  ownerVerified?: boolean;
+  adminBlocked?: boolean;
+  adminBlockReason?: string | null;
   memberSince?: string;
   views?: BackendStoreViewsResponse;
   storeSocialMediaLinks?: BackendStoreSocialMediaResponse;
@@ -143,6 +147,9 @@ export interface BackendUserResponse {
   bio?: string;
   memberSince?: string;
   hasStore?: boolean;
+  verified?: boolean;
+  verification?: VerificationView | null;
+  suspendedUntil?: string | null;
   userSocialMediaLinks?: BackendUserSocialMediaResponse;
   socialMediaLinks?: BackendSocialMediaLinkResponse[];
   stores?: BackendStoreResponse[];

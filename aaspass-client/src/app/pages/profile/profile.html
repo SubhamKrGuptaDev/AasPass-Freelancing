@@ -120,6 +120,9 @@
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                 <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Full Name</span>
                 <span class="text-sm font-bold text-slate-800">{{ storeService.currentUser().name }}</span>
+                @if (storeService.currentUser().verified) {
+                  <app-verified-badge class="ml-1" />
+                }
               </div>
 
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
@@ -134,7 +137,12 @@
 
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                 <span class="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Phone Number</span>
-                <span class="text-sm font-semibold text-slate-800">{{ storeService.currentUser().phone }}</span>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-sm font-semibold text-slate-800" data-testid="phone-value">{{ storeService.currentUser().phone }}</span>
+                  @if (storeService.currentUser().phone) {
+                    <ng-container *ngTemplateOutlet="kycChipTpl; context: { $implicit: 'phone' }" />
+                  }
+                </div>
               </div>
 
               <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
@@ -162,7 +170,7 @@
                   </div>
                   <div class="flex items-center gap-2">
                     @if (storeService.currentUser().aadharNumber) {
-                      <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">✓ Verified</span>
+                      <ng-container *ngTemplateOutlet="kycChipTpl; context: { $implicit: 'aadhar' }" />
                     }
                     @if (editingKyc() !== 'aadhaar') {
                       <button
@@ -218,7 +226,7 @@
                   </div>
                   <div class="flex items-center gap-2">
                     @if (storeService.currentUser().panNumber) {
-                      <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[10px] font-bold">✓ Linked</span>
+                      <ng-container *ngTemplateOutlet="kycChipTpl; context: { $implicit: 'pan' }" />
                     }
                     @if (editingKyc() !== 'pan') {
                       <button
@@ -568,6 +576,11 @@
                   </span>
                 }
               </div>
+              @if (store.adminBlocked) {
+                <p role="alert" class="mt-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-800" data-testid="store-blocked-notice">
+                  Deactivated by admin: {{ store.adminBlockReason }}. Contact support to restore it.
+                </p>
+              }
               <p class="text-xs font-semibold text-slate-700 mt-1">"{{ store.tagline }}"</p>
               <p class="text-[11px] text-slate-500 mt-0.5">
                 Operating in {{ store.area }}, {{ store.city }} • Serving within {{ store.serviceRadiusKm }} km
@@ -579,8 +592,8 @@
               <button
                 type="button"
                 (click)="toggleStoreActive(store)"
-                [disabled]="storeStatusUpdating()"
-                class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                [disabled]="storeStatusUpdating() || (store.adminBlocked && !store.isActive)"
+                class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 [class.text-white]="!store.isActive"
                 [class.bg-emerald-600]="!store.isActive"
                 [class.hover:bg-emerald-700]="!store.isActive"
@@ -1071,3 +1084,18 @@
 
   </div>
 </div>
+
+<!-- Verification status chip for a KYC item (status is conveyed by text, not only colour) -->
+<ng-template #kycChipTpl let-item>
+  @switch (kycChip(item)) {
+    @case ('verified') {
+      <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold" [attr.data-testid]="'kyc-' + item + '-status'">✓ Verified</span>
+    }
+    @case ('pending') {
+      <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold" [attr.data-testid]="'kyc-' + item + '-status'">Pending verification</span>
+    }
+    @case ('rejected') {
+      <span class="px-2 py-0.5 rounded-md bg-red-100 text-red-800 text-[10px] font-bold" [attr.data-testid]="'kyc-' + item + '-status'">Rejected — {{ kycReason(item) }}</span>
+    }
+  }
+</ng-template>

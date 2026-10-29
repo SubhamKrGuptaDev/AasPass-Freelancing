@@ -15,7 +15,7 @@ function makeStore(id: number, city: string, rating: number, category = 'Photogr
     category, skills: [], experienceYears: 1, hourlyRate: 100, startingPrice: 100, area: 'Area', city, country: 'India',
     serviceRadiusKm: 5, socialMediaLinks: [], description: '', services: [], rating,
     reviewCount: 1, reviews: [], avatarUrl: '', bannerGradient: 'from-indigo-500 to-purple-500',
-    isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
+    isAvailable: true, ownerVerified: false, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
   } as StoreProfile;
 }
 

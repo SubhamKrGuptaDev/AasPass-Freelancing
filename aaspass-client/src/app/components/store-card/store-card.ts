@@ -5,13 +5,14 @@ import { lucideEye, lucideMapPin, lucideStar } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
+import { VerifiedBadgeComponent } from '../verified-badge/verified-badge';
 import { StoreProfile } from '../../models/store.model';
 import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 import { StoreService } from '../../services/store/store.service';
 
 @Component({
   selector: 'app-store-card',
-  imports: [RouterLink, NgIcon, HlmCardImports, HlmBadgeImports, HlmButtonImports],
+  imports: [RouterLink, NgIcon, VerifiedBadgeComponent, HlmCardImports, HlmBadgeImports, HlmButtonImports],
   providers: [provideIcons({ lucideEye, lucideMapPin, lucideStar })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './store-card.html'

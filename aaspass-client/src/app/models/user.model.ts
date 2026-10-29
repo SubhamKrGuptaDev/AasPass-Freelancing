@@ -1,5 +1,18 @@
 import { StoreProfile, UserSocialMediaLinks, SocialMediaLink } from './store.model';
 
+export type VerificationStatus = 'UNVERIFIED' | 'VERIFIED' | 'REJECTED';
+
+export interface VerificationItemView {
+  status: VerificationStatus;
+  reason?: string | null;
+}
+
+export interface VerificationView {
+  phone: VerificationItemView;
+  pan: VerificationItemView;
+  aadhar: VerificationItemView;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -17,6 +30,12 @@ export interface UserProfile {
   bio: string;
   memberSince: string;
   hasStore: boolean;
+  /** True once an admin has verified at least one of the user's identity items. */
+  verified: boolean;
+  /** Per-item verification state; present only on the signed-in user's own record. */
+  verification?: VerificationView;
+  /** ISO instant until which the account is suspended; own record only. */
+  suspendedUntil?: string | null;
   store?: StoreProfile;
   stores?: StoreProfile[];
   userSocialMediaLinks?: UserSocialMediaLinks;

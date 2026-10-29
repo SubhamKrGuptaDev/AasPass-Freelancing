@@ -23,11 +23,12 @@ import {
 } from '../../models/store.model';
 import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS } from '../../config/feature-flags';
 
+import { VerifiedBadgeComponent } from '../../components/verified-badge/verified-badge';
 import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 @Component({
   selector: 'app-store-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, VerifiedBadgeComponent],
   templateUrl: './store-detail.html',
   styleUrl: './store-detail.css'
 })

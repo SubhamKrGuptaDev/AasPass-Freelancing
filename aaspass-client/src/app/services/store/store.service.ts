@@ -34,6 +34,7 @@ export const EMPTY_USER_PROFILE: UserProfile = {
   bio: '',
   memberSince: '',
   hasStore: false,
+  verified: false,
   stores: [],
   creationDateTime: '',
   lastUpdateDateTime: ''
@@ -138,6 +139,9 @@ export class StoreService {
         bannerGradient: 'from-indigo-500 to-purple-600',
         isAvailable: true,
         isActive: false,
+        ownerVerified: false,
+        adminBlocked: false,
+        adminBlockReason: null,
         memberSince: '',
         creationDateTime: '',
         lastUpdateDateTime: ''
@@ -192,6 +196,9 @@ export class StoreService {
       bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
       isAvailable: s.isAvailable !== false,
       isActive: s.isActive === true,
+      ownerVerified: s.ownerVerified ?? false,
+      adminBlocked: s.adminBlocked ?? false,
+      adminBlockReason: s.adminBlockReason ?? null,
       memberSince: s.memberSince || 'March 2026',
       creationDateTime: s.creationDateTime || new Date().toISOString(),
       lastUpdateDateTime: s.lastUpdateDateTime || new Date().toISOString()
@@ -384,7 +391,7 @@ export class StoreService {
 
   // Create a new store (Option A: transforms regular user into a store owner or adds an additional store)
   // Returns an Observable of StoreProfile (with store properties merged for full backward compatibility)
-  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime' | 'country'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime' | 'country'>>): Observable<StoreProfile> & StoreProfile {
+  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime' | 'country' | 'ownerVerified'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime' | 'country'>>): Observable<StoreProfile> & StoreProfile {
     const user = this.currentUser();
     const newStoreId = 'store-' + (this.stores().length + 1) + '-' + Math.random().toString(36).substring(2, 6);
     const nowIso = new Date().toISOString();
@@ -414,6 +421,7 @@ export class StoreService {
     const storeSocialLinks = storeData.storeSocialMediaLinks || (storeData.socialMediaLinks ? toStoreSocialMediaLinks(storeData.socialMediaLinks) : storeData.userSocialLinks);
     const newStore: StoreProfile = {
       ...storeData,
+      ownerVerified: user.verified ?? false,
       country: (storeData.country ?? '').trim() || DEFAULT_COUNTRY,
       storeSocialMediaLinks: storeSocialLinks,
       userSocialLinks: storeSocialLinks,
