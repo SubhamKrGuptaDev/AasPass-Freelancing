@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle';
 
 interface NavItem {
   label: string;
@@ -11,7 +12,7 @@ interface NavItem {
 /** Layout for signed-in pages: side navigation (collapsible below md), top bar and the routed page. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, HlmButtonImports],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, HlmButtonImports, ThemeToggleComponent],
   templateUrl: './shell.html'
 })
 export class ShellComponent {
@@ -22,6 +23,7 @@ export class ShellComponent {
 
   protected readonly navItems: readonly NavItem[] = [
     { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Charts', path: '/charts' },
     { label: 'Stores', path: '/stores' },
     { label: 'Users', path: '/users' }
   ];

@@ -1,0 +1,131 @@
+<section class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Charts</h1>
+    <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">Showing the {{ scope() }}.</p>
+  </div>
+
+  <form class="grid gap-4 sm:grid-cols-3" role="search" aria-label="Filter charts" (submit)="$event.preventDefault()">
+    <div>
+      <label for="charts-period" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Period</label>
+      <select
+        id="charts-period"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
+        (change)="onPeriod($event)"
+      >
+        @for (p of periods; track p.value) {
+          <option [value]="p.param" [selected]="p.value === period().value">{{ p.label }} ({{ p.range }})</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="charts-country" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Country</label>
+      <select
+        id="charts-country"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
+        (change)="onCountry($event)"
+      >
+        <option value="" [selected]="!country()">All countries</option>
+        @for (c of countries; track c.code) {
+          <option [value]="c.name" [selected]="c.name === country()">{{ c.name }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="charts-city" class="block text-sm font-medium text-slate-800 dark:text-slate-200">City</label>
+      <select
+        id="charts-city"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-600 dark:disabled:text-slate-400"
+        [disabled]="!country()"
+        (change)="onCity($event)"
+      >
+        <option value="" [selected]="!city()">All cities</option>
+        @for (c of cityOptions(); track c) {
+          <option [value]="c" [selected]="c === city()">{{ c }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  @if (state().error) {
+    <p role="alert" class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-4 text-sm text-rose-900 dark:text-rose-200">
+      The charts could not be loaded. Please try another filter or refresh the page.
+    </p>
+  }
+
+  @if (state().data) {
+    <div
+      class="grid gap-6 transition-opacity lg:grid-cols-2"
+      [class.opacity-60]="state().loading"
+      [attr.aria-busy]="state().loading"
+    >
+      @if (state().loading) {
+        <span class="sr-only" role="status">Updating charts</span>
+      }
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-users-heading">
+        <h2 id="chart-users-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">New users</h2>
+        <p class="mb-3 text-sm text-slate-700 dark:text-slate-300" data-testid="total-users">
+          <strong class="text-slate-900 dark:text-slate-100">{{ totals().newUsers }}</strong> joined in the {{ period().range }}
+        </p>
+        <app-column-chart label="New users per period" [ticks]="ticks()" [labels]="labels()" [series]="newUsers()" />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-stores-heading">
+        <h2 id="chart-stores-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">New stores</h2>
+        <p class="mb-3 text-sm text-slate-700 dark:text-slate-300" data-testid="total-stores">
+          <strong class="text-slate-900 dark:text-slate-100">{{ totals().newStores }}</strong> created in the {{ period().range }}
+        </p>
+        <app-column-chart label="New stores per period" [ticks]="ticks()" [labels]="labels()" [series]="newStores()" />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-verify-heading">
+        <h2 id="chart-verify-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">User verifications</h2>
+        <p class="mb-3 text-sm text-slate-700 dark:text-slate-300" data-testid="total-verifications">
+          <strong class="text-slate-900 dark:text-slate-100">{{ totals().verified }}</strong> verified and
+          <strong class="text-slate-900 dark:text-slate-100">{{ totals().rejected }}</strong> rejected phone, PAN and Aadhaar checks
+        </p>
+        <app-column-chart
+          label="User verification decisions per period"
+          [ticks]="ticks()"
+          [labels]="labels()"
+          [series]="userDecisions()"
+        />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-reviewed-heading">
+        <h2 id="chart-reviewed-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Stores reviewed</h2>
+        <p class="mb-3 text-sm text-slate-700 dark:text-slate-300" data-testid="total-reviewed">
+          <strong class="text-slate-900 dark:text-slate-100">{{ totals().reviewed }}</strong> stores reviewed in the {{ period().range }}
+        </p>
+        <app-column-chart label="Stores reviewed per period" [ticks]="ticks()" [labels]="labels()" [series]="storesReviewed()" />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-user-cities-heading">
+        <h2 id="chart-user-cities-heading" class="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Top cities for new users</h2>
+        <app-bar-list
+          label="New users by city"
+          [items]="topUserCities()"
+          [color]="series1"
+          emptyText="No new users in this range."
+        />
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="chart-store-cities-heading">
+        <h2 id="chart-store-cities-heading" class="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Top cities for new stores</h2>
+        <app-bar-list
+          label="New stores by city"
+          [items]="topStoreCities()"
+          [color]="series1"
+          emptyText="No new stores in this range."
+        />
+      </section>
+    </div>
+  } @else if (state().loading) {
+    <div class="grid gap-6 lg:grid-cols-2" aria-busy="true">
+      <span class="sr-only" role="status">Loading charts</span>
+      @for (slot of skeletonSlots; track slot) {
+        <div hlmSkeleton data-testid="skeleton" class="h-72"></div>
+      }
+    </div>
+  }
+</section>

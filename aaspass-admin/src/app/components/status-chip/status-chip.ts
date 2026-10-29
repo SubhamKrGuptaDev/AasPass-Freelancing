@@ -13,15 +13,15 @@ export type ChipStatus =
 
 /** Text-bearing status pill; the label is always rendered so colour is never the only signal. */
 const TONES: Record<ChipStatus, string> = {
-  active: 'bg-emerald-100 text-emerald-900',
-  verified: 'bg-emerald-100 text-emerald-900',
-  inactive: 'bg-slate-100 text-slate-800',
-  unverified: 'bg-slate-100 text-slate-800',
-  pending: 'bg-slate-100 text-slate-800',
-  unreviewed: 'bg-amber-100 text-amber-900',
-  blocked: 'bg-rose-100 text-rose-900',
-  rejected: 'bg-rose-100 text-rose-900',
-  suspended: 'bg-rose-100 text-rose-900'
+  active: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200',
+  verified: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200',
+  inactive: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200',
+  unverified: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200',
+  pending: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200',
+  unreviewed: 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200',
+  blocked: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200',
+  rejected: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200',
+  suspended: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200'
 };
 
 @Component({

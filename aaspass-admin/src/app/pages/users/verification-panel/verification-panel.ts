@@ -32,14 +32,14 @@ export function verificationChip(status: VerificationStatus | null | undefined):
   selector: 'app-verification-panel',
   imports: [StatusChipComponent, ReasonDialogComponent],
   template: `
-    <ul class="divide-y divide-slate-100">
+    <ul class="divide-y divide-slate-100 dark:divide-slate-800">
       @for (row of rows(); track row.item) {
         <li class="flex flex-wrap items-start justify-between gap-3 py-3" data-testid="row">
           <div>
-            <p class="text-sm font-medium text-slate-700">{{ row.label }}</p>
-            <p class="text-sm text-slate-900">{{ row.value ?? 'Not provided' }}</p>
+            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ row.label }}</p>
+            <p class="text-sm text-slate-900 dark:text-slate-100">{{ row.value ?? 'Not provided' }}</p>
             @if (row.status === 'REJECTED' && row.reason) {
-              <p class="mt-1 text-sm text-rose-800">Reason: {{ row.reason }}</p>
+              <p class="mt-1 text-sm text-rose-800 dark:text-rose-200">Reason: {{ row.reason }}</p>
             }
           </div>
           <div class="flex flex-wrap items-center gap-2">
@@ -47,7 +47,7 @@ export function verificationChip(status: VerificationStatus | null | undefined):
             @if (row.status !== 'VERIFIED') {
               <button
                 type="button"
-                class="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                class="rounded-md bg-slate-900 dark:bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 dark:hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
                 [attr.aria-label]="'Verify ' + row.label"
                 [disabled]="row.value === null || busy()"
                 (click)="verify(row)"
@@ -57,7 +57,7 @@ export function verificationChip(status: VerificationStatus | null | undefined):
             }
             <button
               type="button"
-              class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              class="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm font-medium text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               [attr.aria-label]="'Reject ' + row.label"
               [disabled]="row.value === null || busy()"
               (click)="openReject(row)"

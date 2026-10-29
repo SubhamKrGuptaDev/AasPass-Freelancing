@@ -23,10 +23,10 @@ export class ToasterComponent {
   );
 
   private static readonly STYLES: Record<ToastType, string> = {
-    success: 'border-emerald-300 bg-emerald-50 text-emerald-900',
-    error: 'border-rose-300 bg-rose-50 text-rose-900',
-    warning: 'border-amber-300 bg-amber-50 text-amber-900',
-    info: 'border-sky-300 bg-sky-50 text-sky-900',
+    success: 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200',
+    error: 'border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950 text-rose-900 dark:text-rose-200',
+    warning: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200',
+    info: 'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950 text-sky-900 dark:text-sky-200',
   };
 
   private static readonly ICONS: Record<ToastType, string> = {

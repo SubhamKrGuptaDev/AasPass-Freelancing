@@ -14,6 +14,14 @@ const PAGE_SIZE = 20;
 const NAME_DEBOUNCE_MS = 300;
 const STATUS_FILTERS: readonly StoreStatusFilter[] = ['all', 'active', 'inactive', 'blocked', 'unreviewed'];
 
+/** Status pill for a store row: an admin block wins over the owner's active flag. */
+export function storeChip(store: AdminStoreSummary): ChipStatus {
+  if (store.adminBlocked) {
+    return 'blocked';
+  }
+  return store.isActive ? 'active' : 'inactive';
+}
+
 interface StatusOption {
   value: StoreStatusFilter;
   label: string;
@@ -111,12 +119,7 @@ export class StoresPage {
       .subscribe((v) => this.nameDraft.set(v));
   }
 
-  protected chipFor(store: AdminStoreSummary): ChipStatus {
-    if (store.adminBlocked) {
-      return 'blocked';
-    }
-    return store.isActive ? 'active' : 'inactive';
-  }
+  protected readonly chipFor = storeChip;
 
   protected onCountry(event: Event): void {
     this.updateFilters({ country: this.valueOf(event), city: '' });

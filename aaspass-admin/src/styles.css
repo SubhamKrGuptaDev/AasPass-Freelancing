@@ -92,6 +92,38 @@
   --ring: oklch(0.585 0.233 277.117); /* indigo-500 */
 }
 
+/* Dark theme: <html class="dark">, set by ThemeService (and the inline script in index.html). */
+.dark {
+  --background: oklch(0.129 0.042 264.695); /* slate-950 */
+  --foreground: oklch(0.929 0.013 255.508); /* slate-200 */
+  --card: oklch(0.208 0.042 265.755); /* slate-900 */
+  --card-foreground: oklch(0.929 0.013 255.508);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.929 0.013 255.508);
+  --primary: oklch(0.673 0.182 276.935); /* indigo-400 */
+  --primary-foreground: oklch(0.129 0.042 264.695);
+  --secondary: oklch(0.279 0.041 260.031); /* slate-800 */
+  --secondary-foreground: oklch(0.929 0.013 255.508);
+  --muted: oklch(0.279 0.041 260.031); /* slate-800 */
+  --muted-foreground: oklch(0.704 0.04 256.788); /* slate-400 */
+  --accent: oklch(0.284 0.109 3.907); /* pink-950 */
+  --accent-foreground: oklch(0.823 0.12 346.018); /* pink-300 */
+  --destructive: oklch(0.704 0.191 22.216); /* red-400 */
+  --border: oklch(0.372 0.044 257.287); /* slate-700 */
+  --input: oklch(0.372 0.044 257.287); /* slate-700 */
+  --ring: oklch(0.673 0.182 276.935); /* indigo-400 */
+}
+
+/* Chart series colours: slots 1-2 of the validated categorical palette, stepped per theme. */
+:root {
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+}
+.dark {
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

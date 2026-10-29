@@ -1,24 +1,24 @@
 <section class="space-y-6">
-  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Users</h1>
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Users</h1>
 
   <form class="grid gap-4 sm:grid-cols-3" role="search" aria-label="Filter users" (submit)="$event.preventDefault()">
     <div>
-      <label for="filter-q" class="block text-sm font-medium text-slate-800">Search</label>
+      <label for="filter-q" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Search</label>
       <input
         id="filter-q"
         type="search"
         autocomplete="off"
         placeholder="Name, email or username"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100"
         [value]="searchDraft() ?? search()"
         (input)="onSearch($event)"
       />
     </div>
     <div>
-      <label for="filter-verification" class="block text-sm font-medium text-slate-800">Verification</label>
+      <label for="filter-verification" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Verification</label>
       <select
         id="filter-verification"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
         (change)="onVerification($event)"
       >
         @for (o of verificationOptions; track o.value) {
@@ -27,10 +27,10 @@
       </select>
     </div>
     <div>
-      <label for="filter-suspended" class="block text-sm font-medium text-slate-800">Suspension</label>
+      <label for="filter-suspended" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Suspension</label>
       <select
         id="filter-suspended"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
         (change)="onSuspended($event)"
       >
         @for (o of suspendedOptions; track o.value) {
@@ -40,10 +40,10 @@
     </div>
   </form>
 
-  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white" [attr.aria-busy]="loading()">
+  <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" [attr.aria-busy]="loading()">
     <table class="w-full text-left text-sm">
       <caption class="sr-only">Users</caption>
-      <thead class="bg-slate-50 text-slate-700">
+      <thead class="bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300">
         <tr>
           <th scope="col" class="px-4 py-3 font-medium">Name</th>
           <th scope="col" class="px-4 py-3 font-medium">Email</th>
@@ -55,7 +55,7 @@
           <th scope="col" class="px-4 py-3 font-medium">Joined</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100">
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
         @if (loading()) {
           @for (row of skeletonRows; track row) {
             <tr aria-hidden="true">
@@ -66,11 +66,11 @@
           @for (user of rows(); track user.id) {
             <tr>
               <td class="px-4 py-3">
-                <a [routerLink]="['/users', user.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ user.name }}</a>
-                <p class="text-xs text-slate-600">{{ '@' + user.username }}</p>
+                <a [routerLink]="['/users', user.id]" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ user.name }}</a>
+                <p class="text-xs text-slate-600 dark:text-slate-400">{{ '@' + user.username }}</p>
               </td>
-              <td class="px-4 py-3 text-slate-800">{{ user.email }}</td>
-              <td class="px-4 py-3 text-slate-800">{{ user.city }}, {{ user.country }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ user.email }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ user.city }}, {{ user.country }}</td>
               <td class="px-4 py-3"><app-status-chip [status]="verificationChip(user.phoneStatus)" /></td>
               <td class="px-4 py-3"><app-status-chip [status]="verificationChip(user.panStatus)" /></td>
               <td class="px-4 py-3"><app-status-chip [status]="verificationChip(user.aadharStatus)" /></td>
@@ -78,14 +78,14 @@
                 @if (isSuspended(user)) {
                   <app-status-chip status="suspended" />
                 } @else {
-                  <span class="text-slate-700">No</span>
+                  <span class="text-slate-700 dark:text-slate-300">No</span>
                 }
               </td>
-              <td class="px-4 py-3 text-slate-800">{{ user.creationDateTime | date: 'mediumDate' }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ user.creationDateTime | date: 'mediumDate' }}</td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="px-4 py-8 text-center text-slate-700">
+              <td colspan="8" class="px-4 py-8 text-center text-slate-700 dark:text-slate-300">
                 @if (failed()) {
                   Users could not be loaded. Adjust the filters or refresh to try again.
                 } @else {

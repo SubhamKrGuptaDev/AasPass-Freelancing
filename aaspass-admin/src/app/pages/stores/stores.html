@@ -1,12 +1,12 @@
 <section class="space-y-6">
-  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Stores</h1>
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Stores</h1>
 
   <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="search" aria-label="Filter stores" (submit)="$event.preventDefault()">
     <div>
-      <label for="filter-country" class="block text-sm font-medium text-slate-800">Country</label>
+      <label for="filter-country" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Country</label>
       <select
         id="filter-country"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
         (change)="onCountry($event)"
       >
         <option value="" [selected]="!country()">All countries</option>
@@ -16,10 +16,10 @@
       </select>
     </div>
     <div>
-      <label for="filter-city" class="block text-sm font-medium text-slate-800">City</label>
+      <label for="filter-city" class="block text-sm font-medium text-slate-800 dark:text-slate-200">City</label>
       <select
         id="filter-city"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-600 dark:disabled:text-slate-400"
         [disabled]="!country()"
         (change)="onCity($event)"
       >
@@ -30,21 +30,21 @@
       </select>
     </div>
     <div>
-      <label for="filter-name" class="block text-sm font-medium text-slate-800">Store name</label>
+      <label for="filter-name" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Store name</label>
       <input
         id="filter-name"
         type="search"
         autocomplete="off"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100"
         [value]="nameDraft() ?? nameFilter()"
         (input)="onName($event)"
       />
     </div>
     <div>
-      <label for="filter-status" class="block text-sm font-medium text-slate-800">Status</label>
+      <label for="filter-status" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Status</label>
       <select
         id="filter-status"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
         (change)="onStatus($event)"
       >
         @for (o of statusOptions; track o.value) {
@@ -54,10 +54,10 @@
     </div>
   </form>
 
-  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white" [attr.aria-busy]="loading()">
+  <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" [attr.aria-busy]="loading()">
     <table class="w-full text-left text-sm">
       <caption class="sr-only">Stores</caption>
-      <thead class="bg-slate-50 text-slate-700">
+      <thead class="bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300">
         <tr>
           <th scope="col" class="px-4 py-3 font-medium">Store</th>
           <th scope="col" class="px-4 py-3 font-medium">Owner</th>
@@ -66,7 +66,7 @@
           <th scope="col" class="px-4 py-3 font-medium">Status</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100">
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
         @if (loading()) {
           @for (row of skeletonRows; track row) {
             <tr aria-hidden="true">
@@ -77,17 +77,17 @@
           @for (store of rows(); track store.id) {
             <tr>
               <td class="px-4 py-3">
-                <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ store.storeName }}</a>
-                <p class="text-xs text-slate-600">{{ store.category }}</p>
+                <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ store.storeName }}</a>
+                <p class="text-xs text-slate-600 dark:text-slate-400">{{ store.category }}</p>
               </td>
-              <td class="px-4 py-3 text-slate-800">
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">
                 {{ store.ownerName ?? 'No owner' }}
                 @if (store.ownerUsername) {
-                  <p class="text-xs text-slate-600">{{ '@' + store.ownerUsername }}</p>
+                  <p class="text-xs text-slate-600 dark:text-slate-400">{{ '@' + store.ownerUsername }}</p>
                 }
               </td>
-              <td class="px-4 py-3 text-slate-800">{{ store.city }}, {{ store.country }}</td>
-              <td class="px-4 py-3 text-slate-800">{{ store.creationDateTime | date: 'mediumDate' }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ store.city }}, {{ store.country }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ store.creationDateTime | date: 'mediumDate' }}</td>
               <td class="px-4 py-3">
                 <div class="flex flex-wrap gap-1">
                   <app-status-chip [status]="chipFor(store)" />
@@ -99,7 +99,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="px-4 py-8 text-center text-slate-700">
+              <td colspan="5" class="px-4 py-8 text-center text-slate-700 dark:text-slate-300">
                 @if (failed()) {
                   Stores could not be loaded. Adjust the filters or refresh to try again.
                 } @else {
