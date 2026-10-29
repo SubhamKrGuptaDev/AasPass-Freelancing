@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.jwt.MappedJwtClaimSetConverter;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -135,6 +136,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        // The default CsrfAuthenticationStrategy clears the token on every authentication.
+                        // Sessions are stateless, so each cookie-JWT request counts as a fresh authentication
+                        // and every response would expire XSRF-TOKEN, failing the page's next write.
+                        .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy())
                         // CSRF exemptions live only in the post-processor's matcher below (single source).
                         // The resource server registers a CSRF exemption for every request carrying a
                         // bearer token, assuming header-borne tokens. Ours is a cookie the browser sends

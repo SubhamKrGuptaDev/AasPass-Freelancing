@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Controller handling login, registration, token refresh, logout and the current-user lookup.
  * Tokens travel only as HttpOnly cookies ({@code _sid} access JWT, {@code _rid} refresh token),
  * written and cleared exclusively through {@link AuthCookieService}. Tokens are never logged.
+ * Login and registration also issue a fresh {@code XSRF-TOKEN}; logout expires it with the auth cookies.
  * <p>
  * Refresh and logout are deliberately not transactional, so a reuse-detected revocation inside
  * {@link SessionService#rotate(String)} commits even though it ends in an exception.
@@ -48,13 +50,16 @@ public class AuthController {
     private final SessionService sessionService;
     private final AuthCookieService authCookieService;
     private final CurrentUser currentUser;
+    private final CsrfTokenRepository csrfTokenRepository;
 
     public AuthController(AuthService authService, SessionService sessionService,
-                          AuthCookieService authCookieService, CurrentUser currentUser) {
+                          AuthCookieService authCookieService, CurrentUser currentUser,
+                          CsrfTokenRepository csrfTokenRepository) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.authCookieService = authCookieService;
         this.currentUser = currentUser;
+        this.csrfTokenRepository = csrfTokenRepository;
     }
 
     /**
@@ -72,6 +77,7 @@ public class AuthController {
 
         AuthResult result = authService.login(request, userAgent(httpRequest), httpRequest.getRemoteAddr());
         authCookieService.writeSession(httpRequest, httpResponse, result.session());
+        rotateCsrfToken(httpRequest, httpResponse);
 
         log.info("[API-CALL] POST /api/auth/login - Completed successfully for user ID: {}",
                 result.user() != null ? result.user().id() : null);
@@ -93,6 +99,7 @@ public class AuthController {
 
         AuthResult result = authService.register(request, userAgent(httpRequest), httpRequest.getRemoteAddr());
         authCookieService.writeSession(httpRequest, httpResponse, result.session());
+        rotateCsrfToken(httpRequest, httpResponse);
 
         log.info("[API-CALL] POST /api/auth/register - User registered successfully with ID: {}",
                 result.user() != null ? result.user().id() : null);
@@ -175,7 +182,7 @@ public class AuthController {
 
     /**
      * Logout API endpoint. Revokes the session identified by the {@code _rid} cookie (the access
-     * cookie is deliberately not read) and always clears both auth cookies.
+     * cookie is deliberately not read) and always clears both auth cookies and the CSRF cookie.
      */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
@@ -188,6 +195,8 @@ public class AuthController {
             }
         } finally {
             authCookieService.clearSession(httpRequest, httpResponse);
+            // A null token makes the repository write an expired XSRF-TOKEN; the next request issues a new one.
+            csrfTokenRepository.saveToken(null, httpRequest, httpResponse);
         }
         log.info("[API-CALL] POST /api/auth/logout - User logged out");
         return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
@@ -204,6 +213,11 @@ public class AuthController {
         log.info("[API-CALL] GET /api/auth/me - Fetching profile for user ID: {}", userId);
         UserResponse userResponse = authService.getUser(userId);
         return ResponseEntity.ok(ApiResponse.success(userResponse, "Current user retrieved successfully"));
+    }
+
+    /** Replaces the pre-login CSRF token so a token seen before sign-in is not reused by the session. */
+    private void rotateCsrfToken(HttpServletRequest request, HttpServletResponse response) {
+        csrfTokenRepository.saveToken(csrfTokenRepository.generateToken(request), request, response);
     }
 
     private static AuthResponse toAuthResponse(AuthResult result, String message) {
