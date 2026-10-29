@@ -30,7 +30,7 @@ export interface UserProfile {
   bio: string;
   memberSince: string;
   hasStore: boolean;
-  /** True once an admin has verified at least one of the user's identity items. */
+  /** True only when an admin has verified all three identity items (phone, PAN and Aadhaar). */
   verified: boolean;
   /** Per-item verification state; present only on the signed-in user's own record. */
   verification?: VerificationView;
