@@ -77,6 +77,10 @@ public class Store extends BaseAuditEntity {
     @Column(name = "country", nullable = false, columnDefinition = "VARCHAR(60) NOT NULL DEFAULT 'India'")
     private String country = "India";
 
+    /** Optional Google Maps link to the store's location. */
+    @Column(name = "google_map_link", length = 2048)
+    private String googleMapLink;
+
 //    @Builder.Default
 //    @Column(name = "distance_km")
 //    private Double distanceKm = 0.0;

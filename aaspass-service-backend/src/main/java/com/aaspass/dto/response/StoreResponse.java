@@ -27,6 +27,7 @@ public record StoreResponse(
     String area,
     String city,
     String country,
+    String googleMapLink,
     Integer serviceRadiusKm,
     Double rating,
     Integer reviewCount,

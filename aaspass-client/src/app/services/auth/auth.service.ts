@@ -115,6 +115,7 @@ export class AuthService {
         area: s.area || u.area || 'Indiranagar',
         city: s.city || u.city || 'Bengaluru',
         country: s.country || DEFAULT_COUNTRY,
+        googleMapLink: s.googleMapLink || undefined,
         serviceRadiusKm: s.serviceRadiusKm || 10,
         socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
         storeSocialMediaLinks: s.storeSocialMediaLinks,

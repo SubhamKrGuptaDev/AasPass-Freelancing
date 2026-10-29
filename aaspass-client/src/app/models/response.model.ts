@@ -107,6 +107,7 @@ export interface BackendStoreResponse {
   area: string;
   city: string;
   country?: string;
+  googleMapLink?: string;
   serviceRadiusKm?: number;
   rating?: number;
   reviewCount?: number;

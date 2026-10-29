@@ -127,6 +127,7 @@ public class StoreService {
                 .area(request.area().trim())
                 .city(request.city().trim())
                 .country(request.country() != null && !request.country().isBlank() ? request.country().trim() : "India")
+                .googleMapLink(request.googleMapLink() != null && !request.googleMapLink().isBlank() ? request.googleMapLink().trim() : null)
                 .serviceRadiusKm(request.serviceRadiusKm() != null ? request.serviceRadiusKm() : 10)
                 .description(request.description())
                 .avatarUrl(request.avatarUrl() != null ? request.avatarUrl() : user.getAvatarUrl())
@@ -193,6 +194,10 @@ public class StoreService {
         if (request.area() != null) store.setArea(request.area().trim());
         if (request.city() != null) store.setCity(request.city().trim());
         if (request.country() != null && !request.country().isBlank()) store.setCountry(request.country().trim());
+        // A blank link clears the optional field; null leaves it unchanged
+        if (request.googleMapLink() != null) {
+            store.setGoogleMapLink(request.googleMapLink().isBlank() ? null : request.googleMapLink().trim());
+        }
         if (request.serviceRadiusKm() != null) store.setServiceRadiusKm(request.serviceRadiusKm());
         if (request.description() != null) store.setDescription(request.description());
         if (request.avatarUrl() != null) store.setAvatarUrl(request.avatarUrl());
@@ -280,6 +285,13 @@ public class StoreService {
         log.info("[STORE SERVICE] Recording view for store ID: {}, viewer: '{}'", id, viewerId.orElse(null));
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
+
+        // An owner visiting their own storefront is not engagement, so it is neither counted nor logged
+        Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
+        if (ownerId != null && viewerId.isPresent() && ownerId.equals(viewerId.get())) {
+            log.info("[STORE SERVICE] Store ID: {} viewed by its owner; view not counted", id);
+            return DtoMapper.toStoreResponse(store, true);
+        }
 
         StoreEngagementStats stats = store.getViews();
         if (stats == null) {

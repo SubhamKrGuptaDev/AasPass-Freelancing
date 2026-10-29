@@ -100,7 +100,7 @@ public class StoreController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StoreResponse>> updateStore(
             @PathVariable("id") Long id,
-            @RequestBody StoreUpdateRequest request) {
+            @Valid @RequestBody StoreUpdateRequest request) {
         log.info("[API-CALL] PUT /api/stores/{} - Updating store", id);
         StoreResponse response = storeService.updateStore(id, currentUser.requireUserId(), request);
         return ResponseEntity.ok(ApiResponse.success(response, "Store updated successfully"));

@@ -382,8 +382,23 @@ describe('StoreService Reviews & Ratings', () => {
       expect(service.getStoreEngagement(storeId, 'lifetime')).toBe(5203);
     });
 
-    it('should update currentUser store views if current user owns the target store', () => {
-      const ownedStoreId = 'store-owned-engagement';
+    it('should replace the optimistic count with the backend counters from the view response', () => {
+      service.stores.update(list => [{ ...fixtureStore1, id: '41', userId: 'someone-else' }, ...list]);
+
+      service.recordStoreView('41');
+      expect(service.getStoreViews('41').lifetime).toBe(3821);
+
+      // Other visitors were counted on the backend since the list was loaded
+      httpTesting.expectOne(r => r.method === 'POST' && r.url.endsWith('/stores/41/views')).flush({
+        success: true, message: 'ok',
+        data: { id: 41, storeName: 'Fresh', views: { daily: 50, weekly: 300, monthly: 1200, lifetime: 3900 } }
+      });
+
+      expect(service.getStoreViews('41')).toEqual({ daily: 50, weekly: 300, monthly: 1200, lifetime: 3900 });
+    });
+
+    it('should reload but not count or send a view when the current user owns the target store', () => {
+      const ownedStoreId = '42';
       const myStore: StoreProfile = {
         ...fixtureStore1,
         id: ownedStoreId,
@@ -395,13 +410,18 @@ describe('StoreService Reviews & Ratings', () => {
       TestBed.inject(AuthService).setCurrentUser({ ...service.currentUser(), hasStore: true, store: myStore, stores: [myStore] });
       service.stores.update(list => [myStore, ...list]);
 
-      service.recordStoreView(ownedStoreId, 'client-456');
+      service.recordStoreView(ownedStoreId);
 
-      const activeUser = service.currentUser();
-      expect(activeUser.store?.views?.daily).toBe(11);
-      expect(activeUser.store?.views?.lifetime).toBe(501);
-      expect(activeUser.stores?.[0].views?.daily).toBe(11);
-      expect(activeUser.stores?.[0].views?.lifetime).toBe(501);
+      expect(service.getStoreViews(ownedStoreId).lifetime).toBe(500);
+      expect(service.getStoreById(ownedStoreId)?.viewHistory).toEqual([]);
+      expect(service.currentUser().store?.views?.lifetime).toBe(500);
+      httpTesting.expectNone(r => r.url.endsWith(`/views`));
+
+      httpTesting.expectOne(r => r.method === 'GET' && r.url.endsWith('/stores/42')).flush({
+        success: true, message: 'ok',
+        data: { id: 42, storeName: 'Mine', views: { daily: 12, weekly: 60, monthly: 160, lifetime: 520 } }
+      });
+      expect(service.getStoreViews(ownedStoreId).lifetime).toBe(520);
     });
 
     it('should isolate view counts between different stores independently', () => {

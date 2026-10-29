@@ -3,6 +3,7 @@ package com.aaspass.dto.request;
 import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
@@ -28,6 +29,10 @@ public record StoreUpdateRequest(
     String city,
     @Size(max = 60, message = "Country must be at most 60 characters")
     String country,
+    @Size(max = StoreCreateRequest.GOOGLE_MAP_LINK_MAX_LENGTH, message = "Google Maps link must be at most 2048 characters")
+    @Pattern(regexp = StoreCreateRequest.GOOGLE_MAP_LINK_REGEX, flags = Pattern.Flag.CASE_INSENSITIVE,
+        message = StoreCreateRequest.GOOGLE_MAP_LINK_MESSAGE)
+    String googleMapLink,
     Integer serviceRadiusKm,
     String description,
     String avatarUrl,

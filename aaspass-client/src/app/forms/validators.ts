@@ -24,6 +24,18 @@ export function matchingFields(field: string, confirmField: string): ValidatorFn
   };
 }
 
+/** Long localized place names and directions links run well past 500 characters. */
+export const GOOGLE_MAP_LINK_MAX_LENGTH = 2048;
+
+/**
+ * Blank (the field is optional), or a Google Maps link: maps.app.goo.gl/..., goo.gl/maps/...,
+ * [www.|maps.]google.TLD/maps..., or maps.google.TLD[/?#]... where TLD is com, a 2-letter country code,
+ * co.XX or com.XX, so look-alike hosts such as maps.google.com.evil.io are rejected.
+ * Keep in sync with GOOGLE_MAP_LINK_REGEX in the backend's StoreCreateRequest.
+ */
+export const GOOGLE_MAP_LINK_PATTERN =
+  /^\s*(?:https?:\/\/(?:maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+|(?:www\.|maps\.)?google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})\/maps(?:[/?#]\S*)?|maps\.google\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})(?:[/?#]\S*)?))?\s*$/i;
+
 /** Review ratings are 1.0–5.0 in 0.1 steps; anything non-numeric falls back to 5.0. */
 export function clampRating(value: unknown): number {
   const num = Number(value);
