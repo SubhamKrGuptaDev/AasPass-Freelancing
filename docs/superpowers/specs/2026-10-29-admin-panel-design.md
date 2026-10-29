@@ -61,7 +61,7 @@ Verified items show a green ✓ on the user's own profile; a public green verifi
 
 Bootstrap: `AdminBootstrap` (`CommandLineRunner`) creates one admin from `aaspass.admin.bootstrap-email` / `aaspass.admin.bootstrap-password` / `aaspass.admin.bootstrap-name` **only when `admin_users` is empty**. `application-dev.properties` supplies dev defaults (`admin@aaspass.local` / `admin12345`); outside dev, missing values log a warning and skip seeding.
 
-**`admin_sessions`** (`AdminSession`) — same shape as `user_sessions` (session id, refresh hash, previous hash, user agent, IP, expires/last-used/revoked, revoke reason) but FK to `admin_users`. Refresh-token rotation and reuse detection reuse `TokenHashing`; common rotation logic is extracted from `SessionService` where it splits cleanly, otherwise mirrored in `AdminSessionService`.
+**`admin_sessions`** (`AdminSession`) — same shape as `user_sessions` (session id, refresh hash, previous hash, user agent, IP, expires/last-used/revoked, revoke reason) but FK to `admin_users`. Refresh-token rotation, reuse detection and the 20 s reuse grace are mirrored in `AdminSessionService` (reusing `TokenHashing`); `SessionService` is not refactored, to keep the user auth path untouched.
 
 **`admin_audit_log`** (`AdminAuditEntry`)
 
@@ -87,7 +87,8 @@ Bootstrap: `AdminBootstrap` (`CommandLineRunner`) creates one admin from `aaspas
 
 - `admin_blocked` boolean not null default false, `admin_block_reason` varchar(500), `admin_blocked_at` Instant.
 - `admin_reviewed_at` Instant nullable, `reviewed_by_admin_id` Long nullable.
-- **Public visibility rule** (search, listing, home preview): `isActive && !adminBlocked && !owner.isSuspended(now)`. `GET /api/stores/{id}` for a hidden store returns 404 to the public, but still returns it to its owner (so they see the block notice).
+- **Public search rule** (`GET /api/stores` search, home preview): `isActive && !adminBlocked && !owner.isSuspended(now)`.
+- **Admin-hidden** = `adminBlocked || owner.isSuspended(now)`. `GET /api/stores/{id}` returns 404 for an admin-hidden store unless the caller is its owner (so they see the block notice), and `GET /api/stores/user/{userId}` omits admin-hidden stores for non-owners. Owner-inactive (`!isActive`) stores keep today's behaviour on these two endpoints.
 
 ## 4. Backend
 
@@ -109,7 +110,7 @@ Shared entities `VerificationCheck` / `VerificationStatus` live in `com.aaspass.
 ### 4.2 Security
 
 - **Second filter chain** `adminSecurityFilterChain`, `@Order(1)`, `securityMatcher("/api/admin/**")`. The existing chain gets `@Order(2)` and is otherwise unchanged.
-- **Separate JWT:** issuer `aaspass-admin`, signed with `aaspass.security.admin-jwt-secret` (`AASPASS_ADMIN_JWT_SECRET`; dev default like the user secret, with `DevKeysWarning`). Claims: `sub`=admin id, `sid`, `email`, `typ`=`admin`. Access TTL 15 min, refresh TTL 12 h (admin sessions are deliberately shorter). The user chain's decoder already requires issuer `aaspass`, so admin tokens fail there; the admin decoder requires `aaspass-admin`, so user tokens fail there.
+- **Separate JWT:** issuer `aaspass-admin`, signed with `aaspass.admin.jwt-secret` (`AASPASS_ADMIN_JWT_SECRET`; dev/test defaults in profile properties). Claims: `sub`=admin id, `sid`, `email`, `typ`=`admin`. Access TTL 15 min, refresh TTL 12 h (admin sessions are deliberately shorter). The user chain's decoder already requires issuer `aaspass`, so admin tokens fail there; the admin decoder requires `aaspass-admin`, so user tokens fail there.
 - **Cookies:** `_asid` (access, path `/api/admin`, SameSite Lax) and `_arid` (refresh, path `/api/admin/auth`, SameSite Strict). `AuthCookieService` is generalised (`cookie(name, value, sameSite, path, ttl, req)`) so host/Secure/Domain rules stay single-sourced; the admin side uses a small `AdminCookieService` on top of it. The admin chain uses a cookie bearer resolver reading `_asid`.
 - **CSRF:** same `CookieCsrfTokenRepository` bean and `CsrfCookieFilter`; exempt `POST /api/admin/auth/login` and `/api/admin/auth/refresh`.
 - **Authorization:** `permitAll` for `POST auth/login|refresh|logout`; everything else under `/api/admin/**` requires an authenticated admin.
@@ -160,7 +161,8 @@ All mutating endpoints write an audit entry in the same transaction.
 
 ### 4.4 Changes to existing user-facing backend
 
-- **Login / refresh (`AuthService`):** after credential check, if `user.isSuspended(now)` → `403` with new `ErrorCode.ACCOUNT_SUSPENDED`, message `"Account suspended until <date>: <reason>"`, and `details: {suspendedUntil, reason}`. Refresh also revokes the presented session.
+- **Login (`AuthService`):** after credential check, if `user.isSuspended(now)` → `403` with new `ErrorCode.ACCOUNT_SUSPENDED`, message `"Account suspended until <yyyy-MM-dd HH:mm> UTC: <reason>"`. `ForbiddenException` gains an optional `ErrorCode` (default `FORBIDDEN`) that `GlobalExceptionHandler` passes through.
+- **Refresh:** suspending revokes every session, so a suspended user's refresh fails with the existing `401 SESSION_REVOKED`; the client ends the session and the next login shows the suspension message. No extra refresh check.
 - **`SessionRevokeReason`:** add `SUSPENDED`. Suspending calls a new `SessionService.revokeAllForUser(userId, reason)` (reuse if an equivalent exists).
 - **Store activation (`StoreService.activateStore`):** if `adminBlocked` → `403 STORE_BLOCKED_BY_ADMIN`. Deactivate stays allowed.
 - **Public store queries (`StoreRepository`/`StoreService`):** apply the visibility rule from §3.3.
@@ -174,10 +176,10 @@ All mutating endpoints write an audit entry in the same transaction.
 
 ### 5.1 Project
 
-- New Angular 22 workspace at repo root, same toolchain as `aaspass-client` (TypeScript 6 strict, Tailwind 4, Vitest, `@spartan-ng/brain`, `@ng-icons/lucide`). Copies only the Spartan helm components it needs (button, input, card, badge, select, table styles, dialog, separator, skeleton) into `src/app/ui/`.
+- New Angular 22 workspace at repo root, same toolchain as `aaspass-client` (TypeScript 6 strict, Tailwind 4, Vitest, `@spartan-ng/brain`, `@ng-icons/lucide`). Copies only the Spartan helm components it needs (button, input, card, badge, separator, skeleton) into `src/app/ui/`; dialogs use the native `<dialog>` element (`showModal()` gives focus trapping and Esc) and tables are plain Tailwind.
 - `npm start` → `ng serve --port 4300`; `proxy.conf.json` proxies `/api` → `http://localhost:8080`. Separate workspace ⇒ separate `.angular/cache`, so it can run next to the client.
 - `AGENTS.md` / `CLAUDE.md` with the same Angular conventions as the client; `COMMANDS.md` gains an "Admin (`aaspass-admin`)" section; root `README.md` mentions the app.
-- Country/city filter options reuse the client's generated `public/geo` files (copied by an npm script `copy:geo`, not hand-duplicated).
+- Country/city filter options reuse the client's geo data: `angular.json` serves `../aaspass-client/public/geo` as `geo/`, and a `copy:geo` script (run by `prestart`/`prebuild`) copies `aaspass-client/src/app/geo/countries.generated.ts` into `src/app/geo/` (git-ignored).
 
 ### 5.2 Core
 
@@ -220,7 +222,8 @@ All actions disable while in flight, update the page from the response, and toas
 | Suspension `until` in the past or > 1 year | `400` |
 | Verify an item with no value | `400` |
 | Unknown user/store id | `404` |
-| Suspended user logs in / refreshes | `403 ACCOUNT_SUSPENDED` |
+| Suspended user logs in | `403 ACCOUNT_SUSPENDED` |
+| Suspended user refreshes (sessions were revoked) | `401 SESSION_REVOKED` |
 | Owner activates admin-blocked store | `403 STORE_BLOCKED_BY_ADMIN` |
 
 ## 8. Testing
