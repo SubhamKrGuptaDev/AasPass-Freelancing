@@ -4,5 +4,6 @@ package com.aaspass.security.session;
 public enum SessionRevokeReason {
     LOGOUT,
     REUSE_DETECTED,
-    PASSWORD_CHANGED
+    PASSWORD_CHANGED,
+    SUSPENDED
 }

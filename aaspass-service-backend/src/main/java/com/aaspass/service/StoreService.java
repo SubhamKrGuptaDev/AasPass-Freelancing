@@ -11,6 +11,7 @@ import com.aaspass.entity.StoreEngagementStats;
 import com.aaspass.entity.StoreServiceItem;
 import com.aaspass.entity.StoreViewRecord;
 import com.aaspass.entity.User;
+import com.aaspass.exception.ErrorCode;
 import com.aaspass.exception.ForbiddenException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -40,9 +43,12 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
 
-    public StoreService(StoreRepository storeRepository, UserRepository userRepository) {
+    private final Clock clock;
+
+    public StoreService(StoreRepository storeRepository, UserRepository userRepository, Clock clock) {
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +61,8 @@ public class StoreService {
                 (city != null && !city.isBlank()) ? city.trim() : null,
                 (category != null && !category.isBlank()) ? category.trim() : null,
                 (query != null && !query.isBlank()) ? query.trim() : null,
-                availableOnly
+                availableOnly,
+                clock.instant()
         );
 
         log.info("[STORE SERVICE] Query returned {} stores", stores.size());
@@ -65,24 +72,37 @@ public class StoreService {
     }
 
     @Transactional(readOnly = true)
-    public StoreResponse getStoreById(Long id) {
+    public StoreResponse getStoreById(Long id, Optional<Long> callerId) {
         log.info("[STORE SERVICE] Fetching store details for ID: {}", id);
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("[STORE SERVICE] Store not found with ID: {}", id);
                     return new ResourceNotFoundException("Store", "id", id);
                 });
-        return DtoMapper.toStoreResponse(store, true);
+        boolean owner = isOwner(store, callerId);
+        if (!owner && store.isAdminHidden(clock.instant())) {
+            log.warn("[STORE SERVICE] Store ID: {} is hidden by moderation; reporting not found", id);
+            throw new ResourceNotFoundException("Store", "id", id);
+        }
+        return DtoMapper.toStoreResponse(store, true, owner);
+    }
+
+    private static boolean isOwner(Store store, Optional<Long> callerId) {
+        Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
+        return ownerId != null && callerId != null && callerId.isPresent() && ownerId.equals(callerId.get());
     }
 
     @Transactional(readOnly = true)
-    public List<StoreResponse> getStoresByUserId(Long userId) {
+    public List<StoreResponse> getStoresByUserId(Long userId, Optional<Long> callerId) {
         log.info("[STORE SERVICE] Fetching all stores for owner user ID: {}", userId);
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User", "id", userId);
         }
+        boolean owner = callerId != null && callerId.isPresent() && userId.equals(callerId.get());
+        Instant now = clock.instant();
         return storeRepository.findByUserId(userId).stream()
-                .map(store -> DtoMapper.toStoreResponse(store, true))
+                .filter(store -> owner || !store.isAdminHidden(now))
+                .map(store -> DtoMapper.toStoreResponse(store, true, owner))
                 .collect(Collectors.toList());
     }
 
@@ -173,7 +193,7 @@ public class StoreService {
         userRepository.save(user);
 
         log.info("[STORE SERVICE] Store created successfully with ID: {} for user ID: {}", savedStore.getId(), user.getId());
-        return DtoMapper.toStoreResponse(savedStore, true);
+        return DtoMapper.toStoreResponse(savedStore, true, true);
     }
 
     @Transactional
@@ -224,7 +244,7 @@ public class StoreService {
 
         Store updated = storeRepository.save(store);
         log.info("[STORE SERVICE] Store ID: {} updated successfully", id);
-        return DtoMapper.toStoreResponse(updated, true);
+        return DtoMapper.toStoreResponse(updated, true, true);
     }
 
     @Transactional
@@ -256,7 +276,7 @@ public class StoreService {
         Store saved = storeRepository.save(store);
 
         log.info("[STORE SERVICE] Store ID: {} availability set to: {}", id, newStatus);
-        return DtoMapper.toStoreResponse(saved, true);
+        return DtoMapper.toStoreResponse(saved, true, true);
     }
 
     /**
@@ -269,15 +289,20 @@ public class StoreService {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
 
+        if (active && Boolean.TRUE.equals(store.getAdminBlocked())) {
+            log.warn("[STORE SERVICE] Store ID: {} activation refused: blocked by admin", id);
+            throw new ForbiddenException("This store was deactivated by an admin: " + store.getAdminBlockReason(),
+                    ErrorCode.STORE_BLOCKED_BY_ADMIN);
+        }
         if (Boolean.valueOf(active).equals(store.getIsActive())) {
             log.info("[STORE SERVICE] Store ID: {} already {}", id, active ? "active" : "inactive");
-            return DtoMapper.toStoreResponse(store, true);
+            return DtoMapper.toStoreResponse(store, true, true);
         }
         store.setIsActive(active);
         Store saved = storeRepository.save(store);
 
         log.info("[STORE SERVICE] Store ID: {} set to {}", id, active ? "active" : "inactive");
-        return DtoMapper.toStoreResponse(saved, true);
+        return DtoMapper.toStoreResponse(saved, true, true);
     }
 
     @Transactional
@@ -290,7 +315,10 @@ public class StoreService {
         Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
         if (ownerId != null && viewerId.isPresent() && ownerId.equals(viewerId.get())) {
             log.info("[STORE SERVICE] Store ID: {} viewed by its owner; view not counted", id);
-            return DtoMapper.toStoreResponse(store, true);
+            return DtoMapper.toStoreResponse(store, true, true);
+        }
+        if (store.isAdminHidden(clock.instant())) {
+            throw new ResourceNotFoundException("Store", "id", id);
         }
 
         StoreEngagementStats stats = store.getViews();

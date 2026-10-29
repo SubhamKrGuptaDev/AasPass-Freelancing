@@ -1,6 +1,7 @@
 package com.aaspass.security.session;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -8,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserSessionRepository extends JpaRepository<UserSession, Long> {
+
+    List<UserSession> findByUserIdAndRevokedAtIsNull(Long userId);
 
     Optional<UserSession> findBySessionId(String sessionId);
 

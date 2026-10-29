@@ -10,6 +10,7 @@ import com.aaspass.security.token.TokenHashing;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -145,6 +146,25 @@ public class SessionService {
                 log.info("Revoked session {} ({})", session.getSessionId(), reason);
             }
         });
+    }
+
+    /**
+     * Permanently revokes every not-yet-revoked session of the user (e.g. on suspension).
+     *
+     * @return the number of sessions revoked
+     */
+    @Transactional
+    public int revokeAllForUser(Long userId, SessionRevokeReason reason) {
+        if (userId == null) {
+            return 0;
+        }
+        Instant now = clock.instant();
+        List<UserSession> active = repository.findByUserIdAndRevokedAtIsNull(userId);
+        for (UserSession session : active) {
+            revoke(session, reason, now);
+        }
+        log.info("Revoked {} session(s) for user {} ({})", active.size(), userId, reason);
+        return active.size();
     }
 
     /** @return true when the session exists, is not revoked and has not expired. */

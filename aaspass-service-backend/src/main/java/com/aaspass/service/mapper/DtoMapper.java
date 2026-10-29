@@ -6,6 +6,7 @@ import com.aaspass.dto.response.ServiceItemResponse;
 import com.aaspass.dto.response.StoreResponse;
 import com.aaspass.dto.response.StoreReviewResponse;
 import com.aaspass.dto.response.UserResponse;
+import com.aaspass.dto.response.VerificationView;
 import com.aaspass.entity.Address;
 import com.aaspass.entity.SocialMediaLink;
 import com.aaspass.entity.Store;
@@ -41,7 +42,7 @@ public final class DtoMapper {
         List<StoreResponse> storeResponses = Collections.emptyList();
         if (includeStores && user.getStores() != null) {
             storeResponses = user.getStores().stream()
-                    .map(store -> toStoreResponse(store, false))
+                    .map(store -> toStoreResponse(store, false, includePrivate))
                     .collect(Collectors.toList());
         }
 
@@ -67,6 +68,9 @@ public final class DtoMapper {
                 .country(user.getCountry() != null && !user.getCountry().isBlank() ? user.getCountry() : "India")
                 .bio(user.getBio())
                 .memberSince(user.getMemberSince())
+                .verified(user.isFullyVerified())
+                .verification(includePrivate ? VerificationView.of(user) : null)
+                .suspendedUntil(includePrivate ? user.getSuspendedUntil() : null)
                 .hasStore(user.getHasStore())
                 .userSocialMediaLinks(user.getUserSocialMediaLinks())
                 .stores(storeResponses)
@@ -77,6 +81,13 @@ public final class DtoMapper {
     }
 
     public static StoreResponse toStoreResponse(Store store, boolean includeNested) {
+        return toStoreResponse(store, includeNested, false);
+    }
+
+    /**
+     * @param includeOwnerPrivate true only for the store's owner: exposes the admin-block state and reason
+     */
+    public static StoreResponse toStoreResponse(Store store, boolean includeNested, boolean includeOwnerPrivate) {
         if (store == null) return null;
 
         List<SocialMediaLinkDto> socialMediaLinkDtos = Collections.emptyList();
@@ -136,6 +147,9 @@ public final class DtoMapper {
                 .bannerGradient(store.getBannerGradient())
                 .isAvailable(store.getIsAvailable())
                 .isActive(store.getIsActive())
+                .ownerVerified(store.getUser() != null && store.getUser().isFullyVerified())
+                .adminBlocked(includeOwnerPrivate && Boolean.TRUE.equals(store.getAdminBlocked()))
+                .adminBlockReason(includeOwnerPrivate ? store.getAdminBlockReason() : null)
                 .memberSince(store.getMemberSince())
                 .views(store.getViews())
                 .storeSocialMediaLinks(store.getStoreSocialMediaLinks())

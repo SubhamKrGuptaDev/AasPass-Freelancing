@@ -4,6 +4,7 @@ import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.UserSocialMediaLinks;
 import lombok.Builder;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,6 +27,9 @@ public record UserResponse(
     String country,
     String bio,
     String memberSince,
+    Boolean verified,
+    VerificationView verification,
+    Instant suspendedUntil,
     Boolean hasStore,
     UserSocialMediaLinks userSocialMediaLinks,
     List<SocialMediaLinkDto> socialMediaLinks,
@@ -35,6 +39,7 @@ public record UserResponse(
     LocalDateTime lastUpdateDateTime
 ) {
     public UserResponse {
+        verified = Boolean.TRUE.equals(verified);
         socialMediaLinks = (socialMediaLinks != null) ? socialMediaLinks : List.of();
         stores = (stores != null) ? stores : List.of();
         addresses = (addresses != null) ? addresses : List.of();

@@ -66,7 +66,7 @@ public class StoreController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StoreResponse>> getStoreById(@PathVariable("id") Long id) {
         log.info("[API-CALL] GET /api/stores/{} - Fetching store details", id);
-        StoreResponse response = storeService.getStoreById(id);
+        StoreResponse response = storeService.getStoreById(id, currentUser.optionalUserId());
         return ResponseEntity.ok(ApiResponse.success(response, "Store details retrieved successfully"));
     }
 
@@ -76,7 +76,7 @@ public class StoreController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<StoreResponse>>> getStoresByUserId(@PathVariable("userId") Long userId) {
         log.info("[API-CALL] GET /api/stores/user/{} - Fetching owner stores", userId);
-        List<StoreResponse> stores = storeService.getStoresByUserId(userId);
+        List<StoreResponse> stores = storeService.getStoresByUserId(userId, currentUser.optionalUserId());
         return ResponseEntity.ok(ApiResponse.success(stores, "User stores retrieved successfully"));
     }
 

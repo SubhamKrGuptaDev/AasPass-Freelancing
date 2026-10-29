@@ -2,6 +2,7 @@ package com.aaspass.security.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -155,6 +156,23 @@ class SessionServiceTest {
     }
 
     /** A clock the test moves explicitly. */
+    @Test
+    void revokeAllForUserRevokesEveryActiveSession() {
+        // Clear any sessions committed by non-transactional tests so the count is exact.
+        sessions.revokeAllForUser(user.getId(), SessionRevokeReason.LOGOUT);
+        IssuedSession a = sessions.open(user, "ua", "1.1.1.1");
+        IssuedSession b = sessions.open(user, "ua", "1.1.1.1");
+
+        int count = sessions.revokeAllForUser(user.getId(), SessionRevokeReason.SUSPENDED);
+
+        assertEquals(2, count);
+        for (IssuedSession s : new IssuedSession[] {a, b}) {
+            UserSession stored = repository.findBySessionId(s.session().getSessionId()).orElseThrow();
+            assertNotNull(stored.getRevokedAt());
+            assertEquals(SessionRevokeReason.SUSPENDED, stored.getRevokeReason());
+        }
+    }
+
     private static final class MutableClock extends Clock {
         private Instant now;
 

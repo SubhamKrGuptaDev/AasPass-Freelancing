@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -24,6 +25,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     @Query("SELECT DISTINCT s FROM Store s " +
             "LEFT JOIN s.skills sk " +
             "WHERE s.isActive = true " +
+            "AND s.adminBlocked = false " +
+            "AND (s.user.suspendedUntil IS NULL OR s.user.suspendedUntil <= :now) " +
             "AND (:country IS NULL OR :country = '' OR LOWER(s.country) = LOWER(:country)) " +
             "AND (:city IS NULL OR :city = '' OR LOWER(s.city) = LOWER(:city)) " +
             "AND (:category IS NULL OR :category = '' OR LOWER(s.category) = LOWER(:category)) " +
@@ -40,6 +43,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             @Param("city") String city,
             @Param("category") String category,
             @Param("query") String query,
-            @Param("availableOnly") Boolean availableOnly
+            @Param("availableOnly") Boolean availableOnly,
+            @Param("now") Instant now
     );
 }
