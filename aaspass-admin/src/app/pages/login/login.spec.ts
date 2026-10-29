@@ -41,6 +41,11 @@ describe('LoginPage', () => {
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
   };
 
+  it('rendersExactlyOneMainLandmark', () => {
+    setup();
+    expect(el.querySelectorAll('main').length).toBe(1);
+  });
+
   it('disablesSubmitWhileInvalid', () => {
     setup();
     expect(submitButton().disabled).toBe(true);

@@ -20,4 +20,10 @@ describe('App', () => {
     await fixture.whenStable();
     expect((fixture.nativeElement as HTMLElement).querySelector('router-outlet')).not.toBeNull();
   });
+
+  it('does not add a main landmark itself', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('main').length).toBe(0);
+  });
 });
