@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.aaspass.security.crypto.KycCryptoService;
 import java.time.LocalDateTime;
@@ -31,7 +34,8 @@ class SecurityDataMigrationSchemaTest {
 
     @Autowired
     private SecurityDataMigration migration;
-    @Autowired
+    /** A spy so tests can assert which DDL the migration issued. */
+    @MockitoSpyBean
     private JdbcTemplate jdbc;
     @MockitoSpyBean
     private KycCryptoService kycCrypto;
@@ -40,6 +44,7 @@ class SecurityDataMigrationSchemaTest {
     void cleanUp() {
         doCallRealMethod().when(kycCrypto).encrypt(anyString());
         jdbc.update("DELETE FROM users WHERE username LIKE 'legacy_%'");
+        jdbc.update("DELETE FROM admin_audit_log");
     }
 
     private void insertLegacy(String username, String password, String aadhaar, String pan) {
@@ -52,6 +57,73 @@ class SecurityDataMigrationSchemaTest {
     private Integer columnLength(String column) {
         return jdbc.queryForObject("SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS"
                 + " WHERE LOWER(TABLE_NAME) = 'users' AND LOWER(COLUMN_NAME) = ?", Integer.class, column);
+    }
+
+    private String dataType(String table, String column) {
+        return jdbc.queryForObject("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS"
+                + " WHERE LOWER(TABLE_NAME) = ? AND LOWER(COLUMN_NAME) = ?", String.class, table, column);
+    }
+
+    private String isNullable(String table, String column) {
+        return jdbc.queryForObject("SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS"
+                + " WHERE LOWER(TABLE_NAME) = ? AND LOWER(COLUMN_NAME) = ?", String.class, table, column);
+    }
+
+    private Integer length(String table, String column) {
+        return jdbc.queryForObject("SELECT CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS"
+                + " WHERE LOWER(TABLE_NAME) = ? AND LOWER(COLUMN_NAME) = ?", Integer.class, table, column);
+    }
+
+    @Test
+    @DisplayName("migrate() converts native ENUM columns (created by an older build) to VARCHAR without losing data")
+    void convertsNativeEnumColumnsToVarchar() {
+        // Recreate what Hibernate 7.2 built on MySQL: native ENUMs that reject newly added constants.
+        jdbc.execute("ALTER TABLE user_sessions MODIFY COLUMN revoke_reason"
+                + " ENUM('LOGOUT','PASSWORD_CHANGED','REUSE_DETECTED') NULL");
+        jdbc.execute("ALTER TABLE admin_sessions MODIFY COLUMN revoke_reason"
+                + " ENUM('LOGOUT','PASSWORD_CHANGED','REUSE_DETECTED') NULL");
+        jdbc.execute("ALTER TABLE admin_audit_log MODIFY COLUMN action ENUM('LOGIN','VIEW_USER_KYC') NOT NULL");
+        jdbc.execute("ALTER TABLE admin_audit_log MODIFY COLUMN target_type ENUM('USER') NOT NULL");
+        assertThat(dataType("user_sessions", "revoke_reason")).isEqualToIgnoringCase("enum");
+        jdbc.update("INSERT INTO admin_audit_log (admin_id, action, target_type, creation_date_time,"
+                + " last_updated_date_time) VALUES (1, 'VIEW_USER_KYC', 'USER', ?, ?)",
+                LocalDateTime.now(), LocalDateTime.now());
+
+        migration.migrate();
+
+        assertThat(dataType("user_sessions", "revoke_reason")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(length("user_sessions", "revoke_reason")).isEqualTo(32);
+        assertThat(isNullable("user_sessions", "revoke_reason")).isEqualTo("YES");
+        assertThat(dataType("admin_sessions", "revoke_reason")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(isNullable("admin_sessions", "revoke_reason")).isEqualTo("YES");
+        assertThat(dataType("admin_audit_log", "action")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(length("admin_audit_log", "action")).isEqualTo(32);
+        assertThat(isNullable("admin_audit_log", "action")).isEqualTo("NO");
+        assertThat(dataType("admin_audit_log", "target_type")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(isNullable("admin_audit_log", "target_type")).isEqualTo("NO");
+        // Existing values survive, and constants the old ENUM rejected now fit.
+        assertThat(jdbc.queryForObject("SELECT action FROM admin_audit_log WHERE admin_id = 1", String.class))
+                .isEqualTo("VIEW_USER_KYC");
+        assertThat(jdbc.update("UPDATE admin_audit_log SET action = 'SUSPEND_USER' WHERE admin_id = 1")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("migrate() leaves VARCHAR enum columns untouched")
+    void leavesVarcharEnumColumnsAlone() {
+        // New tables get plain VARCHARs: no native ENUM and no IN (...) CHECK pinning today's constants.
+        assertThat(dataType("user_sessions", "revoke_reason")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(dataType("admin_sessions", "revoke_reason")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(dataType("admin_audit_log", "action")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(dataType("admin_audit_log", "target_type")).isEqualToIgnoringCase("CHARACTER VARYING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS"
+                + " WHERE CHECK_CLAUSE LIKE '%REVOKE_REASON%' OR CHECK_CLAUSE LIKE '%TARGET_TYPE%'"
+                + " OR CHECK_CLAUSE LIKE '%\"ACTION\"%'", Integer.class)).isZero();
+
+        migration.migrate();
+
+        verify(jdbc, never()).execute(contains("ALTER TABLE user_sessions"));
+        verify(jdbc, never()).execute(contains("ALTER TABLE admin_sessions"));
+        verify(jdbc, never()).execute(contains("ALTER TABLE admin_audit_log"));
     }
 
     @Test

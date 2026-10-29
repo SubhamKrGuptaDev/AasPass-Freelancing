@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class AdminBootstrap implements CommandLineRunner {
 
+    /** The well-known password in application-dev.properties; seeding it outside dev is a takeover risk. */
+    static final String DEV_DEFAULT_PASSWORD = "admin12345";
+
     private final AdminUserRepository adminUserRepository;
     private final AdminProperties properties;
     private final PasswordEncoder passwordEncoder;
@@ -45,5 +48,16 @@ public class AdminBootstrap implements CommandLineRunner {
         admin.setActive(true);
         adminUserRepository.save(admin);
         log.info("Bootstrapped initial admin account {}", admin.getEmail());
+        if (isDevDefaultPassword(password)) {
+            // Never log the password itself.
+            log.error("Admin account {} was seeded with the well-known DEV default password. If this is not a "
+                    + "local dev machine, set AASPASS_ADMIN_PASSWORD and SPRING_PROFILES_ACTIVE (it must not fall "
+                    + "back to 'dev'), then change this admin's password.", admin.getEmail());
+        }
+    }
+
+    /** @return whether {@code password} is the dev profile's well-known default admin password */
+    static boolean isDevDefaultPassword(String password) {
+        return DEV_DEFAULT_PASSWORD.equals(password);
     }
 }

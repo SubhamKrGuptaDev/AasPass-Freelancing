@@ -24,12 +24,14 @@ public class AdminAuditEntry extends BaseAuditEntity {
     @Column(name = "admin_id", nullable = false)
     private Long adminId;
 
+    // Explicit VARCHAR: Hibernate would otherwise emit a native ENUM (MySQL) or an IN (...) CHECK, and
+    // ddl-auto=update never alters either, so constants added later would be rejected.
     @Enumerated(EnumType.STRING)
-    @Column(name = "action", nullable = false, length = 32)
+    @Column(name = "action", nullable = false, columnDefinition = "VARCHAR(32) NOT NULL")
     private AdminAuditAction action;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_type", nullable = false, length = 16)
+    @Column(name = "target_type", nullable = false, columnDefinition = "VARCHAR(16) NOT NULL")
     private AuditTargetType targetType;
 
     @Column(name = "target_id")

@@ -57,8 +57,10 @@ public class UserSession extends BaseAuditEntity {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    // Explicit VARCHAR: Hibernate would otherwise emit a native ENUM (MySQL) or an IN (...) CHECK, and
+    // ddl-auto=update never alters either, so constants added later would be rejected.
     @Enumerated(EnumType.STRING)
-    @Column(name = "revoke_reason", length = 32)
+    @Column(name = "revoke_reason", columnDefinition = "VARCHAR(32)")
     private SessionRevokeReason revokeReason;
 
     /** @return true when not revoked and not yet expired at {@code now}. */
