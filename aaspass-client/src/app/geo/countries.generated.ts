@@ -1,4 +1,6 @@
 // Generated - do not edit; run npm run build:geo
+// Country names: countries-list (MIT, https://github.com/annexare/Countries).
+// City files (public/geo/cities): cities.json (CC BY 4.0), derived from GeoNames data.
 
 export interface Country {
   code: string;

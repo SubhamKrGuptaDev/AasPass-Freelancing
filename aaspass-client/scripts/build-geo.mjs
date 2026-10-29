@@ -14,6 +14,10 @@ const cities = require('cities.json');
 /** Always merged so existing store data keeps working. */
 const EXTRAS = { IN: ['Bengaluru', 'Delhi NCR', 'Mumbai', 'Pune', 'Hyderabad'] };
 
+/** DB columns (store.city, user.city) hold at most 60 characters; longer names would fail on save. */
+const MAX_CITY_LENGTH = 60;
+let skippedLong = 0;
+
 const byCountry = new Map();
 for (const { name, country } of cities) {
   if (typeof name !== 'string' || typeof country !== 'string') continue;
@@ -37,6 +41,10 @@ for (const { code } of list) {
     const name = raw.trim();
     const key = name.toLowerCase();
     if (!name || seen.has(key)) continue;
+    if (name.length > MAX_CITY_LENGTH) {
+      skippedLong++;
+      continue;
+    }
     seen.add(key);
     out.push(name);
   }
@@ -47,6 +55,6 @@ for (const { code } of list) {
 const lines = list.map((c) => `  { code: ${JSON.stringify(c.code)}, name: ${JSON.stringify(c.name)} },`);
 writeFileSync(
   resolve(root, 'src/app/geo/countries.generated.ts'),
-  `// Generated - do not edit; run npm run build:geo\n\nexport interface Country {\n  code: string;\n  name: string;\n}\n\nexport const COUNTRIES: readonly Country[] = [\n${lines.join('\n')}\n];\n`,
+  `// Generated - do not edit; run npm run build:geo\n// Country names: countries-list (MIT, https://github.com/annexare/Countries).\n// City files (public/geo/cities): cities.json (CC BY 4.0), derived from GeoNames data.\n\nexport interface Country {\n  code: string;\n  name: string;\n}\n\nexport const COUNTRIES: readonly Country[] = [\n${lines.join('\n')}\n];\n`,
 );
-console.log(`Wrote ${list.length} countries`);
+console.log(`Wrote ${list.length} countries; skipped ${skippedLong} city names longer than ${MAX_CITY_LENGTH} characters`);
