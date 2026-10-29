@@ -202,7 +202,27 @@ export class StoreService {
     'Driving & Transport',
     'Fitness & Self-Defense',
     'Art, Music & Hobbies',
-    'Home & Personal Services'
+    'Home & Personal Services',
+    'Event Management',
+    'Interior Design & Planning',
+    'Mehendi Design',
+    'Pandit & Puja Services',
+    'Decoration & Florist',
+    'Beauty, Makeup & Salon',
+    'Catering & Home Cooking',
+    'Tailoring & Fashion',
+    'Electrician & Plumbing',
+    'Carpentry & Painting',
+    'Appliance Repair',
+    'Cleaning & Pest Control',
+    'Pet Care',
+    'Babysitting & Elder Care',
+    'Packers & Movers',
+    'Health & Wellness',
+    'Legal, Tax & Accounting',
+    'Marketing & Social Media',
+    'Writing & Translation',
+    'DJ & Live Entertainment'
   ];
 
   // Distinct, sorted cities that have stores in the selected country

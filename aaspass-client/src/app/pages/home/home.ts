@@ -3,10 +3,12 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
-  lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
-  lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
-  lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
-  lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench
+  lucideBaby, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideChefHat, lucideClapperboard,
+  lucideClock, lucideCode, lucideDumbbell, lucideFlame, lucideFlower2, lucideGraduationCap, lucideHammer, lucideHand,
+  lucideHeartPulse, lucideHouse, lucideLock, lucideMapPin, lucideMegaphone, lucideMessageSquare, lucideMusic,
+  lucidePalette, lucidePartyPopper, lucidePawPrint, lucidePenLine, lucidePercent, lucideRefrigerator, lucideScale,
+  lucideScissors, lucideSearch, lucideShieldCheck, lucideShirt, lucideSmartphone, lucideSofa, lucideSparkles,
+  lucideSpeaker, lucideSprayCan, lucideStore, lucideTruck, lucideUsers, lucideWrench, lucideZap
 } from '@ng-icons/lucide';
 import { HlmAccordionImports } from '@spartan-ng/helm/accordion';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
@@ -35,10 +37,12 @@ import {
     HlmSkeletonImports, HlmTabsImports
   ],
   providers: [provideIcons({
-    lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideClapperboard,
-    lucideClock, lucideCode, lucideDumbbell, lucideGraduationCap, lucideHouse, lucideLock, lucideMapPin,
-    lucideMessageSquare, lucideMusic, lucidePalette, lucidePercent, lucideSearch, lucideShieldCheck,
-    lucideSmartphone, lucideSparkles, lucideStore, lucideUsers, lucideWrench
+    lucideBaby, lucideBadgeCheck, lucideCalendarClock, lucideCamera, lucideCar, lucideChefHat, lucideClapperboard,
+    lucideClock, lucideCode, lucideDumbbell, lucideFlame, lucideFlower2, lucideGraduationCap, lucideHammer, lucideHand,
+    lucideHeartPulse, lucideHouse, lucideLock, lucideMapPin, lucideMegaphone, lucideMessageSquare, lucideMusic,
+    lucidePalette, lucidePartyPopper, lucidePawPrint, lucidePenLine, lucidePercent, lucideRefrigerator, lucideScale,
+    lucideScissors, lucideSearch, lucideShieldCheck, lucideShirt, lucideSmartphone, lucideSofa, lucideSparkles,
+    lucideSpeaker, lucideSprayCan, lucideStore, lucideTruck, lucideUsers, lucideWrench, lucideZap
   })],
   templateUrl: './home.html'
 })

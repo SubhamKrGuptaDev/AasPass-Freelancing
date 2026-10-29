@@ -118,7 +118,7 @@ describe('StoreService Reviews & Ratings', () => {
     ]);
   });
 
-  it('should expose the 12 store categories in order', () => {
+  it('should expose the 32 store categories in order', () => {
     expect(service.categories).toEqual([
       'All',
       'Video & Editing',
@@ -131,7 +131,27 @@ describe('StoreService Reviews & Ratings', () => {
       'Driving & Transport',
       'Fitness & Self-Defense',
       'Art, Music & Hobbies',
-      'Home & Personal Services'
+      'Home & Personal Services',
+      'Event Management',
+      'Interior Design & Planning',
+      'Mehendi Design',
+      'Pandit & Puja Services',
+      'Decoration & Florist',
+      'Beauty, Makeup & Salon',
+      'Catering & Home Cooking',
+      'Tailoring & Fashion',
+      'Electrician & Plumbing',
+      'Carpentry & Painting',
+      'Appliance Repair',
+      'Cleaning & Pest Control',
+      'Pet Care',
+      'Babysitting & Elder Care',
+      'Packers & Movers',
+      'Health & Wellness',
+      'Legal, Tax & Accounting',
+      'Marketing & Social Media',
+      'Writing & Translation',
+      'DJ & Live Entertainment'
     ]);
   });
 

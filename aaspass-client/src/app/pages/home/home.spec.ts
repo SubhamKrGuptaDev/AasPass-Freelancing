@@ -173,10 +173,10 @@ describe('HomeComponent', () => {
     expect(text).toContain(SELLER_COPY.heading);
   });
 
-  it('renders 11 category cards linking to /stores', () => {
+  it('renders 31 category cards linking to /stores', () => {
     fixture.detectChanges();
     const links = (fixture.nativeElement as HTMLElement).querySelectorAll('a[data-testid="category-card"]');
-    expect(links.length).toBe(11);
+    expect(links.length).toBe(31);
     expect(links[0].getAttribute('href')).toContain('category=Video');
   });
 });
