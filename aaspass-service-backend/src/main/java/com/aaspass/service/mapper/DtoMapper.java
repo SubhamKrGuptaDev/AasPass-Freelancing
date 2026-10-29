@@ -6,6 +6,7 @@ import com.aaspass.dto.response.ServiceItemResponse;
 import com.aaspass.dto.response.StoreResponse;
 import com.aaspass.dto.response.StoreReviewResponse;
 import com.aaspass.dto.response.UserResponse;
+import com.aaspass.dto.response.VerificationView;
 import com.aaspass.entity.Address;
 import com.aaspass.entity.SocialMediaLink;
 import com.aaspass.entity.Store;
@@ -16,6 +17,7 @@ import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
 import com.aaspass.util.ProfilePictureUrls;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,12 +38,21 @@ public final class DtoMapper {
      */
     public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
                                           boolean includePrivate) {
+        return toUserResponse(user, includeStores, includeAddresses, includePrivate, Instant.now());
+    }
+
+    /**
+     * @param now used to hide admin-hidden (blocked or suspended-owner) stores from non-private views
+     */
+    public static UserResponse toUserResponse(User user, boolean includeStores, boolean includeAddresses,
+                                          boolean includePrivate, Instant now) {
         if (user == null) return null;
 
         List<StoreResponse> storeResponses = Collections.emptyList();
         if (includeStores && user.getStores() != null) {
             storeResponses = user.getStores().stream()
-                    .map(store -> toStoreResponse(store, false))
+                    .filter(store -> includePrivate || !store.isAdminHidden(now))
+                    .map(store -> toStoreResponse(store, false, includePrivate))
                     .collect(Collectors.toList());
         }
 
@@ -67,6 +78,9 @@ public final class DtoMapper {
                 .country(user.getCountry() != null && !user.getCountry().isBlank() ? user.getCountry() : "India")
                 .bio(user.getBio())
                 .memberSince(user.getMemberSince())
+                .verified(user.isFullyVerified())
+                .verification(includePrivate ? VerificationView.of(user) : null)
+                .suspendedUntil(includePrivate ? user.getSuspendedUntil() : null)
                 .hasStore(user.getHasStore())
                 .userSocialMediaLinks(user.getUserSocialMediaLinks())
                 .stores(storeResponses)
@@ -77,6 +91,13 @@ public final class DtoMapper {
     }
 
     public static StoreResponse toStoreResponse(Store store, boolean includeNested) {
+        return toStoreResponse(store, includeNested, false);
+    }
+
+    /**
+     * @param includeOwnerPrivate true only for the store's owner: exposes the admin-block state and reason
+     */
+    public static StoreResponse toStoreResponse(Store store, boolean includeNested, boolean includeOwnerPrivate) {
         if (store == null) return null;
 
         List<SocialMediaLinkDto> socialMediaLinkDtos = Collections.emptyList();
@@ -136,6 +157,9 @@ public final class DtoMapper {
                 .bannerGradient(store.getBannerGradient())
                 .isAvailable(store.getIsAvailable())
                 .isActive(store.getIsActive())
+                .ownerVerified(store.getUser() != null && store.getUser().isFullyVerified())
+                .adminBlocked(includeOwnerPrivate && Boolean.TRUE.equals(store.getAdminBlocked()))
+                .adminBlockReason(includeOwnerPrivate ? store.getAdminBlockReason() : null)
                 .memberSince(store.getMemberSince())
                 .views(store.getViews())
                 .storeSocialMediaLinks(store.getStoreSocialMediaLinks())

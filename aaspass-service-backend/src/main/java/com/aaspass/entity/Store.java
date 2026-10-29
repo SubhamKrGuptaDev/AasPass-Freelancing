@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -120,6 +121,23 @@ public class Store extends BaseAuditEntity {
     @Column(name = "is_active", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
     private Boolean isActive = false;
 
+    /** Set by an admin to hide the store from public discovery regardless of the owner's own active flag. */
+    @Builder.Default
+    @Column(name = "admin_blocked", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    private Boolean adminBlocked = false;
+
+    @Column(name = "admin_block_reason", length = 500)
+    private String adminBlockReason;
+
+    @Column(name = "admin_blocked_at")
+    private Instant adminBlockedAt;
+
+    @Column(name = "admin_reviewed_at")
+    private Instant adminReviewedAt;
+
+    @Column(name = "reviewed_by_admin_id")
+    private Long reviewedByAdminId;
+
     @Column(name = "member_since", length = 50)
     private String memberSince;
 
@@ -145,6 +163,11 @@ public class Store extends BaseAuditEntity {
     @Builder.Default
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StoreViewRecord> viewHistory = new ArrayList<>();
+
+    /** True when an admin blocked this store or its owner is currently suspended. */
+    public boolean isAdminHidden(Instant now) {
+        return Boolean.TRUE.equals(adminBlocked) || (user != null && user.isSuspended(now));
+    }
 
     public void addService(StoreServiceItem serviceItem) {
         if (serviceItem != null) {

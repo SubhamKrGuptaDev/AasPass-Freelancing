@@ -6,6 +6,7 @@ import com.aaspass.dto.response.UserResponse;
 import com.aaspass.entity.User;
 import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.DuplicateResourceException;
+import com.aaspass.exception.ForbiddenException;
 import com.aaspass.exception.ErrorCode;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.exception.UnauthorizedException;
@@ -20,7 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -33,20 +37,26 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    private static final DateTimeFormatter SUSPENSION_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
+
     private final UserRepository userRepository;
 
     private final PasswordEncoder passwordEncoder;
 
     private final SessionService sessionService;
 
+    private final Clock clock;
+
     /** Valid BCrypt hash compared against for unknown users so response time does not reveal existence. */
     private final String dummyHash;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       SessionService sessionService) {
+                       SessionService sessionService, Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.sessionService = sessionService;
+        this.clock = clock;
         this.dummyHash = passwordEncoder.encode("aaspass-timing-equaliser");
     }
 
@@ -81,6 +91,16 @@ public class AuthService {
         if (user.getPassword() == null || !passwordEncoder.matches(rawPassword, user.getPassword())) {
             log.warn("[AUTH LOGIN FAILED] Invalid credentials for user ID: {}", user.getId());
             throw new UnauthorizedException("Invalid username or password", ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        Instant now = clock.instant();
+        if (user.isSuspended(now)) {
+            String reason = user.getSuspensionReason() != null && !user.getSuspensionReason().isBlank()
+                    ? user.getSuspensionReason() : "No reason given";
+            log.warn("[AUTH LOGIN FAILED] Account suspended for user ID: {}", user.getId());
+            throw new ForbiddenException("Account suspended until "
+                    + SUSPENSION_FORMAT.format(user.getSuspendedUntil()) + " UTC: " + reason,
+                    ErrorCode.ACCOUNT_SUSPENDED);
         }
 
         IssuedSession session = sessionService.open(user, userAgent, ip);

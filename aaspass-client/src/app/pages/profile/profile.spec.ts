@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../../config/api.config';
 import { errorToastInterceptor } from '../../interceptors/error-toast.interceptor';
 import { UserProfile } from '../../models/user.model';
 import { AuthService } from '../../services/auth/auth.service';
-import { EMPTY_USER_PROFILE } from '../../services/store/store.service';
+import { EMPTY_USER_PROFILE, StoreService } from '../../services/store/store.service';
 import { ToastService } from '../../services/toast/toast.service';
 import { ProfileComponent } from './profile';
 
@@ -26,6 +26,84 @@ beforeAll(() => {
       disconnect(): void {}
     };
   }
+});
+
+describe('ProfileComponent verification states', () => {
+  let fixture: ComponentFixture<ProfileComponent>;
+  let httpTesting: HttpTestingController;
+
+  function render(user: Partial<UserProfile>): HTMLElement {
+    TestBed.inject(AuthService).setCurrentUser({ ...USER, ...user });
+    fixture = TestBed.createComponent(ProfileComponent);
+    httpTesting.match(`${API_BASE_URL}/stores`).forEach(r => r.flush({ success: true, message: 'ok', data: [] }));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const chip = (el: HTMLElement, item: string): HTMLElement | null =>
+    el.querySelector<HTMLElement>(`[data-testid="kyc-${item}-status"]`);
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(withInterceptors([errorToastInterceptor])), provideHttpClientTesting()]
+    });
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  it('shows Pending verification for an unverified PAN and no Verified chip', () => {
+    const el = render({
+      panNumber: 'XXXXX1234X',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'UNVERIFIED' }, aadhar: { status: 'UNVERIFIED' } }
+    });
+    expect(chip(el, 'pan')?.textContent).toContain('Pending verification');
+    expect(el.textContent).not.toContain('✓ Verified');
+  });
+
+  it('shows the rejection reason for a rejected PAN', () => {
+    const el = render({
+      panNumber: 'XXXXX1234X',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'REJECTED', reason: 'Blurry' }, aadhar: { status: 'UNVERIFIED' } }
+    });
+    expect(chip(el, 'pan')?.textContent).toContain('Rejected — Blurry');
+  });
+
+  it('shows Verified for a verified Aadhaar', () => {
+    const el = render({
+      aadharNumber: 'XXXX XXXX 9012',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'UNVERIFIED' }, aadhar: { status: 'VERIFIED' } }
+    });
+    expect(chip(el, 'aadhar')?.textContent).toContain('✓ Verified');
+  });
+
+  it('shows no Aadhaar chip when Aadhaar is absent', () => {
+    const el = render({ aadharNumber: undefined });
+    expect(chip(el, 'aadhar')).toBeNull();
+  });
+
+  it('shows Not provided and no phone chip when the user has no phone', () => {
+    const el = render({ phone: '' });
+    expect(el.querySelector('[data-testid="phone-value"]')?.textContent).toContain('Not provided');
+    expect(chip(el, 'phone')).toBeNull();
+  });
+
+  it('shows Pending verification for an unverified phone', () => {
+    const el = render({
+      phone: '+91 99999 11111',
+      verification: { phone: { status: 'UNVERIFIED' }, pan: { status: 'UNVERIFIED' }, aadhar: { status: 'UNVERIFIED' } }
+    });
+    expect(chip(el, 'phone')?.textContent).toContain('Pending verification');
+  });
+
+  it('shows the blocked-store notice and disables Activate', () => {
+    const store = TestBed.inject(StoreService).mapBackendStoreToProfile({
+      id: 5, userId: 1, storeName: 'Blocked Shop', category: 'c', area: 'a', city: 'Pune',
+      isActive: false, adminBlocked: true, adminBlockReason: 'Spam listing'
+    });
+    const el = render({ hasStore: true, stores: [store] });
+    const alert = el.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('Deactivated by admin: Spam listing. Contact support to restore it.');
+    const activate = Array.from(el.querySelectorAll('button')).find(b => b.textContent?.includes('Activate store'));
+    expect(activate?.disabled).toBe(true);
+  });
 });
 
 describe('ProfileComponent KYC', () => {
@@ -174,7 +252,7 @@ describe('ProfileComponent KYC', () => {
         id: 'store-7', userId: '1', ownerName: 'Aman', storeName: 'S', tagline: '', category: 'C', skills: [],
         experienceYears: 1, hourlyRate: 1, startingPrice: 1, area: 'A', city: 'B', country: 'India', serviceRadiusKm: 1,
         socialMediaLinks: [], description: '', services: [], rating: 5, reviewCount: 0, reviews: [],
-        avatarUrl: '', bannerGradient: '', isAvailable: true, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
+        avatarUrl: '', bannerGradient: '', isAvailable: true, ownerVerified: false, memberSince: '', creationDateTime: '', lastUpdateDateTime: ''
       }]);
       component.isAddingReview = true;
       component.reviewForm.controls.message.setValue('Great work');

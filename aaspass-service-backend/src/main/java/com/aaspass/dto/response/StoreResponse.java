@@ -37,6 +37,9 @@ public record StoreResponse(
     String bannerGradient,
     Boolean isAvailable,
     Boolean isActive,
+    Boolean ownerVerified,
+    Boolean adminBlocked,
+    String adminBlockReason,
     String memberSince,
     StoreEngagementStats views,
     StoreSocialMediaLinks storeSocialMediaLinks,
@@ -53,6 +56,8 @@ public record StoreResponse(
         bannerGradient = (bannerGradient != null && !bannerGradient.isBlank()) ? bannerGradient : "from-indigo-500 to-purple-600";
         isAvailable = (isAvailable != null) ? isAvailable : true;
         isActive = Boolean.TRUE.equals(isActive);
+        ownerVerified = Boolean.TRUE.equals(ownerVerified);
+        adminBlocked = Boolean.TRUE.equals(adminBlocked);
         socialMediaLinks = (socialMediaLinks != null) ? socialMediaLinks : List.of();
         services = (services != null) ? services : List.of();
         reviews = (reviews != null) ? reviews : List.of();

@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -19,9 +21,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Formula;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Entity representing an application user account and profile.
@@ -93,6 +97,46 @@ public class User extends BaseAuditEntity {
     @Column(name = "has_store", nullable = false)
     private Boolean hasStore = false;
 
+    /** Account is suspended while this instant is in the future; null when not suspended. */
+    @Column(name = "suspended_until")
+    private Instant suspendedUntil;
+
+    @Column(name = "suspension_reason", length = 500)
+    private String suspensionReason;
+
+    @Builder.Default
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "status", column = @Column(name = "phone_verification_status", nullable = false,
+                    columnDefinition = "VARCHAR(16) NOT NULL DEFAULT 'UNVERIFIED'")),
+            @AttributeOverride(name = "reason", column = @Column(name = "phone_verification_reason", length = 500)),
+            @AttributeOverride(name = "decidedAt", column = @Column(name = "phone_verified_at")),
+            @AttributeOverride(name = "decidedByAdminId", column = @Column(name = "phone_verified_by_admin_id"))
+    })
+    private VerificationCheck phoneVerification = new VerificationCheck();
+
+    @Builder.Default
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "status", column = @Column(name = "pan_verification_status", nullable = false,
+                    columnDefinition = "VARCHAR(16) NOT NULL DEFAULT 'UNVERIFIED'")),
+            @AttributeOverride(name = "reason", column = @Column(name = "pan_verification_reason", length = 500)),
+            @AttributeOverride(name = "decidedAt", column = @Column(name = "pan_verified_at")),
+            @AttributeOverride(name = "decidedByAdminId", column = @Column(name = "pan_verified_by_admin_id"))
+    })
+    private VerificationCheck panVerification = new VerificationCheck();
+
+    @Builder.Default
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "status", column = @Column(name = "aadhar_verification_status", nullable = false,
+                    columnDefinition = "VARCHAR(16) NOT NULL DEFAULT 'UNVERIFIED'")),
+            @AttributeOverride(name = "reason", column = @Column(name = "aadhar_verification_reason", length = 500)),
+            @AttributeOverride(name = "decidedAt", column = @Column(name = "aadhar_verified_at")),
+            @AttributeOverride(name = "decidedByAdminId", column = @Column(name = "aadhar_verified_by_admin_id"))
+    })
+    private VerificationCheck aadharVerification = new VerificationCheck();
+
     @Embedded
     private UserSocialMediaLinks userSocialMediaLinks;
 
@@ -105,6 +149,48 @@ public class User extends BaseAuditEntity {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Address> addresses = new ArrayList<>();
+
+    public boolean isSuspended(Instant now) {
+        return suspendedUntil != null && now != null && now.isBefore(suspendedUntil);
+    }
+
+    public boolean isFullyVerified() {
+        return getPhoneVerification().isVerified()
+                && getPanVerification().isVerified()
+                && getAadharVerification().isVerified();
+    }
+
+    /** Never returns null: a missing embedded check is lazily replaced with an unverified one. */
+    public VerificationCheck getPhoneVerification() {
+        if (phoneVerification == null) phoneVerification = new VerificationCheck();
+        return phoneVerification;
+    }
+
+    public VerificationCheck getPanVerification() {
+        if (panVerification == null) panVerification = new VerificationCheck();
+        return panVerification;
+    }
+
+    public VerificationCheck getAadharVerification() {
+        if (aadharVerification == null) aadharVerification = new VerificationCheck();
+        return aadharVerification;
+    }
+
+    /** Sets the phone and resets its verification when the value actually changes. */
+    public void updatePhone(String newPhone) {
+        if (!Objects.equals(this.phone, newPhone)) getPhoneVerification().reset();
+        this.phone = newPhone;
+    }
+
+    public void updateAadharNumber(String newAadhar) {
+        if (!Objects.equals(this.aadharNumber, newAadhar)) getAadharVerification().reset();
+        this.aadharNumber = newAadhar;
+    }
+
+    public void updatePanNumber(String newPan) {
+        if (!Objects.equals(this.panNumber, newPan)) getPanVerification().reset();
+        this.panNumber = newPan;
+    }
 
     // Backward-compatible alias accessors
     public UserSocialMediaLinks getUserSocialLinks() {

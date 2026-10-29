@@ -1,5 +1,7 @@
 package com.aaspass.controller;
 
+import com.aaspass.entity.User;
+import com.aaspass.entity.VerificationStatus;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
 import com.aaspass.support.AuthTestSupport;
@@ -17,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import java.time.Instant;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -230,5 +235,20 @@ class OwnershipAndKycTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.email", org.hamcrest.Matchers.notNullValue()))
                 .andExpect(jsonPath("$.data.phone", org.hamcrest.Matchers.notNullValue()));
+    }
+
+    @Test
+    @DisplayName("Updating PAN resets only the PAN verification")
+    void kycUpdateResetsPanCheck() throws Exception {
+        User aman = userRepository.findByUsername("aman").orElseThrow();
+        aman.getPanVerification().decide(VerificationStatus.VERIFIED, null, 1L, Instant.now());
+        aman.getAadharVerification().decide(VerificationStatus.VERIFIED, null, 1L, Instant.now());
+        userRepository.saveAndFlush(aman);
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(login("aman"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"panNumber\":\"ZZZZZ9999Z\"}"))
+                .andExpect(status().isOk());
+        User after = userRepository.findByUsername("aman").orElseThrow();
+        assertEquals(VerificationStatus.UNVERIFIED, after.getPanVerification().getStatus());
+        assertEquals(VerificationStatus.VERIFIED, after.getAadharVerification().getStatus());
     }
 }

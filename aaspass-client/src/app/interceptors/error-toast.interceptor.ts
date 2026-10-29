@@ -10,6 +10,7 @@ interface ToastMessage {
   message: string;
 }
 
+const FORBIDDEN_MESSAGE = "You don't have permission to do that.";
 const NOT_FOUND_FALLBACK = "We couldn't find what you were looking for.";
 const NETWORK_MESSAGE = "Can't reach AasPass right now. Check your connection.";
 const SERVER_MESSAGE = 'Something went wrong on our side. Please try again.';
@@ -62,7 +63,10 @@ export function toastMessageFor(err: HttpErrorResponse): ToastMessage | null {
     if (code === 'CSRF_INVALID') {
       return { type: 'error', message: 'Security check failed. Please refresh the page and try again.' };
     }
-    return { type: 'error', message: "You don't have permission to do that." };
+    if (code === 'ACCOUNT_SUSPENDED' || code === 'STORE_BLOCKED_BY_ADMIN') {
+      return { type: 'error', message: serverMessage(err) ?? FORBIDDEN_MESSAGE };
+    }
+    return { type: 'error', message: FORBIDDEN_MESSAGE };
   }
   if (status === 404) {
     return { type: 'error', message: serverMessage(err) ?? NOT_FOUND_FALLBACK };

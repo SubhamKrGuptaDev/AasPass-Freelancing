@@ -10,18 +10,25 @@ import java.time.Clock;
 import java.util.Map;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
@@ -71,17 +78,27 @@ public class SecurityConfig {
      * expiry/not-before (zero skew; expiry → {@code token_expired}) and live session ({@code session_revoked}).
      */
     @Bean
+    @Primary
     public JwtDecoder jwtDecoder(SecurityProperties properties, Clock clock, SessionService sessionService) {
-        SecretKey key = new SecretKeySpec(properties.jwtSecretBytes(), "HmacSHA256");
+        return hs256Decoder(properties.jwtSecretBytes(),
+                new JwtIssuerValidator(JwtTokenService.ISSUER),
+                new ExpiryValidator(clock),
+                new ActiveSessionValidator(sessionService));
+    }
+
+    /**
+     * Builds an HS256 decoder for {@code secret} that keeps {@code iss} as a plain string and applies
+     * exactly {@code validators}. Shared by the user and admin decoders (each with its own secret).
+     */
+    @SafeVarargs
+    public static NimbusJwtDecoder hs256Decoder(byte[] secret, OAuth2TokenValidator<Jwt>... validators) {
+        SecretKey key = new SecretKeySpec(secret, "HmacSHA256");
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
         Converter<Object, ?> issuerAsString = value -> value == null ? null : value.toString();
         decoder.setClaimSetConverter(MappedJwtClaimSetConverter.withDefaults(Map.of(JwtClaimNames.ISS, issuerAsString)));
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                new JwtIssuerValidator(JwtTokenService.ISSUER),
-                new ExpiryValidator(clock),
-                new ActiveSessionValidator(sessionService)));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(validators));
         return decoder;
     }
 
@@ -120,37 +137,54 @@ public class SecurityConfig {
         return null;
     }
 
+    /**
+     * Cookie-based CSRF for a stateless cookie-JWT chain: the shared {@code XSRF-TOKEN} repository,
+     * no token clearing on authentication, and protection on every unsafe method except
+     * {@code csrfExempt}. Shared by the user and admin chains.
+     */
+    public static Customizer<CsrfConfigurer<HttpSecurity>> cookieCsrf(CookieCsrfTokenRepository csrfTokenRepository,
+                                                                     RequestMatcher csrfExempt) {
+        RequestMatcher requiresCsrf = new AndRequestMatcher(
+                CsrfFilter.DEFAULT_CSRF_MATCHER, new NegatedRequestMatcher(csrfExempt));
+        return csrf -> csrf
+                .csrfTokenRepository(csrfTokenRepository)
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                // The default CsrfAuthenticationStrategy clears the token on every authentication.
+                // Sessions are stateless, so each cookie-JWT request counts as a fresh authentication
+                // and every response would expire XSRF-TOKEN, failing the page's next write.
+                .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy())
+                // CSRF exemptions live only in the post-processor's matcher below (single source).
+                // The resource server registers a CSRF exemption for every request carrying a
+                // bearer token, assuming header-borne tokens. Ours is a cookie the browser sends
+                // automatically, so pin the matcher to exempt only the given endpoints.
+                .withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
+                    @Override
+                    public <O extends CsrfFilter> O postProcess(O filter) {
+                        filter.setRequireCsrfProtectionMatcher(requiresCsrf);
+                        return filter;
+                    }
+                });
+    }
+
+    /**
+     * The user chain. Ordered after the admin chain ({@code /api/admin/**}), so it serves every other
+     * request. The decoder is named explicitly because a second (admin) {@link JwtDecoder} exists.
+     */
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    CookieCsrfTokenRepository csrfTokenRepository,
-                                                   ApiAuthErrorHandlers errorHandlers) throws Exception {
+                                                   ApiAuthErrorHandlers errorHandlers,
+                                                   @Qualifier("jwtDecoder") JwtDecoder jwtDecoder) throws Exception {
         PathPatternRequestMatcher.Builder paths = PathPatternRequestMatcher.withDefaults();
         RequestMatcher csrfExempt = new OrRequestMatcher(
                 paths.matcher(HttpMethod.POST, "/api/auth/login"),
                 paths.matcher(HttpMethod.POST, "/api/auth/register"),
                 paths.matcher(HttpMethod.POST, "/api/auth/refresh"));
-        RequestMatcher requiresCsrf = new AndRequestMatcher(
-                CsrfFilter.DEFAULT_CSRF_MATCHER, new NegatedRequestMatcher(csrfExempt));
 
         http
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(csrfTokenRepository)
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                        // The default CsrfAuthenticationStrategy clears the token on every authentication.
-                        // Sessions are stateless, so each cookie-JWT request counts as a fresh authentication
-                        // and every response would expire XSRF-TOKEN, failing the page's next write.
-                        .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy())
-                        // CSRF exemptions live only in the post-processor's matcher below (single source).
-                        // The resource server registers a CSRF exemption for every request carrying a
-                        // bearer token, assuming header-borne tokens. Ours is a cookie the browser sends
-                        // automatically, so pin the matcher to exempt only login/register/refresh.
-                        .withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
-                            @Override
-                            public <O extends CsrfFilter> O postProcess(O filter) {
-                                filter.setRequireCsrfProtectionMatcher(requiresCsrf);
-                                return filter;
-                            }
-                        }))
+                // CSRF exempts only login/register/refresh.
+                .csrf(cookieCsrf(csrfTokenRepository, csrfExempt))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(withDefaults())
@@ -162,7 +196,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(errorHandlers))
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(new CookieBearerTokenResolver())
-                        .jwt(withDefaults())
+                        .jwt(jwt -> jwt.decoder(jwtDecoder))
                         .authenticationEntryPoint(errorHandlers)
                         .accessDeniedHandler(errorHandlers))
                 .authorizeHttpRequests(auth -> auth

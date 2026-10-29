@@ -25,6 +25,18 @@ Run these from the `aaspass-client` folder.
 | `npx ng cache disable` / `npx ng cache enable` | Turn the cache off/on. Off avoids stale caches but makes every serve/build slower. |
 | `Remove-Item -Recurse -Force .angular\cache` | Manual fallback if `ng cache clean` fails. |
 
+## Admin (`aaspass-admin`)
+
+A separate Angular workspace with its own `.angular/cache`, so it can run beside the client dev server. Run these from the `aaspass-admin` folder.
+
+| Command | What it does |
+|---|---|
+| `npm install` | Install dependencies (first run, or after `package.json` changes). |
+| `npm start` | Start the dev server on <http://localhost:4300>. `/api` is proxied to the backend on `http://localhost:8080` (`proxy.conf.json`). Runs `copy:geo` first. |
+| `npm run build` | Production build into `dist/aaspass-admin`; also the compile check required before finishing a change. |
+| `npm test -- --watch=false` | Run all unit tests once (Vitest). |
+| `npm run copy:geo` | Copy `countries.generated.ts` and `public/geo` from `aaspass-client` (both git-ignored). Runs automatically before start, build and test. |
+
 ## Backend (`aaspass-service-backend`)
 
 Run these from the `aaspass-service-backend` folder. MySQL must be running on port `3306`.

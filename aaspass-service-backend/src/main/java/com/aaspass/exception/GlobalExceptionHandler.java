@@ -44,9 +44,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ApiResponse<Object>> handleForbidden(
             ForbiddenException ex, HttpServletRequest request) {
-        log.warn("[API FORBIDDEN] Path: {} {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        log.warn("[API FORBIDDEN] Path: {} {}, Code: {}, Message: {}", request.getMethod(), request.getRequestURI(), ex.code(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error(ex.getMessage(), ErrorCode.FORBIDDEN));
+                .body(ApiResponse.error(ex.getMessage(), ex.code()));
     }
 
     @ExceptionHandler(BadRequestException.class)

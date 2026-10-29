@@ -19,7 +19,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * One-time, idempotent migration of legacy rows: widens the legacy narrow KYC columns, hashes
  * plaintext passwords with BCrypt, encrypts plaintext Aadhaar/PAN values that have a valid format
- * and nulls everything else (legacy pre-masked or malformed values cannot be recovered).
+ * and nulls everything else (legacy pre-masked or malformed values cannot be recovered). Also converts
+ * enum columns that an older build created as native MySQL {@code ENUM}s to VARCHAR.
  * Works on raw column values through JDBC so the KYC converter is bypassed. The row updates run in
  * one transaction, so a failure part-way leaves no row half-migrated. Logs counts only.
  */
@@ -32,6 +33,16 @@ public class SecurityDataMigration implements ApplicationRunner {
     /** Ciphertext ({@code enc:v1:} + base64) needs more than the original VARCHAR(20)/VARCHAR(15). */
     private static final int KYC_COLUMN_LENGTH = 255;
     private static final List<String> KYC_COLUMNS = List.of("aadhar_number", "pan_number");
+
+    /**
+     * Enum-backed columns an older build may have created as native MySQL {@code ENUM}s, with the
+     * VARCHAR definition each must have so newly added constants (e.g. {@code SUSPENDED}) fit.
+     */
+    private static final List<EnumColumn> ENUM_COLUMNS = List.of(
+            new EnumColumn("user_sessions", "revoke_reason", "VARCHAR(32) NULL"),
+            new EnumColumn("admin_sessions", "revoke_reason", "VARCHAR(32) NULL"),
+            new EnumColumn("admin_audit_log", "action", "VARCHAR(32) NOT NULL"),
+            new EnumColumn("admin_audit_log", "target_type", "VARCHAR(16) NOT NULL"));
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
@@ -60,6 +71,7 @@ public class SecurityDataMigration implements ApplicationRunner {
      */
     public int migrate() {
         widenKycColumns();
+        convertNativeEnumColumns();
         Integer changed = transactionTemplate.execute(status -> migrateRows());
         return changed != null ? changed : 0;
     }
@@ -77,6 +89,30 @@ public class SecurityDataMigration implements ApplicationRunner {
                 // Column names come from the fixed list above, never from input.
                 jdbc.execute("ALTER TABLE users MODIFY COLUMN " + column + " VARCHAR(" + KYC_COLUMN_LENGTH + ") NULL");
                 log.info("[SECURITY MIGRATION] Widened users.{} from {} to {}", column, length, KYC_COLUMN_LENGTH);
+            }
+        }
+    }
+
+    /**
+     * {@code ddl-auto=update} never alters existing columns, so an enum column Hibernate created as a
+     * native {@code ENUM} keeps rejecting constants added later ("Data truncated"). Only columns whose
+     * {@code DATA_TYPE} is {@code enum} (MySQL's native type) are changed; VARCHAR keeps every value,
+     * so no data is lost. Idempotent: once converted, the check finds VARCHAR and does nothing.
+     */
+    private void convertNativeEnumColumns() {
+        for (EnumColumn column : ENUM_COLUMNS) {
+            List<String> types = jdbc.queryForList(
+                    "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS"
+                            + " WHERE TABLE_SCHEMA = SCHEMA() AND LOWER(TABLE_NAME) = ?"
+                            + " AND LOWER(COLUMN_NAME) = ?",
+                    String.class, column.table(), column.column());
+            String type = types.isEmpty() ? null : types.get(0);
+            if ("enum".equalsIgnoreCase(type)) {
+                // Table/column names and definitions come from the fixed list above, never from input.
+                jdbc.execute("ALTER TABLE " + column.table() + " MODIFY COLUMN " + column.column()
+                        + " " + column.definition());
+                log.info("[SECURITY MIGRATION] Converted {}.{} from ENUM to {}",
+                        column.table(), column.column(), column.definition());
             }
         }
     }
@@ -120,6 +156,9 @@ public class SecurityDataMigration implements ApplicationRunner {
 
     private static boolean isBcrypt(String value) {
         return value.startsWith("$2") && value.length() == 60;
+    }
+
+    private record EnumColumn(String table, String column, String definition) {
     }
 
     private record RawRow(long id, String password, String aadhar, String pan) {

@@ -219,6 +219,11 @@ export interface StoreProfile {
   isAvailable: boolean;
   /** Published and visible in store search. New stores start inactive until the owner activates them. */
   isActive?: boolean;
+  /** Whether the store owner is verified (public). */
+  ownerVerified: boolean;
+  /** Set by an admin; only meaningful on the owner's own record. */
+  adminBlocked?: boolean;
+  adminBlockReason?: string | null;
   memberSince: string;
   creationDateTime: string;
   lastUpdateDateTime: string;

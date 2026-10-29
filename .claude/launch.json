@@ -4,8 +4,35 @@
     {
       "name": "aaspass-client-verify",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--prefix", "aaspass-client", "ng", "serve", "--port", "4300"],
+      "runtimeArgs": [
+        "--prefix",
+        "aaspass-client",
+        "ng",
+        "serve",
+        "--port",
+        "4300"
+      ],
       "cwd": "aaspass-client",
+      "port": 4300
+    },
+    {
+      "name": "aaspass-backend",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location 'C:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend'; New-Item -ItemType Directory -Force target/uds | Out-Null; $env:JAVA_TOOL_OPTIONS='-Djdk.net.unixdomain.tmpdir=C:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-service-backend/target/uds'; ./mvnw.cmd spring-boot:run"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "aaspass-admin",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-Command",
+        "Set-Location 'C:/Users/subha_0yq0lj/Documents/projects/AasPass-Freelancing/aaspass-admin'; npm start"
+      ],
       "port": 4300
     }
   ]

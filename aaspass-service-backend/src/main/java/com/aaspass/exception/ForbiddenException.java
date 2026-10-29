@@ -5,7 +5,18 @@ package com.aaspass.exception;
  */
 public class ForbiddenException extends RuntimeException {
 
+    private final ErrorCode code;
+
     public ForbiddenException(String message) {
+        this(message, ErrorCode.FORBIDDEN);
+    }
+
+    public ForbiddenException(String message, ErrorCode code) {
         super(message);
+        this.code = code == null ? ErrorCode.FORBIDDEN : code;
+    }
+
+    public ErrorCode code() {
+        return code;
     }
 }
