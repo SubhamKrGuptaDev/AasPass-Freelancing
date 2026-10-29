@@ -41,6 +41,18 @@ class CitySignalHost {
   readonly city = signal('');
 }
 
+@Component({
+  imports: [CityPickerComponent, ReactiveFormsModule],
+  template: `
+    <form [formGroup]="form">
+      <app-city-picker formControlName="city" country="India" label="City" inputId="form-city" />
+    </form>
+  `,
+})
+class CityFormHost {
+  readonly form = new FormGroup({ city: new FormControl('') });
+}
+
 function inputOf(fixture: ComponentFixture<unknown>): HTMLInputElement {
   const input = (fixture.nativeElement as HTMLElement).querySelector('input');
   if (!input) {
@@ -297,6 +309,72 @@ describe('CityPickerComponent', () => {
 
     await type(fixture, 'p');
     expect(optionLabels(fixture)).toEqual([]);
+  });
+
+  it('reconciles against the new country when the country passes through empty', async () => {
+    const fixture = TestBed.createComponent(CitySignalHost);
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush(['Pune']);
+    fixture.componentInstance.city.set('Pune');
+    await settle(fixture);
+
+    fixture.componentInstance.country.set('');
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('Pune');
+
+    fixture.componentInstance.country.set('Canada');
+    await settle(fixture);
+    http.expectOne('geo/cities/CA.json').flush(['Toronto']);
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('');
+  });
+
+  it('keeps the value when the country returns to the same one through empty', async () => {
+    const fixture = TestBed.createComponent(CitySignalHost);
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush(['Pune']);
+    fixture.componentInstance.city.set('Pune');
+    await settle(fixture);
+
+    fixture.componentInstance.country.set('');
+    await settle(fixture);
+    fixture.componentInstance.country.set('India');
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('Pune');
+  });
+
+  it('reconciles a change made before the first list loaded', async () => {
+    const fixture = TestBed.createComponent(CitySignalHost);
+    fixture.componentInstance.city.set('Pune');
+    await settle(fixture);
+    const india = http.expectOne('geo/cities/IN.json');
+
+    fixture.componentInstance.country.set('Canada');
+    await settle(fixture);
+    http.expectOne('geo/cities/CA.json').flush(['Toronto']);
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('');
+    india.flush(['Pune']);
+  });
+
+  it('works as a form control', async () => {
+    const fixture = TestBed.createComponent(CityFormHost);
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush(['Kanpur', 'Pune']);
+    const control = fixture.componentInstance.form.controls.city;
+
+    control.setValue('Pune');
+    await settle(fixture);
+    expect(inputOf(fixture).value).toBe('Pune');
+
+    await type(fixture, 'kan');
+    expect(control.value).toBe('Pune');
+    expect(control.dirty).toBe(false);
+
+    option(fixture, 'Kanpur').click();
+    await settle(fixture);
+    expect(control.value).toBe('Kanpur');
+    expect(control.dirty).toBe(true);
   });
 
   it('is labelled and exposes combobox semantics', async () => {

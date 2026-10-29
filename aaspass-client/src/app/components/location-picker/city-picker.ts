@@ -9,9 +9,10 @@ import { LocationPickerBase } from './location-picker-base';
  *
  * `<app-city-picker [country]="country" [(value)]="city" />` or with `formControlName="city"`.
  *
- * When `country` changes from one country to another, the value is cleared unless the new
- * country's list contains it (case-insensitive). The check waits until that list has loaded, and
- * a list that failed to load (empty, not loading) keeps the value.
+ * When `country` changes from one known country to another (also via '' / unknown names in
+ * between), the value is cleared unless the new country's list contains it (case-insensitive).
+ * The check waits until that list has loaded, and a list that failed to load (empty, not
+ * loading) keeps the value. The first known country is never reconciled (initialisation).
  */
 @Component({
   selector: 'app-city-picker',
@@ -33,8 +34,11 @@ export class CityPickerComponent extends LocationPickerBase {
   protected readonly loading = computed(() => this.geo.isLoading(this.country())());
   protected readonly hasCountry = computed(() => !!this.geo.countryByName(this.country()));
 
-  /** Country whose list the current value was last checked against. */
-  private checkedCountry: string | undefined;
+  /**
+   * Code of the last known country the value is valid for. Only known countries are recorded, so
+   * passing through '' or an unknown name (A → '' → B) still reconciles B against A's value.
+   */
+  private checkedCode: string | undefined;
 
   constructor() {
     super();
@@ -47,16 +51,25 @@ export class CityPickerComponent extends LocationPickerBase {
   }
 
   private reconcileWithCountry(country: string, loading: boolean, cities: readonly string[]): void {
-    if (country === this.checkedCountry || loading) {
+    const code = this.geo.countryByName(country)?.code;
+    if (!code || code === this.checkedCode) {
       return;
     }
-    const previous = this.checkedCountry;
-    this.checkedCountry = country;
+    // First known country: the value was set for it (e.g. form initialisation). Record it on
+    // sight, even while its list loads, so a later change is compared against it.
+    if (this.checkedCode === undefined) {
+      this.checkedCode = code;
+      return;
+    }
+    // Compare only once the new country's list has loaded.
+    if (loading) {
+      return;
+    }
+    this.checkedCode = code;
 
-    // First country seen (or switching from none): the value was set for it, nothing to reconcile.
     // Empty list after loading means the file failed or has no cities: keep the value.
     const current = this.value().trim().toLowerCase();
-    if (!previous || !current || cities.length === 0) {
+    if (!current || cities.length === 0) {
       return;
     }
     if (!cities.some((city) => city.toLowerCase() === current)) {
