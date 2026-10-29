@@ -182,6 +182,59 @@ class OwnershipAndKycTest {
     }
 
     @Test
+    @DisplayName("Verified Aadhaar is locked; unverified PAN stays editable; same value is a no-op")
+    void verifiedKycCannotBeChanged() throws Exception {
+        Cookie[] aman = login("aman");
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(aman)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aadharNumber\":\"123412341234\",\"panNumber\":\"PQRST6789Z\"}"))
+                .andExpect(status().isOk());
+        markAadhaar(VerificationStatus.VERIFIED);
+
+        // Changing the verified Aadhaar is refused, and the PAN in the same request is not applied either.
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(aman)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aadharNumber\":\"999988887777\",\"panNumber\":\"ABCDE1234F\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Aadhaar is verified and can no longer be changed")));
+        User afterRefusal = userRepository.findById(id("aman")).orElseThrow();
+        assertEquals("123412341234", afterRefusal.getAadharNumber());
+        assertEquals("PQRST6789Z", afterRefusal.getPanNumber());
+
+        // Re-sending the same Aadhaar keeps it verified; the unverified PAN can still change.
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(aman)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aadharNumber\":\"1234 1234 1234\",\"panNumber\":\"ABCDE1234F\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.panNumber", is("XXXXXX234F")));
+        User afterUpdate = userRepository.findById(id("aman")).orElseThrow();
+        assertEquals(VerificationStatus.VERIFIED, afterUpdate.getAadharVerification().getStatus());
+    }
+
+    @Test
+    @DisplayName("Rejected Aadhaar can be replaced and goes back to unverified")
+    void rejectedKycCanBeReplaced() throws Exception {
+        Cookie[] aman = login("aman");
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(aman)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aadharNumber\":\"123412341234\"}"))
+                .andExpect(status().isOk());
+        markAadhaar(VerificationStatus.REJECTED);
+
+        mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(aman)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"aadharNumber\":\"999988887777\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.aadharNumber", is("XXXXXXXX7777")));
+        User after = userRepository.findById(id("aman")).orElseThrow();
+        assertEquals(VerificationStatus.UNVERIFIED, after.getAadharVerification().getStatus());
+    }
+
+    private void markAadhaar(VerificationStatus status) {
+        User user = userRepository.findById(id("aman")).orElseThrow();
+        user.getAadharVerification().decide(status, null, 1L, Instant.now());
+        userRepository.saveAndFlush(user);
+    }
+
+    @Test
     @DisplayName("Profile update ignores KYC fields")
     void updateUserIgnoresKycFields() throws Exception {
         Long amanId = id("aman");
@@ -238,10 +291,10 @@ class OwnershipAndKycTest {
     }
 
     @Test
-    @DisplayName("Updating PAN resets only the PAN verification")
+    @DisplayName("Updating a rejected PAN resets only the PAN verification")
     void kycUpdateResetsPanCheck() throws Exception {
         User aman = userRepository.findByUsername("aman").orElseThrow();
-        aman.getPanVerification().decide(VerificationStatus.VERIFIED, null, 1L, Instant.now());
+        aman.getPanVerification().decide(VerificationStatus.REJECTED, "Blurry", 1L, Instant.now());
         aman.getAadharVerification().decide(VerificationStatus.VERIFIED, null, 1L, Instant.now());
         userRepository.saveAndFlush(aman);
         mockMvc.perform(put("/api/users/me/kyc").with(csrf()).cookie(login("aman"))

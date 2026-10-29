@@ -14,6 +14,7 @@ export const routes: Routes = [
     canActivate: [adminAuthGuard],
     children: [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage) },
+      { path: 'charts', loadComponent: () => import('./pages/charts/charts').then((m) => m.ChartsPage) },
       { path: 'stores', loadComponent: () => import('./pages/stores/stores').then((m) => m.StoresPage) },
       { path: 'stores/:id', loadComponent: () => import('./pages/stores/store-detail').then((m) => m.StoreDetailPage) },
       { path: 'users', loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage) },

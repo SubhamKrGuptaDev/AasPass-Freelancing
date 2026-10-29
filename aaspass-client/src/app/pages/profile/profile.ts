@@ -89,8 +89,13 @@ export class ProfileComponent {
     return this.storeService.currentUser().verification?.[item]?.reason ?? 'no reason given';
   }
 
+  /** A verified Aadhaar/PAN can no longer be changed (the backend rejects it too). */
+  kycLocked(item: 'pan' | 'aadhar'): boolean {
+    return this.kycChip(item) === 'verified';
+  }
+
   startKycEdit(field: 'aadhaar' | 'pan'): void {
-    if (this.kycSaving()) {
+    if (this.kycSaving() || this.kycLocked(field === 'aadhaar' ? 'aadhar' : 'pan')) {
       return;
     }
     this.editingKyc.set(field);

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Subject, of } from 'rxjs';
-import { AdminStoreSummary, AdminUserSummary, DashboardResponse } from '../../models/admin.models';
+import { Observable, Subject, of } from 'rxjs';
+import { ActivityPeriod, AdminStoreSummary, AdminUserSummary, DashboardResponse, NewActivityResponse } from '../../models/admin.models';
 import { AdminApiService } from '../../services/admin-api.service';
 import { DashboardPage } from './dashboard';
 
@@ -19,16 +19,22 @@ const data: DashboardResponse = {
   totalUsers: 120, totalStores: 45, activeStores: 40, pendingUsers: 6, unreviewedStores: 4,
   blockedStores: 2, suspendedUsers: 1, recentPendingUsers: [user], recentUnreviewedStores: [store]
 };
+const activity: NewActivityResponse = {
+  period: 'DAILY', newUsers: 1, newStores: 1, recentUsers: [user], recentStores: [store]
+};
 
 describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let el: HTMLElement;
 
-  const setup = (response: DashboardResponse | null) => {
+  let newActivity: ReturnType<typeof vi.fn<(period: ActivityPeriod) => Observable<NewActivityResponse>>>;
+
+  const setup = (response: DashboardResponse | null, activityResponse: NewActivityResponse = activity) => {
     const dashboard$ = response ? of(response) : new Subject<DashboardResponse>();
+    newActivity = vi.fn((period: ActivityPeriod) => of({ ...activityResponse, period }));
     TestBed.configureTestingModule({
       imports: [DashboardPage],
-      providers: [provideRouter([]), { provide: AdminApiService, useValue: { dashboard: () => dashboard$ } }]
+      providers: [provideRouter([]), { provide: AdminApiService, useValue: { dashboard: () => dashboard$, newActivity } }]
     });
     fixture = TestBed.createComponent(DashboardPage);
     el = fixture.nativeElement as HTMLElement;
@@ -58,6 +64,42 @@ describe('DashboardPage', () => {
   it('showsEmptyStateWhenNothingWaiting', () => {
     setup({ ...data, recentPendingUsers: [], recentUnreviewedStores: [] });
     expect(el.textContent?.match(/Nothing waiting — all caught up\./g)?.length).toBe(2);
+  });
+
+  it('showsNewUsersAndNewStoresForDailyByDefault', () => {
+    const newUser: AdminUserSummary = { ...user, id: 9, name: 'Vikram Shah', email: 'vikram@x.in' };
+    const blockedStore: AdminStoreSummary = { ...store, id: 5, storeName: 'Book Nook', adminBlocked: true, reviewed: true };
+    setup(data, { ...activity, newUsers: 4, newStores: 2, recentUsers: [newUser], recentStores: [blockedStore] });
+    expect(newActivity).toHaveBeenCalledWith('DAILY');
+    expect((el.querySelector('#activity-period') as HTMLSelectElement).value).toBe('DAILY');
+    const users = el.querySelector('[aria-labelledby="new-users-heading"]');
+    const stores = el.querySelector('[aria-labelledby="new-stores-heading"]');
+    expect(users?.textContent).toContain('New users joined (4)');
+    expect(users?.textContent).toContain('Vikram Shah');
+    expect(users?.querySelector('a[href="/users/9"]')).not.toBeNull();
+    expect(stores?.textContent).toContain('New stores created (2)');
+    expect(stores?.textContent).toContain('Book Nook');
+    expect(stores?.textContent).toContain('Blocked');
+    expect(stores?.textContent).not.toContain('Unreviewed');
+    expect(stores?.querySelector('a[href="/stores/5"]')).not.toBeNull();
+  });
+
+  it('reloadsNewActivityWhenPeriodChanges', () => {
+    setup(data);
+    const select = el.querySelector('#activity-period') as HTMLSelectElement;
+    for (const period of ['WEEKLY', 'MONTHLY'] as const) {
+      select.value = period;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(newActivity).toHaveBeenLastCalledWith(period);
+    }
+    expect(newActivity).toHaveBeenCalledTimes(3);
+  });
+
+  it('showsEmptyStateWhenNoNewUsersOrStores', () => {
+    setup(data, { ...activity, newUsers: 0, newStores: 0, recentUsers: [], recentStores: [] });
+    expect(el.textContent).toContain('No new users in this period.');
+    expect(el.textContent).toContain('No new stores in this period.');
   });
 
   it('showsSkeletonsWhileLoading', () => {

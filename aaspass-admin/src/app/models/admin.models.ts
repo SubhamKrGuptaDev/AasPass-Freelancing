@@ -120,6 +120,47 @@ export interface DashboardResponse {
   recentUnreviewedStores: AdminStoreSummary[];
 }
 
+export type ActivityPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+
+/** Users and stores created within the selected rolling period (last 1, 7 or 30 days). */
+export interface NewActivityResponse {
+  period: ActivityPeriod;
+  newUsers: number;
+  newStores: number;
+  /** Newest rows first, capped server-side. */
+  recentUsers: AdminUserSummary[];
+  recentStores: AdminStoreSummary[];
+}
+
+/** Users or stores created in one city over the charted range. */
+export interface CityCount {
+  city: string;
+  country: string;
+  count: number;
+}
+
+/**
+ * Time-bucketed admin statistics. Each series is aligned with `buckets` (ISO dates, the start of
+ * each day, Monday-start week or month).
+ */
+export interface ChartsResponse {
+  period: ActivityPeriod;
+  buckets: string[];
+  newUsers: number[];
+  newStores: number[];
+  userItemsVerified: number[];
+  userItemsRejected: number[];
+  storesReviewed: number[];
+  topUserCities: CityCount[];
+  topStoreCities: CityCount[];
+}
+
+export interface ChartsParams {
+  period: ActivityPeriod;
+  country?: string;
+  city?: string;
+}
+
 export interface StoreSearchParams {
   country?: string;
   city?: string;

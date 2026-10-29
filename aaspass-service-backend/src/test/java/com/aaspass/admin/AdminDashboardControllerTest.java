@@ -11,8 +11,10 @@ import com.aaspass.entity.User;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
 import com.aaspass.support.AdminTestSupport;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ class AdminDashboardControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired StoreRepository storeRepository;
     @Autowired UserRepository userRepository;
+    @Autowired EntityManager entityManager;
 
     private Cookie[] admin;
 
@@ -77,6 +80,57 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.data.suspendedUsers", is(1)))
                 .andExpect(jsonPath("$.data.activeStores", is(1)))
                 .andExpect(jsonPath("$.data.recentUnreviewedStores", hasSize(1)));
+    }
+
+    @Test
+    void newActivityDefaultsToDailyAndWidensWithPeriod() throws Exception {
+        backdate("users", userRepository.findByEmail("rohan.gupta@example.com").orElseThrow().getId(), 3);
+        Store old = storeRepository.findAll().stream()
+                .filter(s -> "CodeSpark Lab".equals(s.getStoreName())).findFirst().orElseThrow();
+        backdate("stores", old.getId(), 20);
+
+        mockMvc.perform(get("/api/admin/dashboard/new-activity").cookie(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period", is("DAILY")))
+                .andExpect(jsonPath("$.data.newUsers", is(2)))
+                .andExpect(jsonPath("$.data.newStores", is(1)))
+                .andExpect(jsonPath("$.data.recentUsers", hasSize(2)))
+                .andExpect(jsonPath("$.data.recentStores", hasSize(1)));
+
+        mockMvc.perform(get("/api/admin/dashboard/new-activity").param("period", "weekly").cookie(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period", is("WEEKLY")))
+                .andExpect(jsonPath("$.data.newUsers", is(3)))
+                .andExpect(jsonPath("$.data.newStores", is(1)));
+
+        mockMvc.perform(get("/api/admin/dashboard/new-activity").param("period", "MONTHLY").cookie(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period", is("MONTHLY")))
+                .andExpect(jsonPath("$.data.newUsers", is(3)))
+                .andExpect(jsonPath("$.data.newStores", is(2)))
+                .andExpect(jsonPath("$.data.recentStores", hasSize(2)));
+    }
+
+    @Test
+    void newActivityRejectsUnknownPeriod() throws Exception {
+        mockMvc.perform(get("/api/admin/dashboard/new-activity").param("period", "yearly").cookie(admin))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void newActivityRequiresAdmin() throws Exception {
+        mockMvc.perform(get("/api/admin/dashboard/new-activity"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /** creation_date_time is not updatable through JPA, so move it back with SQL. */
+    private void backdate(String table, Long id, int days) {
+        entityManager.flush();
+        entityManager.createNativeQuery("UPDATE " + table + " SET creation_date_time = ? WHERE id = ?")
+                .setParameter(1, LocalDateTime.now().minusDays(days))
+                .setParameter(2, id)
+                .executeUpdate();
+        entityManager.clear();
     }
 
     @Test

@@ -2,12 +2,16 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
+  ActivityPeriod,
   AdminStoreDetail,
   AdminUserDetail,
   AdminStoreSummary,
   AdminUserSummary,
   ApiResponse,
+  ChartsParams,
+  ChartsResponse,
   DashboardResponse,
+  NewActivityResponse,
   PageResponse,
   StoreSearchParams,
   UserSearchParams,
@@ -36,6 +40,16 @@ export class AdminApiService {
 
   dashboard(): Observable<DashboardResponse> {
     return this.unwrap(this.http.get<ApiResponse<DashboardResponse>>(`${BASE}/dashboard`));
+  }
+
+  charts(params: ChartsParams): Observable<ChartsResponse> {
+    return this.unwrap(this.http.get<ApiResponse<ChartsResponse>>(`${BASE}/charts`, { params: toParams(params) }));
+  }
+
+  newActivity(period: ActivityPeriod): Observable<NewActivityResponse> {
+    return this.unwrap(
+      this.http.get<ApiResponse<NewActivityResponse>>(`${BASE}/dashboard/new-activity`, { params: toParams({ period }) })
+    );
   }
 
   searchStores(params: StoreSearchParams = {}): Observable<PageResponse<AdminStoreSummary>> {

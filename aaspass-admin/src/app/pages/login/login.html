@@ -1,11 +1,11 @@
 <main class="flex min-h-screen items-center justify-center px-4 py-12">
-  <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900">AasPass Admin</h1>
-    <p class="mt-1 text-sm text-slate-600">Sign in to manage users and stores.</p>
+  <div class="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 shadow-lg">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">AasPass Admin</h1>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Sign in to manage users and stores.</p>
 
     <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
       <div>
-        <label for="email" class="block text-sm font-medium text-slate-800">Email</label>
+        <label for="email" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Email</label>
         <input
           hlmInput
           id="email"
@@ -17,7 +17,7 @@
           [attr.aria-describedby]="form.controls.email.touched && form.controls.email.invalid ? 'email-error' : null"
         />
         @if (form.controls.email.touched && form.controls.email.invalid) {
-          <p id="email-error" class="mt-1 text-sm text-rose-700">
+          <p id="email-error" class="mt-1 text-sm text-rose-700 dark:text-rose-300">
             @if (form.controls.email.hasError('required')) {
               Email is required
             } @else {
@@ -28,7 +28,7 @@
       </div>
 
       <div>
-        <label for="password" class="block text-sm font-medium text-slate-800">Password</label>
+        <label for="password" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Password</label>
         <input
           hlmInput
           id="password"
@@ -40,7 +40,7 @@
           [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null"
         />
         @if (form.controls.password.touched && form.controls.password.invalid) {
-          <p id="password-error" class="mt-1 text-sm text-rose-700">Password is required</p>
+          <p id="password-error" class="mt-1 text-sm text-rose-700 dark:text-rose-300">Password is required</p>
         }
       </div>
 

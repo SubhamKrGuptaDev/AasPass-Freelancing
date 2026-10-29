@@ -4,10 +4,10 @@ import { Component, computed, input, output } from '@angular/core';
 @Component({
   selector: 'app-pager',
   template: `
-    <nav class="flex items-center justify-between gap-3 text-sm text-slate-700" aria-label="Pagination">
+    <nav class="flex items-center justify-between gap-3 text-sm text-slate-700 dark:text-slate-300" aria-label="Pagination">
       <button
         type="button"
-        class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Previous page"
         [disabled]="!hasPrev()"
         (click)="pageChange.emit(page() - 1)"
@@ -17,7 +17,7 @@ import { Component, computed, input, output } from '@angular/core';
       <span aria-live="polite">Page {{ page() + 1 }} of {{ displayTotal() }}</span>
       <button
         type="button"
-        class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        class="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Next page"
         [disabled]="!hasNext()"
         (click)="pageChange.emit(page() + 1)"
