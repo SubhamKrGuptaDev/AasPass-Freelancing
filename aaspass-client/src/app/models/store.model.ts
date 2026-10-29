@@ -213,6 +213,8 @@ export interface StoreProfile {
   avatarUrl: string;
   bannerGradient: string;
   isAvailable: boolean;
+  /** Published and visible in store search. New stores start inactive until the owner activates them. */
+  isActive?: boolean;
   memberSince: string;
   creationDateTime: string;
   lastUpdateDateTime: string;

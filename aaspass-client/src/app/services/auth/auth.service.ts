@@ -146,6 +146,7 @@ export class AuthService {
         avatarUrl: s.avatarUrl || u.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
         bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
         isAvailable: s.isAvailable !== false,
+        isActive: s.isActive === true,
         memberSince: s.memberSince || u.memberSince || 'March 2026',
         creationDateTime: s.creationDateTime || new Date().toISOString(),
         lastUpdateDateTime: s.lastUpdateDateTime || new Date().toISOString()

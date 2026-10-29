@@ -127,6 +127,26 @@ public class StoreController {
     }
 
     /**
+     * Activate (publish) a store so it shows up in store search. Owner only.
+     */
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<ApiResponse<StoreResponse>> activateStore(@PathVariable("id") Long id) {
+        log.info("[API-CALL] PATCH /api/stores/{}/activate - Activating store", id);
+        StoreResponse response = storeService.setStoreActive(id, currentUser.requireUserId(), true);
+        return ResponseEntity.ok(ApiResponse.success(response, "Store activated successfully"));
+    }
+
+    /**
+     * Deactivate (unpublish) a store so it is hidden from store search. Owner only.
+     */
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<ApiResponse<StoreResponse>> deactivateStore(@PathVariable("id") Long id) {
+        log.info("[API-CALL] PATCH /api/stores/{}/deactivate - Deactivating store", id);
+        StoreResponse response = storeService.setStoreActive(id, currentUser.requireUserId(), false);
+        return ResponseEntity.ok(ApiResponse.success(response, "Store deactivated successfully"));
+    }
+
+    /**
      * Record a view event on a store storefront (increments daily, weekly, monthly, lifetime counters).
      */
     @PostMapping("/{id}/views")

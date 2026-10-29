@@ -23,7 +23,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query("SELECT DISTINCT s FROM Store s " +
             "LEFT JOIN s.skills sk " +
-            "WHERE (:country IS NULL OR :country = '' OR LOWER(s.country) = LOWER(:country)) " +
+            "WHERE s.isActive = true " +
+            "AND (:country IS NULL OR :country = '' OR LOWER(s.country) = LOWER(:country)) " +
             "AND (:city IS NULL OR :city = '' OR LOWER(s.city) = LOWER(:city)) " +
             "AND (:category IS NULL OR :category = '' OR LOWER(s.category) = LOWER(:category)) " +
             "AND (:availableOnly IS NULL OR :availableOnly = false OR s.isAvailable = true) " +

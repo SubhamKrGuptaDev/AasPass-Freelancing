@@ -107,6 +107,15 @@ public class Store extends BaseAuditEntity {
     @Column(name = "is_available", nullable = false)
     private Boolean isAvailable = true;
 
+    /**
+     * Whether the store is published and discoverable in search. New stores start inactive until the
+     * owner activates them. The column's DB default is TRUE only so that {@code ddl-auto=update} backfills
+     * pre-existing stores as active when it adds the column; Hibernate always writes this field on insert.
+     */
+    @Builder.Default
+    @Column(name = "is_active", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    private Boolean isActive = false;
+
     @Column(name = "member_since", length = 50)
     private String memberSince;
 

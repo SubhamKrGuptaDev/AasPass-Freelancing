@@ -129,6 +129,7 @@ public final class DtoMapper {
                 .avatarUrl(store.getAvatarUrl())
                 .bannerGradient(store.getBannerGradient())
                 .isAvailable(store.getIsAvailable())
+                .isActive(store.getIsActive())
                 .memberSince(store.getMemberSince())
                 .views(store.getViews())
                 .storeSocialMediaLinks(store.getStoreSocialMediaLinks())

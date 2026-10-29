@@ -140,7 +140,10 @@ public class StoreAndUserControllerTest {
     @Test
     @DisplayName("GET /api/stores?country= - Filters by country case-insensitively")
     public void testGetStoresFilterByCountry() throws Exception {
-        createStore(countryStoreBuilder("US Filter Store").country("United States").build());
+        long usId = createStore(countryStoreBuilder("US Filter Store").country("United States").build())
+                .path("data").path("id").asLong();
+        mockMvc.perform(patch("/api/stores/" + usId + "/activate").with(csrf()).cookie(loginAman()))
+                .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/stores").param("country", "india"))
                 .andExpect(status().isOk())
@@ -165,6 +168,55 @@ public class StoreAndUserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tagline", is("Updated tagline")))
                 .andExpect(jsonPath("$.data.country", is("United States")));
+    }
+
+    @Test
+    @DisplayName("POST /api/stores - New store starts inactive and is hidden from search")
+    public void testNewStoreIsInactiveAndHiddenFromSearch() throws Exception {
+        long id = createStore(countryStoreBuilder("Hidden Store").country("Canada").build())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(get("/api/stores/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isActive", is(false)));
+
+        mockMvc.perform(get("/api/stores").param("country", "Canada"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/stores/{id}/activate and /deactivate - Toggle search visibility")
+    public void testActivateAndDeactivateStore() throws Exception {
+        long id = createStore(countryStoreBuilder("Toggle Store").country("Canada").build())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(patch("/api/stores/" + id + "/activate").with(csrf()).cookie(loginAman()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isActive", is(true)));
+        mockMvc.perform(get("/api/stores").param("country", "Canada"))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].id", is((int) id)));
+
+        mockMvc.perform(patch("/api/stores/" + id + "/deactivate").with(csrf()).cookie(loginAman()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isActive", is(false)));
+        mockMvc.perform(get("/api/stores").param("country", "Canada"))
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/stores/{id}/activate - Requires sign-in and ownership")
+    public void testActivateStoreRequiresOwner() throws Exception {
+        long id = createStore(countryStoreBuilder("Owned Store").build())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(patch("/api/stores/" + id + "/activate").with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        Cookie[] priya = AuthTestSupport.login(mockMvc, "priya", "password123");
+        mockMvc.perform(patch("/api/stores/" + id + "/activate").with(csrf()).cookie(priya))
+                .andExpect(status().isForbidden());
     }
 
     @Test

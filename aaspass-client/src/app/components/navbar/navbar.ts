@@ -59,6 +59,9 @@ export class NavbarComponent {
     return store?.storeName || 'My Store';
   });
 
+  /** Drives the My Store status dot: green while at least one of the user's stores is live in search, red when none is. */
+  hasActiveStore = computed(() => (this.storeService.userStores() || []).some(s => s?.isActive === true));
+
   toggleLocationDropdown(event?: Event): void {
     if (event) {
       event.stopPropagation();

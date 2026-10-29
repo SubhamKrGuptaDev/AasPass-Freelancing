@@ -51,14 +51,18 @@ export class StoreService {
   readonly currentUser = computed<UserProfile>(() => this.authService.currentUser() ?? EMPTY_USER_PROFILE);
 
   // User's owned stores (Option A: 1 user can have multiple stores)
+  // The master list only holds active (searchable) stores, so the user's own list is the base (it includes
+  // inactive stores) and master copies replace matching entries / add any the session copy doesn't have yet.
   readonly userStores = computed(() => {
-    const currentUserId = this.currentUser().id;
-    const fromMaster = this.stores().filter(s => s.userId === currentUserId);
-    if (fromMaster.length > 0) return fromMaster;
     const user = this.currentUser();
-    if (user.stores && user.stores.length > 0) return user.stores;
-    if (user.store) return [user.store];
-    return [];
+    const own = user.stores && user.stores.length > 0 ? user.stores : (user.store ? [user.store] : []);
+    const fromMaster = this.stores().filter(s => s.userId === user.id);
+    const masterById = new Map(fromMaster.map(s => [String(s.id), s]));
+    const ownIds = new Set(own.map(s => String(s.id)));
+    return [
+      ...own.map(s => masterById.get(String(s.id)) ?? s),
+      ...fromMaster.filter(s => !ownIds.has(String(s.id)))
+    ];
   });
 
   constructor() {
@@ -133,6 +137,7 @@ export class StoreService {
         avatarUrl: getRandomAvatarUrl('store'),
         bannerGradient: 'from-indigo-500 to-purple-600',
         isAvailable: true,
+        isActive: false,
         memberSince: '',
         creationDateTime: '',
         lastUpdateDateTime: ''
@@ -184,6 +189,7 @@ export class StoreService {
       avatarUrl: (s.avatarUrl && s.avatarUrl.trim()) ? s.avatarUrl.trim() : getRandomAvatarUrl(s.storeName || s.ownerName),
       bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
       isAvailable: s.isAvailable !== false,
+      isActive: s.isActive === true,
       memberSince: s.memberSince || 'March 2026',
       creationDateTime: s.creationDateTime || new Date().toISOString(),
       lastUpdateDateTime: s.lastUpdateDateTime || new Date().toISOString()
@@ -413,6 +419,7 @@ export class StoreService {
       views: initialViews,
       viewHistory: storeData.viewHistory || [initialViewRecord],
       memberSince: 'Just now',
+      isActive: false,
       creationDateTime: storeData.creationDateTime || nowIso,
       lastUpdateDateTime: storeData.lastUpdateDateTime || nowIso
     };
@@ -463,9 +470,9 @@ export class StoreService {
         }
         const backendMapped = this.mapBackendStoreToProfile(res.data);
 
-        // Update master stores signal list with the real persisted store
+        // The master list mirrors store search, so a new (inactive) store only joins it once activated
         this.stores.update(list => [
-          backendMapped,
+          ...(backendMapped.isActive ? [backendMapped] : []),
           ...list.filter(s => String(s.id) !== String(backendMapped.id) && s.id !== newStoreId)
         ]);
 
@@ -801,6 +808,35 @@ export class StoreService {
     if (!targetStore) return;
 
     this.updateStore({ isAvailable: !targetStore.isAvailable }, targetStoreId);
+  }
+
+  /**
+   * Activates (publishes) or deactivates a store via its dedicated endpoint. On success the store joins or
+   * leaves the master list (which mirrors store search) and the user's session copy is updated.
+   * Errors propagate to the caller (the error interceptor shows the toast).
+   */
+  setStoreActive(storeId: string, active: boolean): Observable<StoreProfile> {
+    const request$ = active
+      ? this.storeHttpService.activateStore(storeId)
+      : this.storeHttpService.deactivateStore(storeId);
+    return request$.pipe(
+      map(res => {
+        if (!res?.data) {
+          throw new Error(res?.message || 'Failed to update store status');
+        }
+        const updated = this.mapBackendStoreToProfile(res.data);
+        const sameId = (s: StoreProfile) => String(s.id) === String(updated.id);
+        this.stores.update(list => updated.isActive
+          ? (list.some(sameId) ? list.map(s => sameId(s) ? updated : s) : [updated, ...list])
+          : list.filter(s => !sameId(s)));
+        this.patchCurrentUser(u => ({
+          ...u,
+          store: u.store && sameId(u.store) ? updated : u.store,
+          stores: (u.stores || []).map(s => sameId(s) ? updated : s)
+        }));
+        return updated;
+      })
+    );
   }
 
   // Filter setters

@@ -114,6 +114,7 @@ export interface BackendStoreResponse {
   avatarUrl?: string;
   bannerGradient?: string;
   isAvailable?: boolean;
+  isActive?: boolean;
   memberSince?: string;
   views?: BackendStoreViewsResponse;
   storeSocialMediaLinks?: BackendStoreSocialMediaResponse;

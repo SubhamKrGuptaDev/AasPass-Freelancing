@@ -511,6 +511,11 @@
                 >
                   {{ store.isAvailable ? '✓ Active For Gigs' : '⏸ Paused' }}
                 </button>
+                @if (!store.isActive) {
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                    Not visible in search
+                  </span>
+                }
               </div>
               <p class="text-xs font-semibold text-slate-700 mt-1">"{{ store.tagline }}"</p>
               <p class="text-[11px] text-slate-500 mt-0.5">
@@ -519,6 +524,24 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
+              <!-- Publish / unpublish: only active stores appear in store search -->
+              <button
+                type="button"
+                (click)="toggleStoreActive(store)"
+                [disabled]="storeStatusUpdating()"
+                class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                [class.text-white]="!store.isActive"
+                [class.bg-emerald-600]="!store.isActive"
+                [class.hover:bg-emerald-700]="!store.isActive"
+                [class.text-slate-700]="store.isActive"
+                [class.bg-white]="store.isActive"
+                [class.hover:bg-slate-50]="store.isActive"
+                [class.border]="store.isActive"
+                [class.border-slate-200]="store.isActive"
+                [title]="store.isActive ? 'Hide this store from search' : 'Publish this store so customers can find it'"
+              >
+                {{ storeStatusUpdating() ? 'Saving…' : (store.isActive ? 'Deactivate' : 'Activate store') }}
+              </button>
               <a 
                 [routerLink]="['/stores', storeService.getStoreUrlKey(store)]"
                 class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition"
