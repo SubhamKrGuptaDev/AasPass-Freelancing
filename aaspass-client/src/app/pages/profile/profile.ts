@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, Injector, afterNextRender } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -188,6 +189,31 @@ export class ProfileComponent {
     this.selectedStoreId.set(id);
     this.isAddingReview = false;
     this.reviewFormError = null;
+  }
+
+  /** True while an activate/deactivate PATCH is in flight; blocks double clicks. */
+  readonly storeStatusUpdating = signal(false);
+
+  /** Publishes or unpublishes the store; only active stores show up in store search. */
+  toggleStoreActive(store: StoreProfile): void {
+    if (this.storeStatusUpdating()) return;
+    const activate = !store.isActive;
+    this.storeStatusUpdating.set(true);
+    this.storeService.setStoreActive(store.id, activate).subscribe({
+      next: (updated) => {
+        this.storeStatusUpdating.set(false);
+        this.toast.success(activate
+          ? `"${updated.storeName}" is now live in search.`
+          : `"${updated.storeName}" is hidden from search.`);
+      },
+      error: (err: unknown) => {
+        this.storeStatusUpdating.set(false);
+        // HTTP failures are already toasted by the error interceptor
+        if (!(err instanceof HttpErrorResponse)) {
+          this.toast.error('Could not update store status. Please try again.');
+        }
+      }
+    });
   }
 
   deleteStore(storeId: string): void {

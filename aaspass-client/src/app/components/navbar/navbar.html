@@ -141,8 +141,11 @@
               class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition shadow-2xs"
               title="View your store"
             >
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="w-2 h-2 rounded-full" [class.bg-emerald-500]="hasActiveStore()" [class.animate-pulse]="hasActiveStore()" [class.bg-rose-500]="!hasActiveStore()" aria-hidden="true"></span>
               <span>My Store</span>
+              @if (!hasActiveStore()) {
+                <span class="sr-only">(no store is live in search)</span>
+              }
             </a>
           } @else {
             <!-- Multiple Stores: My Store Button with Fast Switcher Dropdown -->
@@ -154,8 +157,11 @@
                 class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-l-xl text-xs sm:text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-r-0 border-indigo-200 transition shadow-2xs"
                 title="View your store ({{ activeStoreName() }})"
               >
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="w-2 h-2 rounded-full" [class.bg-emerald-500]="hasActiveStore()" [class.animate-pulse]="hasActiveStore()" [class.bg-rose-500]="!hasActiveStore()" aria-hidden="true"></span>
                 <span>My Store</span>
+                @if (!hasActiveStore()) {
+                  <span class="sr-only">(no store is live in search)</span>
+                }
               </a>
 
               <!-- Dropdown Trigger Button -->
@@ -196,9 +202,12 @@
                       >
                         <div class="min-w-0 pr-2">
                           <div class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full flex-shrink-0" [class.bg-emerald-500]="st?.isAvailable" [class.bg-rose-400]="!st?.isAvailable"></span>
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" [class.bg-emerald-500]="st?.isActive && st?.isAvailable" [class.bg-rose-400]="st?.isActive && !st?.isAvailable" [class.bg-rose-500]="!st?.isActive" aria-hidden="true"></span>
                             <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 truncate block">
                               {{ st?.storeName }}
+                              @if (!st?.isActive) {
+                                <span class="sr-only">(deactivated)</span>
+                              }
                             </span>
                           </div>
                           <span class="text-[11px] text-slate-400 block truncate pl-3.5">

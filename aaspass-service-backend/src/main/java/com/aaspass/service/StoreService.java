@@ -132,6 +132,8 @@ public class StoreService {
                 .avatarUrl(request.avatarUrl() != null ? request.avatarUrl() : user.getAvatarUrl())
                 .bannerGradient(request.bannerGradient() != null ? request.bannerGradient() : "from-indigo-500 to-purple-600")
                 .isAvailable(true)
+                // Stores start unpublished; the owner activates them via PATCH /api/stores/{id}/activate
+                .isActive(false)
                 .memberSince(memberSince)
                 .views(StoreEngagementStats.builder().daily(0).weekly(0).monthly(0).lifetime(0).build())
                 .storeSocialMediaLinks(request.storeSocialMediaLinks())
@@ -249,6 +251,27 @@ public class StoreService {
         Store saved = storeRepository.save(store);
 
         log.info("[STORE SERVICE] Store ID: {} availability set to: {}", id, newStatus);
+        return DtoMapper.toStoreResponse(saved, true);
+    }
+
+    /**
+     * Publishes or unpublishes a store. Only active stores are returned by store search.
+     * Idempotent: setting the current value again is a no-op that still returns the store.
+     */
+    @Transactional
+    public StoreResponse setStoreActive(Long id, Long callerId, boolean active) {
+        assertStoreOwner(id, callerId);
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", id));
+
+        if (Boolean.valueOf(active).equals(store.getIsActive())) {
+            log.info("[STORE SERVICE] Store ID: {} already {}", id, active ? "active" : "inactive");
+            return DtoMapper.toStoreResponse(store, true);
+        }
+        store.setIsActive(active);
+        Store saved = storeRepository.save(store);
+
+        log.info("[STORE SERVICE] Store ID: {} set to {}", id, active ? "active" : "inactive");
         return DtoMapper.toStoreResponse(saved, true);
     }
 

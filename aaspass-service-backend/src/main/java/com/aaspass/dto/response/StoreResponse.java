@@ -34,6 +34,7 @@ public record StoreResponse(
     String avatarUrl,
     String bannerGradient,
     Boolean isAvailable,
+    Boolean isActive,
     String memberSince,
     StoreEngagementStats views,
     StoreSocialMediaLinks storeSocialMediaLinks,
@@ -49,6 +50,7 @@ public record StoreResponse(
         reviewCount = (reviewCount != null) ? reviewCount : 0;
         bannerGradient = (bannerGradient != null && !bannerGradient.isBlank()) ? bannerGradient : "from-indigo-500 to-purple-600";
         isAvailable = (isAvailable != null) ? isAvailable : true;
+        isActive = Boolean.TRUE.equals(isActive);
         socialMediaLinks = (socialMediaLinks != null) ? socialMediaLinks : List.of();
         services = (services != null) ? services : List.of();
         reviews = (reviews != null) ? reviews : List.of();

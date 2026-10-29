@@ -48,6 +48,11 @@ export class StoreHttpService {
     return this.http.put<ApiResponse<T>>(this.buildUrl(endpoint), body, options);
   }
 
+  patch<T>(endpoint: string, body: unknown = {}, options?: RequestOptions): Observable<ApiResponse<T>> {
+    if (!this.http) return EMPTY;
+    return this.http.patch<ApiResponse<T>>(this.buildUrl(endpoint), body, options);
+  }
+
   delete<T>(endpoint: string, options?: RequestOptions): Observable<ApiResponse<T>> {
     if (!this.http) return EMPTY;
     return this.http.delete<ApiResponse<T>>(this.buildUrl(endpoint), options);
@@ -90,6 +95,18 @@ export class StoreHttpService {
   deleteStore(id: number | string): Observable<ApiResponse<void>> {
     const cleanId = typeof id === 'number' ? id : parseInt(String(id ?? '').replace(/\D/g, '') || '1', 10);
     return this.delete<void>(`/stores/${cleanId}`);
+  }
+
+  /** PATCH /stores/{id}/activate: publishes the store so it appears in search. Owner only. */
+  activateStore(id: number | string): Observable<ApiResponse<BackendStoreResponse>> {
+    const cleanId = typeof id === 'number' ? id : parseInt(String(id ?? '').replace(/\D/g, '') || '1', 10);
+    return this.patch<BackendStoreResponse>(`/stores/${cleanId}/activate`);
+  }
+
+  /** PATCH /stores/{id}/deactivate: hides the store from search. Owner only. */
+  deactivateStore(id: number | string): Observable<ApiResponse<BackendStoreResponse>> {
+    const cleanId = typeof id === 'number' ? id : parseInt(String(id ?? '').replace(/\D/g, '') || '1', 10);
+    return this.patch<BackendStoreResponse>(`/stores/${cleanId}/deactivate`);
   }
 
   addReview(storeId: number | string, payload: StoreReviewPayload): Observable<ApiResponse<any>> {
