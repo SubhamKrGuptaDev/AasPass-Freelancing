@@ -9,6 +9,7 @@ import { ToastService } from '../toast/toast.service';
 import { errorCode } from '../../interceptors/error-toast.interceptor';
 import { AuthHttpService } from './auth-http.service';
 import { SessionRefreshService } from './session-refresh.service';
+import { DEFAULT_COUNTRY } from '../../geo/country';
 
 /** Upper bound for the startup session check so a hung backend never blocks bootstrap. */
 const RESTORE_TIMEOUT_MS = 10_000;
@@ -96,7 +97,7 @@ export class AuthService {
       avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) ? u.avatarUrl.trim() : getRandomAvatarUrl(u.username || u.name || String(u.id ?? '')),
       city: u.city || 'Bengaluru',
       area: u.area || 'Indiranagar',
-      country: u.country || 'India',
+      country: u.country || DEFAULT_COUNTRY,
       bio: u.bio || '',
       memberSince: u.memberSince || 'March 2026',
       hasStore: Boolean(u.hasStore),
@@ -113,6 +114,7 @@ export class AuthService {
         startingPrice: s.startingPrice || 0,
         area: s.area || u.area || 'Indiranagar',
         city: s.city || u.city || 'Bengaluru',
+        country: s.country || DEFAULT_COUNTRY,
         serviceRadiusKm: s.serviceRadiusKm || 10,
         socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
         storeSocialMediaLinks: s.storeSocialMediaLinks,
@@ -200,7 +202,7 @@ export class AuthService {
       phone: (request.phone ?? '').trim() || '+91 98000 00000',
       city: request.city || 'Bengaluru',
       area: request.area || 'Indiranagar',
-      country: (request.country || 'India').trim(),
+      country: (request.country || DEFAULT_COUNTRY).trim(),
       avatarUrl: avatar
     }).pipe(
       map(resp => this.profileFromAuthResponse(resp?.data?.user)),

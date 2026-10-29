@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
@@ -18,6 +20,20 @@ function backendStore(id: number, overrides: Partial<BackendStoreResponse> = {})
     ...overrides
   } as unknown as BackendStoreResponse;
 }
+
+// jsdom lacks ResizeObserver and scrollIntoView, which the location pickers' overlay uses.
+beforeAll(() => {
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
+  if (typeof globalThis.ResizeObserver !== 'function') {
+    globalThis.ResizeObserver = class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+  }
+});
 
 describe('StoresComponent', () => {
   let harness: RouterTestingHarness;
@@ -50,7 +66,7 @@ describe('StoresComponent', () => {
   });
 
   it('applies URL params to StoreService on load', async () => {
-    const cmp = await open('/stores?city=pune&category=photography&q=reels&sort=views&open=1');
+    const cmp = await open('/stores?city=Pune&category=photography&q=reels&sort=views&open=1');
     expect(service.selectedCity()).toBe('Pune');
     expect(service.selectedCategory()).toBe('Photography');
     expect(service.searchQuery()).toBe('reels');
@@ -59,10 +75,85 @@ describe('StoresComponent', () => {
     expect(cmp.searchControl.value).toBe('reels');
   });
 
-  it('keeps current city when URL city is unknown', async () => {
-    service.setSelectedCity('Mumbai');
-    await open('/stores?city=atlantis');
-    expect(service.selectedCity()).toBe('Mumbai');
+  it('applies any URL city as-is (trimmed)', async () => {
+    await open('/stores?city=%20Austin%20');
+    expect(service.selectedCity()).toBe('Austin');
+  });
+
+  it('applies URL country and city together', async () => {
+    await open('/stores?country=united%20states&city=Austin');
+    expect(service.selectedCountry()).toBe('United States');
+    expect(service.selectedCity()).toBe('Austin');
+    expect(router.url).toContain('country=United%20States');
+  });
+
+  it('treats a URL with a country but no city as all cities, not the default city', async () => {
+    expect(service.selectedCity()).toBe('Bengaluru');
+    await open('/stores?country=India');
+    expect(service.selectedCity()).toBe('');
+    expect(router.url).not.toContain('city=');
+  });
+
+  it('hides the "Try another city" prompt when no other city has stores', async () => {
+    await open('/stores?country=India&city=Pune');
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('No stores match your filters');
+    expect(el.textContent).not.toContain('Try another city');
+  });
+
+  it('offers other cities that have stores when the selected city has none', async () => {
+    await open('/stores?country=India&city=Pune', [backendStore(1, { city: 'Mumbai' })]);
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('Try another city');
+    expect(el.textContent).toContain('Mumbai');
+  });
+
+  it('re-canonicalises a lower-case country in the URL', async () => {
+    await open('/stores?country=india&city=Pune');
+    expect(service.selectedCountry()).toBe('India');
+    expect(router.url).toContain('country=India');
+  });
+
+  it('keeps the current country and rewrites the URL when the country is unknown', async () => {
+    await open('/stores?country=Atlantis&city=Pune');
+    expect(service.selectedCountry()).toBe('India');
+    expect(router.url).toContain('country=India');
+    expect(router.url).not.toContain('Atlantis');
+  });
+
+  it('follows a navbar country change exactly once, dropping the city', async () => {
+    await open('/stores?country=India&city=Pune');
+    const spy = vi.spyOn(router, 'navigate');
+    service.setSelectedCountry('Canada');
+    TestBed.tick();
+    await harness.fixture.whenStable();
+    expect(router.url).toContain('country=Canada');
+    expect(router.url).not.toContain('city=');
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the country text when the country picker is cleared', async () => {
+    await open('/stores?country=India&city=Pune');
+    const picker = harness.fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
+    picker.value.set('');
+    await vi.waitFor(() => {
+      harness.detectChanges();
+      expect(picker.value()).toBe('India');
+      expect((harness.routeNativeElement as HTMLElement).querySelector<HTMLInputElement>('input#stores-country')?.value).toBe('India');
+    });
+    expect(service.selectedCountry()).toBe('India');
+  });
+
+  it('shows a country-neutral subtitle', async () => {
+    await open('/stores?city=Pune');
+    expect((harness.routeNativeElement as HTMLElement).textContent).not.toContain('in your city');
+  });
+
+  it('treats an empty city as all cities and heads the list with the country', async () => {
+    await open('/stores?country=Canada', [backendStore(1, { city: 'Toronto', country: 'Canada' } as Partial<BackendStoreResponse>)]);
+    expect(service.selectedCity()).toBe('');
+    const el = harness.routeNativeElement as HTMLElement;
+    expect(el.textContent).toContain('1 store in Canada');
   });
 
   it('writes filter changes to the URL with replaceUrl', async () => {
@@ -96,8 +187,10 @@ describe('StoresComponent', () => {
     const text = (harness.routeNativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('Top rated');
     const el = harness.routeNativeElement as HTMLElement;
-    for (const id of ['stores-city-trigger', 'stores-sort-trigger']) {
-      expect(el.querySelector(`button#${id}`)).not.toBeNull();
+    expect(el.querySelector('button#stores-sort-trigger')).not.toBeNull();
+    expect(el.querySelector('label[for="stores-sort-trigger"]')).not.toBeNull();
+    for (const id of ['stores-country', 'stores-city']) {
+      expect(el.querySelector(`input#${id}`)).not.toBeNull();
       expect(el.querySelector(`label[for="${id}"]`)).not.toBeNull();
     }
   });
@@ -161,13 +254,17 @@ describe('StoresComponent', () => {
   });
 
   it('shows empty state with other-city links and reset', async () => {
-    const cmp = await open('/stores?city=Pune', []);
+    const cmp = await open('/stores?city=Pune&category=Web%20%26%20Tech', [
+      backendStore(1, { city: 'Mumbai' }),
+      backendStore(2, { city: 'Pune', category: 'Photography' }),
+      backendStore(3, { city: 'Toronto', country: 'Canada' } as Partial<BackendStoreResponse>)
+    ]);
     const el = harness.routeNativeElement as HTMLElement;
     expect(el.textContent).toContain('0 stores in Pune');
-    expect(Array.from(el.querySelectorAll('a')).filter(a => (a.getAttribute('href') ?? '').includes('city=Mumbai')).length).toBeGreaterThan(0);
     const links = Array.from(el.querySelectorAll('a')).map(a => a.getAttribute('href') ?? '');
     expect(links.some(h => h.includes('city=Mumbai'))).toBe(true);
     expect(links.some(h => h.includes('city=Pune'))).toBe(false);
+    expect(links.some(h => h.includes('city=Toronto'))).toBe(false);
 
     cmp.setSort('views');
     cmp.setOpenOnly(true);

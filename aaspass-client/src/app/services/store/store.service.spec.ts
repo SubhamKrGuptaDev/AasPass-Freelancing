@@ -18,7 +18,7 @@ const fixtureStore1: StoreProfile = {
   startingPrice: 350,
   area: 'Indiranagar',
   city: 'Bengaluru',
- 
+  country: 'India',
   serviceRadiusKm: 6,
   socialMediaLinks: [
     { id: 'sm-1-1', name: 'Instagram', url: 'https://instagram.com/priya_edits' },
@@ -62,7 +62,7 @@ const fixtureStore2: StoreProfile = {
   startingPrice: 1500,
   area: 'Koramangala',
   city: 'Bengaluru',
- 
+  country: 'India',
   serviceRadiusKm: 10,
   socialMediaLinks: [],
   description: 'Freelance engineer crafting SPAs and landing pages.',
@@ -118,7 +118,7 @@ describe('StoreService Reviews & Ratings', () => {
     ]);
   });
 
-  it('should expose the 12 store categories in order', () => {
+  it('should expose the 32 store categories in order', () => {
     expect(service.categories).toEqual([
       'All',
       'Video & Editing',
@@ -131,7 +131,27 @@ describe('StoreService Reviews & Ratings', () => {
       'Driving & Transport',
       'Fitness & Self-Defense',
       'Art, Music & Hobbies',
-      'Home & Personal Services'
+      'Home & Personal Services',
+      'Event Management',
+      'Interior Design & Planning',
+      'Mehendi Design',
+      'Pandit & Puja Services',
+      'Decoration & Florist',
+      'Beauty, Makeup & Salon',
+      'Catering & Home Cooking',
+      'Tailoring & Fashion',
+      'Electrician & Plumbing',
+      'Carpentry & Painting',
+      'Appliance Repair',
+      'Cleaning & Pest Control',
+      'Pet Care',
+      'Babysitting & Elder Care',
+      'Packers & Movers',
+      'Health & Wellness',
+      'Legal, Tax & Accounting',
+      'Marketing & Social Media',
+      'Writing & Translation',
+      'DJ & Live Entertainment'
     ]);
   });
 
@@ -409,4 +429,62 @@ describe('StoreService Reviews & Ratings', () => {
     });
   });
 
+  describe('country filtering', () => {
+    beforeEach(() => {
+      service.stores.update(list => [
+        ...list,
+        { ...fixtureStore1, id: 'store-us', country: 'United States', city: 'Austin' }
+      ]);
+    });
+
+    it('filters by country', () => {
+      service.setSelectedCity('');
+      expect(service.filteredStores().map(s => s.id)).toEqual(['store-1', 'store-2']);
+      service.setSelectedCountry('United States');
+      expect(service.filteredStores().map(s => s.id)).toEqual(['store-us']);
+    });
+
+    it('treats a store without country as India (case-insensitive, trimmed)', () => {
+      service.stores.update(list => [
+        ...list,
+        { ...fixtureStore1, id: 'no-country', country: '  ' },
+        { ...fixtureStore1, id: 'lower', country: ' india ', city: ' BENGALURU ' }
+      ]);
+      service.setSelectedCity('bengaluru');
+      expect(service.filteredStores().map(s => s.id)).toEqual(['store-1', 'store-2', 'no-country', 'lower']);
+    });
+
+    it('setSelectedCountry clears city only when the country changes', () => {
+      service.setSelectedCity('Pune');
+      service.setSelectedCountry('india');
+      expect(service.selectedCity()).toBe('Pune');
+      service.setSelectedCountry('United States');
+      expect(service.selectedCountry()).toBe('United States');
+      expect(service.selectedCity()).toBe('');
+    });
+
+    it('setSelectedCountry ignores blank or unknown names', () => {
+      service.setSelectedCountry('  ');
+      service.setSelectedCountry('Atlantis');
+      expect(service.selectedCountry()).toBe('India');
+      expect(service.selectedCity()).toBe('Bengaluru');
+    });
+
+    it('citiesWithStores is distinct and sorted for the selected country', () => {
+      service.stores.update(list => [
+        ...list,
+        { ...fixtureStore1, id: 'x', city: 'Aurangabad' },
+        { ...fixtureStore1, id: 'y', city: 'Bengaluru' }
+      ]);
+      expect(service.citiesWithStores()).toEqual(['Aurangabad', 'Bengaluru']);
+      service.setSelectedCountry('United States');
+      expect(service.citiesWithStores()).toEqual(['Austin']);
+    });
+
+    it('maps a backend store without country to India', () => {
+      const raw = { id: 1, userId: 2, storeName: 'S', category: 'c', area: 'a', city: 'Pune' };
+      expect(service.mapBackendStoreToProfile(raw).country).toBe('India');
+      expect(service.mapBackendStoreToProfile({ ...raw, country: 'United States' }).country).toBe('United States');
+    });
+  });
 });

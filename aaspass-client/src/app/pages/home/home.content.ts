@@ -16,11 +16,31 @@ export const HOME_CATEGORIES: readonly HomeCategory[] = [
   { name: 'Tutoring & Education', icon: 'lucideGraduationCap', description: 'Tutoring and mentorship' },
   { name: 'Graphics & Design', icon: 'lucidePalette', description: 'Graphics, logos and brand design' },
   { name: 'Tech Support & Hardware', icon: 'lucideWrench', description: 'Tech support, PC builds and hardware setup' },
-  { name: 'Astrology & Spiritual', icon: 'lucideSparkles', description: 'Puja and astrology services' },
+  { name: 'Astrology & Spiritual', icon: 'lucideSparkles', description: 'Astrology and spiritual guidance' },
   { name: 'Driving & Transport', icon: 'lucideCar', description: 'Car drivers and local transport' },
   { name: 'Fitness & Self-Defense', icon: 'lucideDumbbell', description: 'Self-defense and fitness coaching' },
   { name: 'Art, Music & Hobbies', icon: 'lucideMusic', description: 'Drawing and music classes' },
-  { name: 'Home & Personal Services', icon: 'lucideHouse', description: 'Cooking, tailoring and personal services' }
+  { name: 'Home & Personal Services', icon: 'lucideHouse', description: 'Household help, errands and personal services' },
+  { name: 'Event Management', icon: 'lucidePartyPopper', description: 'Weddings, parties and event planning' },
+  { name: 'Interior Design & Planning', icon: 'lucideSofa', description: 'Interior design, space planning and decor' },
+  { name: 'Mehendi Design', icon: 'lucideHand', description: 'Bridal and festive mehendi artists' },
+  { name: 'Pandit & Puja Services', icon: 'lucideFlame', description: 'Pandits for puja, havan and ceremonies' },
+  { name: 'Decoration & Florist', icon: 'lucideFlower2', description: 'Flower, balloon and venue decoration' },
+  { name: 'Beauty, Makeup & Salon', icon: 'lucideScissors', description: 'Makeup artists, hair and salon at home' },
+  { name: 'Catering & Home Cooking', icon: 'lucideChefHat', description: 'Home cooks, tiffin and event catering' },
+  { name: 'Tailoring & Fashion', icon: 'lucideShirt', description: 'Tailors, alterations and fashion styling' },
+  { name: 'Electrician & Plumbing', icon: 'lucideZap', description: 'Electrical, plumbing and fitting work' },
+  { name: 'Carpentry & Painting', icon: 'lucideHammer', description: 'Carpenters, furniture fixes and painters' },
+  { name: 'Appliance Repair', icon: 'lucideRefrigerator', description: 'AC, fridge, washing machine and appliance repair' },
+  { name: 'Cleaning & Pest Control', icon: 'lucideSprayCan', description: 'Home cleaning and pest control' },
+  { name: 'Pet Care', icon: 'lucidePawPrint', description: 'Pet sitting, walking and grooming' },
+  { name: 'Babysitting & Elder Care', icon: 'lucideBaby', description: 'Babysitters, nannies and elder care' },
+  { name: 'Packers & Movers', icon: 'lucideTruck', description: 'Packing, shifting and local moving' },
+  { name: 'Health & Wellness', icon: 'lucideHeartPulse', description: 'Physiotherapy, nutrition and massage' },
+  { name: 'Legal, Tax & Accounting', icon: 'lucideScale', description: 'Lawyers, CAs, tax filing and bookkeeping' },
+  { name: 'Marketing & Social Media', icon: 'lucideMegaphone', description: 'Social media, ads and local promotion' },
+  { name: 'Writing & Translation', icon: 'lucidePenLine', description: 'Content writing, resumes and translation' },
+  { name: 'DJ & Live Entertainment', icon: 'lucideSpeaker', description: 'DJs, anchors and live performers' }
 ];
 
 export const SELLER_COPY = {
@@ -37,7 +57,7 @@ export const SELLER_BENEFITS: readonly SellerBenefit[] = [
 ];
 
 export const EXAMPLE_SELLERS: readonly ExampleSeller[] = [
-  { label: 'Pandit & puja services', category: 'Astrology & Spiritual' },
+  { label: 'Pandit & puja services', category: 'Pandit & Puja Services' },
   { label: 'Astrologer', category: 'Astrology & Spiritual' },
   { label: 'Car driver', category: 'Driving & Transport' },
   { label: 'Home tutor / teacher', category: 'Tutoring & Education' },
@@ -48,9 +68,9 @@ export const EXAMPLE_SELLERS: readonly ExampleSeller[] = [
   { label: 'Reel editor', category: 'Video & Editing' },
   { label: 'Photographer', category: 'Photography' },
   { label: 'Web developer', category: 'Web & Tech' },
-  { label: 'Home cook', category: 'Home & Personal Services' },
-  { label: 'Tailor', category: 'Home & Personal Services' },
-  { label: 'Mehendi artist', category: 'Home & Personal Services' }
+  { label: 'Home cook', category: 'Catering & Home Cooking' },
+  { label: 'Tailor', category: 'Tailoring & Fashion' },
+  { label: 'Mehendi artist', category: 'Mehendi Design' }
 ];
 
 export const HIRE_STEPS: readonly ContentStep[] = [
@@ -87,7 +107,7 @@ export const TRUST_POINTS: readonly ContentPoint[] = [
 
 export const FAQS: readonly Faq[] = [
   { question: 'Does AasPass take a commission?', answer: 'No. AasPass takes zero commission — everything your customer pays for your service is yours.' },
-  { question: 'What kind of store can I open?', answer: 'Almost anything people nearby need: puja and astrology, driving, tutoring, self-defense and fitness, drawing and music classes, cooking, tailoring, video editing, photography, web development and much more.' },
+  { question: 'What kind of store can I open?', answer: 'Almost anything people nearby need: puja and astrology, event management, interior design, mehendi, beauty and makeup, home repairs, driving, tutoring, self-defense and fitness, drawing and music classes, cooking, tailoring, video editing, photography, web development and much more.' },
   { question: 'Do I need a shop?', answer: 'No. AasPass is tailored for students and individuals who want flexible side income without needing a physical commercial shop, and you never have to expose your private home.' },
   { question: 'How close are providers?', answer: 'Providers are in your immediate vicinity, typically 2 to 10 km away.' },
   { question: 'Is my ID data safe?', answer: 'Aadhaar and PAN are stored AES-256-GCM encrypted and only ever shown masked. Sessions use HttpOnly cookies, so tokens are never exposed to JavaScript.' },

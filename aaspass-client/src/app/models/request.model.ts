@@ -102,6 +102,7 @@ export interface StoreCreateRequest {
   startingPrice?: number;
   area: string;
   city: string;
+  country?: string;
   serviceRadiusKm?: number;
   description?: string;
   avatarUrl?: string;
@@ -122,6 +123,7 @@ export interface StoreUpdateRequest {
   startingPrice?: number;
   area?: string;
   city?: string;
+  country?: string;
   serviceRadiusKm?: number;
   description?: string;
   avatarUrl?: string;

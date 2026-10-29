@@ -2,17 +2,20 @@ import { Component, computed, inject, signal, OnInit, WritableSignal } from '@an
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
+import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { AuthService } from '../../services/auth/auth.service';
 import { Observable, catchError, defaultIfEmpty, forkJoin, of, tap } from 'rxjs';
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { matchingFields, minTrimmedLength, notBlank } from '../../forms/validators';
+import { DEFAULT_COUNTRY } from '../../geo/country';
 
 /** Result of the live signup availability check for one field. */
 export type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'error';
 
 @Component({
   selector: 'app-auth-page',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, CountryPickerComponent, CityPickerComponent],
   templateUrl: './auth-page.html',
   styleUrl: './auth-page.css'
 })
@@ -37,7 +40,7 @@ export class AuthPageComponent implements OnInit {
     name: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(2)] }),
     username: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(3)] }),
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/@/)] }),
-    country: new FormControl('India', { nonNullable: true }),
+    country: new FormControl(DEFAULT_COUNTRY, { nonNullable: true }),
     city: new FormControl('Bengaluru', { nonNullable: true }),
     area: new FormControl('Indiranagar', { nonNullable: true }),
     password: new FormControl('', { nonNullable: true, validators: [minTrimmedLength(6)] }),
@@ -48,18 +51,6 @@ export class AuthPageComponent implements OnInit {
 
   readonly usernameStatus = signal<AvailabilityStatus>('idle');
   readonly emailStatus = signal<AvailabilityStatus>('idle');
-
-  readonly availableCountries = [
-    'India',
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'United Arab Emirates',
-    'Singapore'
-  ];
 
   constructor() {
     // Editing a field invalidates its last availability result.

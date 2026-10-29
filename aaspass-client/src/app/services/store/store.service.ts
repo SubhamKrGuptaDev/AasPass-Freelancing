@@ -19,6 +19,7 @@ import {
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { AuthService } from '../auth/auth.service';
 import { StoreHttpService } from './store-http.service';
+import { DEFAULT_COUNTRY, findCountryByName, normalizeCountry } from '../../geo/country';
 
 export const EMPTY_USER_PROFILE: UserProfile = {
   id: '',
@@ -29,7 +30,7 @@ export const EMPTY_USER_PROFILE: UserProfile = {
   avatarUrl: '',
   city: 'Bengaluru',
   area: '',
-  country: 'India',
+  country: DEFAULT_COUNTRY,
   bio: '',
   memberSince: '',
   hasStore: false,
@@ -112,6 +113,7 @@ export class StoreService {
         startingPrice: 0,
         area: '',
         city: '',
+        country: DEFAULT_COUNTRY,
         serviceRadiusKm: 10,
         socialMediaLinks: [],
         description: '',
@@ -142,6 +144,7 @@ export class StoreService {
       startingPrice: s.startingPrice || 0,
       area: s.area || '',
       city: s.city || '',
+      country: s.country || DEFAULT_COUNTRY,
       serviceRadiusKm: s.serviceRadiusKm || 10,
       socialMediaLinks: (s.socialMediaLinks || []).filter(Boolean).map(l => ({ id: String(l.id || l.name || 'link'), name: l.name || '', url: l.url || '' })),
       storeSocialMediaLinks: s.storeSocialMediaLinks,
@@ -184,6 +187,7 @@ export class StoreService {
   readonly selectedCategory = signal<string>('All');
   readonly selectedMaxDistanceKm = signal<number>(50);
   readonly selectedCity = signal<string>('Bengaluru');
+  readonly selectedCountry = signal<string>(DEFAULT_COUNTRY);
 
   // Categories list
   readonly categories = [
@@ -198,34 +202,57 @@ export class StoreService {
     'Driving & Transport',
     'Fitness & Self-Defense',
     'Art, Music & Hobbies',
-    'Home & Personal Services'
+    'Home & Personal Services',
+    'Event Management',
+    'Interior Design & Planning',
+    'Mehendi Design',
+    'Pandit & Puja Services',
+    'Decoration & Florist',
+    'Beauty, Makeup & Salon',
+    'Catering & Home Cooking',
+    'Tailoring & Fashion',
+    'Electrician & Plumbing',
+    'Carpentry & Painting',
+    'Appliance Repair',
+    'Cleaning & Pest Control',
+    'Pet Care',
+    'Babysitting & Elder Care',
+    'Packers & Movers',
+    'Health & Wellness',
+    'Legal, Tax & Accounting',
+    'Marketing & Social Media',
+    'Writing & Translation',
+    'DJ & Live Entertainment'
   ];
 
-  // Available cities for selection
-  readonly availableCities = ['Bengaluru', 'Delhi NCR', 'Mumbai', 'Pune', 'Hyderabad'];
-
-  // Available countries for selection
-  readonly availableCountries = [
-    'India',
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'United Arab Emirates',
-    'Singapore'
-  ];
+  // Distinct, sorted cities that have stores in the selected country
+  readonly citiesWithStores = computed<string[]>(() => {
+    const country = this.selectedCountry().trim().toLowerCase();
+    const cities = new Set<string>();
+    for (const store of this.stores()) {
+      const city = (store.city ?? '').trim();
+      if (city && normalizeCountry(store.country) === country) {
+        cities.add(city);
+      }
+    }
+    return [...cities].sort((a, b) => a.localeCompare(b));
+  });
 
   // Reactive filtered stores
   readonly filteredStores = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
     const cat = this.selectedCategory();
-    const city = this.selectedCity().toLowerCase();
+    const city = this.selectedCity().trim().toLowerCase();
+    const country = this.selectedCountry().trim().toLowerCase();
 
     return this.stores().filter(store => {
-      // City check
-      if (store.city.toLowerCase() !== city) {
+      // Country check (a store without a country counts as India)
+      if (normalizeCountry(store.country) !== country) {
+        return false;
+      }
+
+      // City check ('' means all cities)
+      if (city && (store.city ?? '').trim().toLowerCase() !== city) {
         return false;
       }
 
@@ -336,7 +363,7 @@ export class StoreService {
 
   // Create a new store (Option A: transforms regular user into a store owner or adds an additional store)
   // Returns an Observable of StoreProfile (with store properties merged for full backward compatibility)
-  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime'>>): Observable<StoreProfile> & StoreProfile {
+  createStore(storeData: Omit<StoreProfile, 'id' | 'userId' | 'rating' | 'reviewCount' | 'memberSince' | 'creationDateTime' | 'lastUpdateDateTime' | 'country'> & Partial<Pick<StoreProfile, 'creationDateTime' | 'lastUpdateDateTime' | 'country'>>): Observable<StoreProfile> & StoreProfile {
     const user = this.currentUser();
     const newStoreId = 'store-' + (this.stores().length + 1) + '-' + Math.random().toString(36).substring(2, 6);
     const nowIso = new Date().toISOString();
@@ -366,6 +393,7 @@ export class StoreService {
     const storeSocialLinks = storeData.storeSocialMediaLinks || (storeData.socialMediaLinks ? toStoreSocialMediaLinks(storeData.socialMediaLinks) : storeData.userSocialLinks);
     const newStore: StoreProfile = {
       ...storeData,
+      country: (storeData.country ?? '').trim() || DEFAULT_COUNTRY,
       storeSocialMediaLinks: storeSocialLinks,
       userSocialLinks: storeSocialLinks,
       socialMediaLinks: normalizeSocialLinks(storeData.socialMediaLinks, storeSocialLinks),
@@ -410,6 +438,7 @@ export class StoreService {
       startingPrice: Number(newStore.startingPrice) || 0,
       area: newStore.area.trim(),
       city: newStore.city.trim(),
+      country: (newStore.country ?? '').trim() || DEFAULT_COUNTRY,
       serviceRadiusKm: Number(newStore.serviceRadiusKm) || 10,
       description: newStore.description || '',
       avatarUrl: (newStore.avatarUrl && newStore.avatarUrl.trim()) ? newStore.avatarUrl.trim() : (user.avatarUrl || ''),
@@ -665,6 +694,7 @@ export class StoreService {
       startingPrice: updated.startingPrice !== undefined ? updated.startingPrice : updatedStore.startingPrice,
       area: updated.area || updatedStore.area,
       city: updated.city || updatedStore.city,
+      country: updated.country || updatedStore.country || DEFAULT_COUNTRY,
       serviceRadiusKm: updated.serviceRadiusKm !== undefined ? updated.serviceRadiusKm : updatedStore.serviceRadiusKm,
       description: updated.description !== undefined ? updated.description : updatedStore.description,
       avatarUrl: updated.avatarUrl || updatedStore.avatarUrl,
@@ -780,6 +810,16 @@ export class StoreService {
 
   setSelectedCity(city: string): void {
     this.selectedCity.set(city);
+  }
+
+  /** Selects a country by (case-insensitive) name; blank/unknown names are ignored. Changing country resets the city to "all". */
+  setSelectedCountry(name: string): void {
+    const match = findCountryByName(name);
+    if (!match || match.name === this.selectedCountry()) {
+      return;
+    }
+    this.selectedCountry.set(match.name);
+    this.selectedCity.set('');
   }
 
   resetFilters(): void {

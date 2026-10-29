@@ -3,9 +3,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { notBlank } from '../../forms/validators';
 import { map } from 'rxjs';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
+import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { StoreService } from '../../services/store/store.service';
+import { DEFAULT_COUNTRY } from '../../geo/country';
 import { ToastService } from '../../services/toast/toast.service';
 import {
   SocialMediaLinksComponent,
@@ -30,7 +34,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent],
   templateUrl: './create-store.html',
   styleUrl: './create-store.css'
 })
@@ -56,7 +60,8 @@ export class CreateStoreComponent implements OnInit {
     hourlyRate: new FormControl<number | null>(500),
     startingPrice: new FormControl<number | null>(350),
     area: new FormControl('Indiranagar', { nonNullable: true }),
-    city: new FormControl('Bengaluru', { nonNullable: true }),
+    country: new FormControl(DEFAULT_COUNTRY, { nonNullable: true, validators: [notBlank] }),
+    city: new FormControl('Bengaluru', { nonNullable: true, validators: [notBlank] }),
     serviceRadiusKm: new FormControl<number>(5, { nonNullable: true }),
     description: new FormControl('Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.', { nonNullable: true }),
     socialMediaLinks: createSocialLinksArray([
@@ -101,6 +106,7 @@ export class CreateStoreComponent implements OnInit {
           hourlyRate: storeToEdit.hourlyRate,
           startingPrice: storeToEdit.startingPrice,
           area: storeToEdit.area,
+          country: storeToEdit.country || DEFAULT_COUNTRY,
           city: storeToEdit.city,
           serviceRadiusKm: storeToEdit.serviceRadiusKm,
           description: storeToEdit.description,
@@ -118,6 +124,7 @@ export class CreateStoreComponent implements OnInit {
     this.editingStoreId = '';
     this.storeForm.patchValue({
       area: user.area || 'Indiranagar',
+      country: user.country || DEFAULT_COUNTRY,
       city: user.city || 'Bengaluru'
     });
 
@@ -159,6 +166,15 @@ export class CreateStoreComponent implements OnInit {
       return;
     }
 
+    const { country, city } = this.storeForm.controls;
+    if (country.invalid || city.invalid) {
+      // The pickers have no native `required`, so block here and say what is missing.
+      country.markAsTouched();
+      city.markAsTouched();
+      this.toast.error('Please select your country and city.');
+      return;
+    }
+
     const formData = this.storeForm.getRawValue();
     const skills = formData.skills
       .split(',')
@@ -181,6 +197,7 @@ export class CreateStoreComponent implements OnInit {
         hourlyRate: Number(formData.hourlyRate) || 500,
         startingPrice: Number(formData.startingPrice) || 300,
         area: formData.area,
+        country: formData.country,
         city: formData.city,
         serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
         socialMediaLinks: validSocialLinks,
@@ -230,6 +247,7 @@ export class CreateStoreComponent implements OnInit {
       hourlyRate: Number(formData.hourlyRate) || 500,
       startingPrice: Number(formData.startingPrice) || 300,
       area: formData.area,
+      country: formData.country,
       city: formData.city,
       serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,

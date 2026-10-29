@@ -121,6 +121,7 @@ public final class DtoMapper {
                 .startingPrice(store.getStartingPrice())
                 .area(store.getArea())
                 .city(store.getCity())
+                .country(store.getCountry())
                 .serviceRadiusKm(store.getServiceRadiusKm())
                 .rating(computedRating)
                 .reviewCount(reviewCount)

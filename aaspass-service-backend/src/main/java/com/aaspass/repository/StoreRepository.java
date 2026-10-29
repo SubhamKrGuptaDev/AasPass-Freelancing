@@ -23,7 +23,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     @Query("SELECT DISTINCT s FROM Store s " +
             "LEFT JOIN s.skills sk " +
-            "WHERE (:city IS NULL OR :city = '' OR LOWER(s.city) = LOWER(:city)) " +
+            "WHERE (:country IS NULL OR :country = '' OR LOWER(s.country) = LOWER(:country)) " +
+            "AND (:city IS NULL OR :city = '' OR LOWER(s.city) = LOWER(:city)) " +
             "AND (:category IS NULL OR :category = '' OR LOWER(s.category) = LOWER(:category)) " +
             "AND (:availableOnly IS NULL OR :availableOnly = false OR s.isAvailable = true) " +
             "AND (:query IS NULL OR :query = '' OR " +
@@ -34,6 +35,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             "     LOWER(s.area) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "     LOWER(sk) LIKE LOWER(CONCAT('%', :query, '%')))")
     List<Store> searchStores(
+            @Param("country") String country,
             @Param("city") String city,
             @Param("category") String category,
             @Param("query") String query,

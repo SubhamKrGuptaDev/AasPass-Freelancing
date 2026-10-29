@@ -6,6 +6,24 @@ This document tracks all AI-assisted changes across the **AasPass** codebase for
 
 ## Change Log
 
+### [2026-10-29 07:00:00 IST] - Country and City Pickers Across Browsing and Forms
+* **What Changed:**
+  * **Backend:** Stores now carry an optional `country` on create/update (blank defaults to India on create, unchanged on update) and return it.
+  * **Geo data:** Generated country/city data (GeoNames via `countries-list` + `cities.json`, built with `npm run build:geo` into `public/geo`) and a cached `GeoService`.
+  * **Pickers:** Searchable `app-country-picker` and `app-city-picker` (Spartan autocomplete) that work with reactive forms and signals; a city that is not in a newly chosen country is cleared.
+  * **Browsing:** Country and city pickers in the navbar, Home hero and `/stores`; `StoreService` filters stores by country and lists cities that have stores.
+  * **Forms:** Create/Edit Store (with a `country` control defaulting to the user's country), Signup and Profile use the pickers; the hard-coded 5-city and 9-country lists were removed.
+  * **Docs:** README Key Features and `build:geo` note.
+* **Why Changed:** Let users in any country find and open stores, instead of a fixed set of 5 Indian cities and 9 countries.
+* **Files Modified:**
+  * `aaspass-service-backend` store country (entity, DTOs, service)
+  * `aaspass-client/src/app/components/location-picker/*`, `aaspass-client/src/app/geo/*`, `aaspass-client/public/geo/*`
+  * `aaspass-client/src/app/pages/{stores,home,create-store,auth,profile}/*`, `aaspass-client/src/app/components/navbar/*`
+  * `aaspass-client/src/app/services/store/store.service.ts`
+  * `README.md`
+  * `doc/AI-doc/CHANGELOG.md`
+
+
 ### [2026-10-28 22:45:00 IST] - Home Redesign, Public Stores Page, Spartan UI and 5 New Categories
 * **What Changed:**
   * **Spartan UI:** Added `@spartan-ng/helm` components (button, card, badge, input, select, tabs, accordion, skeleton, separator, toggle-group, switch) under `src/app/ui` with brand theme tokens and Lucide icons via `@ng-icons`.
