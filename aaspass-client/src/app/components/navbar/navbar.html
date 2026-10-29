@@ -55,8 +55,7 @@
                 inputId="nav-country"
                 label="Country"
                 placeholder="Country"
-                [value]="storeService.selectedCountry()"
-                (valueChange)="onCountryChange($event)"
+                [(value)]="countryModel"
               />
               <app-city-picker
                 inputId="nav-city"

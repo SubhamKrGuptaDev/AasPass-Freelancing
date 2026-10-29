@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, Injector, ElementRef, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
@@ -68,11 +68,27 @@ export class NavbarComponent {
     this.isLocationDropdownOpen.update(v => !v);
   }
 
-  // Pickers emit '' when cleared: a blank country is ignored by the store; a blank city means "all cities".
-  onCountryChange(country: string): void {
-    this.storeService.setSelectedCountry(country);
+  /** Two-way bound to the country picker; mirrors the store and is reset when the picker emits a blank/unknown value. */
+  private readonly injector = inject(Injector);
+
+  countryModel = linkedSignal(() => this.storeService.selectedCountry());
+
+  constructor() {
+    effect(() => {
+      const picked = this.countryModel();
+      if (picked === untracked(() => this.storeService.selectedCountry())) {
+        return;
+      }
+      untracked(() => {
+        this.storeService.setSelectedCountry(picked);
+        // Blank/unknown picks are ignored by the store. Reset after the binding has rendered the pick, so the
+        // picker is pushed back to the real country (a same-pass reset would look like "no change").
+        afterNextRender(() => this.countryModel.set(this.storeService.selectedCountry()), { injector: this.injector });
+      });
+    });
   }
 
+  // Pickers emit '' when cleared: a blank city means "all cities".
   onCityChange(city: string): void {
     this.storeService.setSelectedCity(city);
   }

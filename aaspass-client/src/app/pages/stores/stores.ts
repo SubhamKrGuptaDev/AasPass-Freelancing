@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, Injector, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -70,7 +70,26 @@ export class StoresComponent {
     this.storeService.citiesWithStores().filter(city => city !== this.storeService.selectedCity())
   );
 
+  /** Two-way bound to the country picker; mirrors the store and is reset when the picker emits a blank/unknown value. */
+  private readonly injector = inject(Injector);
+
+  readonly countryModel = linkedSignal(() => this.storeService.selectedCountry());
+
   constructor() {
+    effect(() => {
+      const picked = this.countryModel();
+      const current = untracked(() => this.storeService.selectedCountry());
+      if (picked === current) {
+        return;
+      }
+      untracked(() => {
+        this.storeService.setSelectedCountry(picked);
+        // Blank/unknown picks are ignored by the store. Reset after the binding has rendered the pick, so the
+        // picker is pushed back to the real country (a same-pass reset would look like "no change").
+        afterNextRender(() => this.countryModel.set(this.storeService.selectedCountry()), { injector: this.injector });
+      });
+    });
+
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(params => {
       const query = parseStoresQuery(params, COUNTRIES, this.storeService.categories);
       // Country first: a real country change resets the city, which the URL city then re-applies.
@@ -114,11 +133,6 @@ export class StoresComponent {
     });
   }
 
-  setCountry(country: string): void {
-    this.storeService.setSelectedCountry(country);
-    this.syncUrl();
-  }
-
   setCity(city: string): void {
     this.storeService.setSelectedCity(city);
     this.syncUrl();
@@ -148,13 +162,7 @@ export class StoresComponent {
   }
 
   // Template handlers: helm components emit loosely typed values, so narrow before use.
-  // Pickers emit '' when cleared: a blank country is ignored by the store; a blank city means "all cities".
-  onCountryChange(value: string): void {
-    if (value && value !== this.storeService.selectedCountry()) {
-      this.setCountry(value);
-    }
-  }
-
+  // Pickers emit '' when cleared: a blank city means "all cities".
   onCityChange(value: string): void {
     if (value !== this.storeService.selectedCity()) {
       this.setCity(value);

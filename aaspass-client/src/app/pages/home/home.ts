@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, Injector, computed, afterNextRender, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -57,24 +57,37 @@ export class HomeComponent {
   readonly faqs = FAQS;
   readonly skeletons = [1, 2, 3, 4, 5, 6];
 
+  /** Two-way bound to the country picker; mirrors the store and is reset when the picker emits a blank/unknown value. */
+  private readonly injector = inject(Injector);
+
+  readonly countryModel = linkedSignal(() => this.storeService.selectedCountry());
+
   /** Country/city preview: category/search filters are deliberately ignored on Home. An empty city means the whole country. */
   readonly topStores = computed(() => {
     const city = this.storeService.selectedCity();
-    const stores = this.storeService.stores();
-    if (city) {
-      return topStoresForCity(stores, city).filter(store => this.inSelectedCountry(store));
-    }
-    return sortStores(stores.filter(store => this.inSelectedCountry(store)), 'rating').slice(0, 6);
+    const inCountry = this.storeService.stores().filter(store => this.inSelectedCountry(store));
+    return city ? topStoresForCity(inCountry, city) : sortStores(inCountry, 'rating').slice(0, 6);
   });
+
+  constructor() {
+    effect(() => {
+      const picked = this.countryModel();
+      if (picked === untracked(() => this.storeService.selectedCountry())) {
+        return;
+      }
+      untracked(() => {
+        this.storeService.setSelectedCountry(picked);
+        // Blank/unknown picks are ignored by the store. Reset after the binding has rendered the pick, so the
+        // picker is pushed back to the real country (a same-pass reset would look like "no change").
+        afterNextRender(() => this.countryModel.set(this.storeService.selectedCountry()), { injector: this.injector });
+      });
+    });
+  }
 
   /** Local to Home; only applied on submit (navigates to /stores). */
   readonly heroSearch = new FormControl('', { nonNullable: true });
 
-  // Pickers emit '' when cleared: a blank country is ignored by the store; a blank city means "all cities".
-  onCountryChange(country: string): void {
-    this.storeService.setSelectedCountry(country);
-  }
-
+  // Pickers emit '' when cleared: a blank city means "all cities".
   onCityChange(city: string): void {
     this.storeService.setSelectedCity(city);
   }

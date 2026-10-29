@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { StoreProfile } from '../../models/store.model';
 import { StoreService } from '../../services/store/store.service';
 import { HomeComponent } from './home';
@@ -110,6 +112,29 @@ describe('HomeComponent', () => {
     expect(section?.textContent).toContain('No stores in Canada yet');
     expect(section?.querySelectorAll('ul a').length).toBe(0);
     expect(el.textContent).toContain('0 cities');
+  });
+
+  it('topStores filters by country before taking the top 6', () => {
+    service.stores.set([
+      ...Array.from({ length: 6 }, (_, i) => ({ ...makeStore(i + 1, 'Springfield', 5), country: 'United States' })),
+      makeStore(99, 'Springfield', 3)
+    ]);
+    service.setSelectedCity('Springfield');
+    expect(component.topStores().map(s => s.id)).toEqual(['99']);
+  });
+
+  it('restores the country text when the country picker is cleared', async () => {
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
+    picker.value.set('');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(service.selectedCountry()).toBe('India');
+    expect(picker.value()).toBe('India');
+    expect((fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input#home-country')?.value).toBe('India');
   });
 
   it('category cards match StoreService categories', () => {

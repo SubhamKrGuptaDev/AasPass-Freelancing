@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { CountryPickerComponent } from '../location-picker/country-picker';
 import { StoreService } from '../../services/store/store.service';
 import { NavbarComponent } from './navbar';
 
@@ -57,6 +59,20 @@ describe('NavbarComponent location popover', () => {
     expect(popover()?.querySelector('app-country-picker')).not.toBeNull();
     expect(popover()?.querySelector('app-city-picker')).not.toBeNull();
     expect(root.textContent).not.toContain('Select Location');
+  });
+
+  it('restores the country when the country picker is cleared', async () => {
+    trigger().click();
+    fixture.detectChanges();
+    const picker = fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
+    picker.value.set('');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(service.selectedCountry()).toBe('India');
+    expect(picker.value()).toBe('India');
   });
 
   it('closes on Escape and returns focus to the trigger', () => {

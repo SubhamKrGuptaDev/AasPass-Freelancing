@@ -1,7 +1,7 @@
 <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
   <header class="mb-6">
     <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">Browse local stores</h1>
-    <p class="mt-1 text-sm text-slate-600">Find skilled neighbours in your city. AasPass takes zero commission.</p>
+    <p class="mt-1 text-sm text-slate-600">Find skilled neighbours near you. AasPass takes zero commission.</p>
   </header>
 
   <!-- Filter bar -->
@@ -12,8 +12,7 @@
           inputId="stores-country"
           hideLabel
           placeholder="Country"
-          [value]="storeService.selectedCountry()"
-          (valueChange)="onCountryChange($event)"
+          [(value)]="countryModel"
         />
       </div>
       <div class="w-full sm:w-48">

@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
@@ -107,6 +109,25 @@ describe('StoresComponent', () => {
     expect(router.url).toContain('country=Canada');
     expect(router.url).not.toContain('city=');
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the country text when the country picker is cleared', async () => {
+    await open('/stores?country=India&city=Pune');
+    const picker = harness.fixture.debugElement.query(By.directive(CountryPickerComponent)).componentInstance as CountryPickerComponent;
+    picker.value.set('');
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(service.selectedCountry()).toBe('India');
+    expect(picker.value()).toBe('India');
+    expect((harness.routeNativeElement as HTMLElement).querySelector<HTMLInputElement>('input#stores-country')?.value).toBe('India');
+  });
+
+  it('shows a country-neutral subtitle', async () => {
+    await open('/stores?city=Pune');
+    expect((harness.routeNativeElement as HTMLElement).textContent).not.toContain('in your city');
   });
 
   it('treats an empty city as all cities and heads the list with the country', async () => {
