@@ -1,0 +1,52 @@
+<div class="flex min-h-screen items-center justify-center px-4 py-12">
+  <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">AasPass Admin</h1>
+    <p class="mt-1 text-sm text-slate-600">Sign in to manage users and stores.</p>
+
+    <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+      <div>
+        <label for="email" class="block text-sm font-medium text-slate-800">Email</label>
+        <input
+          hlmInput
+          id="email"
+          type="email"
+          autocomplete="username"
+          formControlName="email"
+          class="mt-1 h-10"
+          [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+          [attr.aria-describedby]="form.controls.email.touched && form.controls.email.invalid ? 'email-error' : null"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <p id="email-error" class="mt-1 text-sm text-rose-700">
+            @if (form.controls.email.hasError('required')) {
+              Email is required
+            } @else {
+              Enter a valid email address
+            }
+          </p>
+        }
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm font-medium text-slate-800">Password</label>
+        <input
+          hlmInput
+          id="password"
+          type="password"
+          autocomplete="current-password"
+          formControlName="password"
+          class="mt-1 h-10"
+          [attr.aria-invalid]="form.controls.password.touched && form.controls.password.invalid"
+          [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'password-error' : null"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <p id="password-error" class="mt-1 text-sm text-rose-700">Password is required</p>
+        }
+      </div>
+
+      <button hlmBtn type="submit" class="h-10 w-full" [disabled]="form.invalid || submitting()">
+        {{ submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+  </div>
+</div>
