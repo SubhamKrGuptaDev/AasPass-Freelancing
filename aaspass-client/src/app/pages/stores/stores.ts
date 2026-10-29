@@ -1,5 +1,5 @@
 import { Component, Injector, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { debounceTime } from 'rxjs';
@@ -25,6 +25,7 @@ import {
   sortStores,
   toStoresQueryParams
 } from '../../services/store/store-query';
+import { StoreSearchFilters } from '../../services/store/store-http.service';
 import { StoreService } from '../../services/store/store.service';
 
 @Component({
@@ -60,11 +61,35 @@ export class StoresComponent {
   readonly openOnly = signal(false);
   readonly searchControl = new FormControl<string>('', { nonNullable: true });
 
-  readonly results = computed<StoreProfile[]>(() => {
-    const stores = this.storeService.filteredStores();
-    const visible = this.openOnly() ? stores.filter(store => store.isAvailable) : stores;
-    return sortStores(visible, this.sort());
+  /**
+   * Server-side search: any filter change re-queries GET /api/stores (a newer request cancels the older one).
+   * The search text reaches `searchQuery` debounced, so typing does not fire a request per keystroke.
+   */
+  private readonly search = rxResource({
+    params: (): StoreSearchFilters => {
+      const category = this.storeService.selectedCategory();
+      return {
+        country: this.storeService.selectedCountry(),
+        city: this.storeService.selectedCity(),
+        category: category === 'All' ? '' : category,
+        query: this.storeService.searchQuery(),
+        availableOnly: this.openOnly()
+      };
+    },
+    stream: ({ params }) => this.storeService.searchStores(params)
   });
+
+  readonly isLoading = computed(() => this.search.isLoading());
+  readonly loadFailed = computed(() => this.search.status() === 'error');
+
+  /** Backend results, sorted locally (the API has no sort parameter). */
+  readonly results = computed<StoreProfile[]>(() =>
+    sortStores(this.search.hasValue() ? this.search.value() : [], this.sort())
+  );
+
+  retrySearch(): void {
+    this.search.reload();
+  }
 
   readonly otherCities = computed(() =>
     this.storeService.citiesWithStores().filter(city => city !== this.storeService.selectedCity())

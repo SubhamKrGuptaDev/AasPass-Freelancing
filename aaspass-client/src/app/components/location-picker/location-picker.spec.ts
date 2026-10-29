@@ -28,6 +28,20 @@ class CountryFormHost {
 }
 
 @Component({
+  imports: [CountryPickerComponent],
+  template: `
+    <form (submit)="$event.preventDefault(); submits = submits + 1">
+      <app-country-picker [(value)]="country" [submitOnEnter]="submitOnEnter" label="Country" />
+    </form>
+  `,
+})
+class CountrySubmitHost {
+  readonly country = signal('');
+  submitOnEnter = true;
+  submits = 0;
+}
+
+@Component({
   imports: [CityPickerComponent],
   template: `<app-city-picker
     [country]="country()"
@@ -221,6 +235,34 @@ describe('CountryPickerComponent', () => {
     const fixture = TestBed.createComponent(CountrySignalHost);
     await settle(fixture);
     expect(inputOf(fixture).getAttribute('autocomplete')).toBe('off');
+  });
+
+  it('with submitOnEnter, Enter picks while the list is open and submits the form once it is closed', async () => {
+    const fixture = TestBed.createComponent(CountrySubmitHost);
+    await settle(fixture);
+    const enter = (): void => {
+      inputOf(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    };
+
+    await type(fixture, 'india');
+    enter();
+    await settle(fixture);
+    expect(fixture.componentInstance.country()).toBe('India');
+    expect(fixture.componentInstance.submits).toBe(0);
+
+    enter();
+    await settle(fixture);
+    expect(fixture.componentInstance.submits).toBe(1);
+  });
+
+  it('without submitOnEnter, Enter never submits the form', async () => {
+    const fixture = TestBed.createComponent(CountrySubmitHost);
+    fixture.componentInstance.submitOnEnter = false;
+    await settle(fixture);
+
+    inputOf(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(fixture.componentInstance.submits).toBe(0);
   });
 });
 
