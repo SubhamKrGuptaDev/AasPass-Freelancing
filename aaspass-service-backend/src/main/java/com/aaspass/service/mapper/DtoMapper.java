@@ -122,6 +122,7 @@ public final class DtoMapper {
                 .area(store.getArea())
                 .city(store.getCity())
                 .country(store.getCountry())
+                .googleMapLink(store.getGoogleMapLink())
                 .serviceRadiusKm(store.getServiceRadiusKm())
                 .rating(computedRating)
                 .reviewCount(reviewCount)

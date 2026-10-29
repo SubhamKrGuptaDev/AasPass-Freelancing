@@ -199,6 +199,8 @@ export interface StoreProfile {
   area: string;
   city: string;
   country: string;
+  /** Optional Google Maps link to the store's location. */
+  googleMapLink?: string;
   serviceRadiusKm: number;
   storeSocialMediaLinks?: StoreSocialMediaLinks;
   userSocialLinks?: StoreSocialMediaLinks;

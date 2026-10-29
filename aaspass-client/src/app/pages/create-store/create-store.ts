@@ -2,8 +2,8 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { notBlank } from '../../forms/validators';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { GOOGLE_MAP_LINK_MAX_LENGTH, GOOGLE_MAP_LINK_PATTERN, notBlank } from '../../forms/validators';
 import { map } from 'rxjs';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { CountryPickerComponent } from '../../components/location-picker/country-picker';
@@ -63,6 +63,11 @@ export class CreateStoreComponent implements OnInit {
     country: new FormControl(DEFAULT_COUNTRY, { nonNullable: true, validators: [notBlank] }),
     city: new FormControl('Bengaluru', { nonNullable: true, validators: [notBlank] }),
     serviceRadiusKm: new FormControl<number>(5, { nonNullable: true }),
+    // Optional; blank is allowed, otherwise it must be a Google Maps link
+    googleMapLink: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.maxLength(GOOGLE_MAP_LINK_MAX_LENGTH), Validators.pattern(GOOGLE_MAP_LINK_PATTERN)]
+    }),
     description: new FormControl('Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.', { nonNullable: true }),
     socialMediaLinks: createSocialLinksArray([
       { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
@@ -109,6 +114,7 @@ export class CreateStoreComponent implements OnInit {
           country: storeToEdit.country || DEFAULT_COUNTRY,
           city: storeToEdit.city,
           serviceRadiusKm: storeToEdit.serviceRadiusKm,
+          googleMapLink: storeToEdit.googleMapLink ?? '',
           description: storeToEdit.description,
           skills: (storeToEdit.skills ?? []).join(', ')
         });
@@ -123,6 +129,7 @@ export class CreateStoreComponent implements OnInit {
     this.isEditing = false;
     this.editingStoreId = '';
     this.storeForm.patchValue({
+      googleMapLink: '',
       area: user.area || 'Indiranagar',
       country: user.country || DEFAULT_COUNTRY,
       city: user.city || 'Bengaluru'
@@ -175,6 +182,13 @@ export class CreateStoreComponent implements OnInit {
       return;
     }
 
+    const { googleMapLink } = this.storeForm.controls;
+    if (googleMapLink.invalid) {
+      googleMapLink.markAsTouched();
+      this.toast.error('Please paste a Google Maps link (e.g. https://maps.app.goo.gl/...), or leave it empty.');
+      return;
+    }
+
     const formData = this.storeForm.getRawValue();
     const skills = formData.skills
       .split(',')
@@ -200,6 +214,7 @@ export class CreateStoreComponent implements OnInit {
         country: formData.country,
         city: formData.city,
         serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
+        googleMapLink: formData.googleMapLink.trim(),
         socialMediaLinks: validSocialLinks,
         storeSocialMediaLinks: storeSocialMediaLinks,
         userSocialLinks: storeSocialMediaLinks,
@@ -250,6 +265,7 @@ export class CreateStoreComponent implements OnInit {
       country: formData.country,
       city: formData.city,
       serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
+      googleMapLink: formData.googleMapLink.trim() || undefined,
       socialMediaLinks: validSocialLinks,
       storeSocialMediaLinks: storeSocialMediaLinks,
       userSocialLinks: storeSocialMediaLinks,

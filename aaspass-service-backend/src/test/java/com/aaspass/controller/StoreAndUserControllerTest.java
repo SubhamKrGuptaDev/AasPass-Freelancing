@@ -171,6 +171,68 @@ public class StoreAndUserControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/stores - Google Maps link is optional, trimmed and stored")
+    public void testCreateStoreWithGoogleMapLink() throws Exception {
+        tools.jackson.databind.JsonNode withoutLink = createStore(countryStoreBuilder("No Map Store").build());
+        tools.jackson.databind.JsonNode noLink = withoutLink.path("data").path("googleMapLink");
+        org.junit.jupiter.api.Assertions.assertTrue(noLink.isNull() || noLink.isMissingNode(), "link should be empty");
+
+        mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(countryStoreBuilder("Map Store")
+                                .googleMapLink("  https://maps.app.goo.gl/AbCdEf123  ").build())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.googleMapLink", is("https://maps.app.goo.gl/AbCdEf123")));
+    }
+
+    @Test
+    @DisplayName("POST /api/stores - Non-Google-Maps or overlong links are rejected with 400")
+    public void testCreateStoreRejectsInvalidGoogleMapLink() throws Exception {
+        String overlong = "https://maps.app.goo.gl/" + "a".repeat(StoreCreateRequest.GOOGLE_MAP_LINK_MAX_LENGTH);
+        for (String link : new String[]{"https://example.com/maps", "https://maps.google.com.evil.io/x", "javascript:alert(1)", overlong}) {
+            mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    countryStoreBuilder("Bad Map Store").googleMapLink(link).build())))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    @DisplayName("PUT /api/stores/{id} - Google Maps link can be set, kept, rejected and cleared")
+    public void testUpdateStoreGoogleMapLink() throws Exception {
+        long id = createStore(countryStoreBuilder("Map Update Store").build()).path("data").path("id").asLong();
+        String longPlaceLink = "https://www.google.co.in/maps/place/" + "%E0%A4%87".repeat(100) + "/@12.97,77.64,17z";
+
+        mockMvc.perform(put("/api/stores/" + id).with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"googleMapLink\":\"" + longPlaceLink + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.googleMapLink", is(longPlaceLink)));
+
+        // Omitting the field keeps the saved link
+        mockMvc.perform(put("/api/stores/" + id).with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tagline\":\"Still mapped\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.googleMapLink", is(longPlaceLink)));
+
+        mockMvc.perform(put("/api/stores/" + id).with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"googleMapLink\":\"https://example.com/x\"}"))
+                .andExpect(status().isBadRequest());
+
+        // A blank link clears it
+        String cleared = mockMvc.perform(put("/api/stores/" + id).with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"googleMapLink\":\"\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        tools.jackson.databind.JsonNode link = objectMapper.readTree(cleared).path("data").path("googleMapLink");
+        org.junit.jupiter.api.Assertions.assertTrue(link.isNull() || link.isMissingNode(), "link should be cleared");
+    }
+
+    @Test
     @DisplayName("POST /api/stores - New store starts inactive and is hidden from search")
     public void testNewStoreIsInactiveAndHiddenFromSearch() throws Exception {
         long id = createStore(countryStoreBuilder("Hidden Store").country("Canada").build())

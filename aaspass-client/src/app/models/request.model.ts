@@ -103,6 +103,7 @@ export interface StoreCreateRequest {
   area: string;
   city: string;
   country?: string;
+  googleMapLink?: string;
   serviceRadiusKm?: number;
   description?: string;
   avatarUrl?: string;
@@ -124,6 +125,7 @@ export interface StoreUpdateRequest {
   area?: string;
   city?: string;
   country?: string;
+  googleMapLink?: string;
   serviceRadiusKm?: number;
   description?: string;
   avatarUrl?: string;
