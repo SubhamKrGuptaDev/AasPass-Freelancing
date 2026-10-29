@@ -5,6 +5,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { map } from 'rxjs';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+import { CountryPickerComponent } from '../../components/location-picker/country-picker';
+import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { StoreService } from '../../services/store/store.service';
 import { ToastService } from '../../services/toast/toast.service';
 import {
@@ -30,7 +32,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent],
   templateUrl: './create-store.html',
   styleUrl: './create-store.css'
 })
@@ -56,6 +58,7 @@ export class CreateStoreComponent implements OnInit {
     hourlyRate: new FormControl<number | null>(500),
     startingPrice: new FormControl<number | null>(350),
     area: new FormControl('Indiranagar', { nonNullable: true }),
+    country: new FormControl('India', { nonNullable: true }),
     city: new FormControl('Bengaluru', { nonNullable: true }),
     serviceRadiusKm: new FormControl<number>(5, { nonNullable: true }),
     description: new FormControl('Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.', { nonNullable: true }),
@@ -101,6 +104,7 @@ export class CreateStoreComponent implements OnInit {
           hourlyRate: storeToEdit.hourlyRate,
           startingPrice: storeToEdit.startingPrice,
           area: storeToEdit.area,
+          country: storeToEdit.country || 'India',
           city: storeToEdit.city,
           serviceRadiusKm: storeToEdit.serviceRadiusKm,
           description: storeToEdit.description,
@@ -118,6 +122,7 @@ export class CreateStoreComponent implements OnInit {
     this.editingStoreId = '';
     this.storeForm.patchValue({
       area: user.area || 'Indiranagar',
+      country: user.country || 'India',
       city: user.city || 'Bengaluru'
     });
 
@@ -181,6 +186,7 @@ export class CreateStoreComponent implements OnInit {
         hourlyRate: Number(formData.hourlyRate) || 500,
         startingPrice: Number(formData.startingPrice) || 300,
         area: formData.area,
+        country: formData.country,
         city: formData.city,
         serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
         socialMediaLinks: validSocialLinks,
@@ -230,6 +236,7 @@ export class CreateStoreComponent implements OnInit {
       hourlyRate: Number(formData.hourlyRate) || 500,
       startingPrice: Number(formData.startingPrice) || 300,
       area: formData.area,
+      country: formData.country,
       city: formData.city,
       serviceRadiusKm: Number(formData.serviceRadiusKm) || 5,
       socialMediaLinks: validSocialLinks,

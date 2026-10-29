@@ -14,6 +14,20 @@ const USER: UserProfile = { ...EMPTY_USER_PROFILE, id: '1', name: 'Aman', userna
 const USER_URL = `${API_BASE_URL}/users/1`;
 const KYC_URL = `${API_BASE_URL}/users/me/kyc`;
 
+// jsdom lacks ResizeObserver and scrollIntoView, which the location pickers' overlay uses.
+beforeAll(() => {
+  if (typeof Element.prototype.scrollIntoView !== 'function') {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
+  if (typeof globalThis.ResizeObserver !== 'function') {
+    globalThis.ResizeObserver = class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+  }
+});
+
 describe('ProfileComponent KYC', () => {
   let component: ProfileComponent;
   let fixture: ComponentFixture<ProfileComponent>;
@@ -40,6 +54,15 @@ describe('ProfileComponent KYC', () => {
   afterEach(() => {
     httpTesting.verify();
     toast.clear();
+  });
+
+  it('renders country and city pickers when editing the profile', () => {
+    component.startEditUser();
+    fixture.detectChanges();
+    httpTesting.match(r => r.url.includes('geo/cities')).forEach(r => r.flush([]));
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-country-picker')).not.toBeNull();
+    expect(el.querySelector('app-city-picker')).not.toBeNull();
   });
 
   it('profileSaveSendsNoKyc', () => {

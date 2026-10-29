@@ -210,22 +210,6 @@ export class StoreService {
     'Home & Personal Services'
   ];
 
-  // Available cities for selection
-  readonly availableCities = ['Bengaluru', 'Delhi NCR', 'Mumbai', 'Pune', 'Hyderabad'];
-
-  // Available countries for selection
-  readonly availableCountries = [
-    'India',
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'United Arab Emirates',
-    'Singapore'
-  ];
-
   // Distinct, sorted cities that have stores in the selected country
   readonly citiesWithStores = computed<string[]>(() => {
     const country = this.selectedCountry().trim().toLowerCase();

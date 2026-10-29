@@ -34,7 +34,7 @@ AasPass implements a **single, unified account model** (similar to Airbnb and OL
 
 ### 1. Proximity-Based Discovery & Search
 * **Radius Filters:** Find talent within **2 km**, **5 km**, **10 km**, or across the **Entire City**.
-* **City Selector:** Switch between cities (Bengaluru, Delhi NCR, Mumbai, Pune, Hyderabad).
+* **City Selector:** Country → city selector covering every country (GeoNames data).
 * **Category Filtering:**
   * 🎬 Video & Short Reels Editing
   * 💻 Web, App & Tech Development
@@ -151,6 +151,8 @@ npm start
 Navigate to `http://localhost:4200` to access the application.
 
 `npm start` runs the Angular dev server with a proxy (`proxy.conf.json`) that forwards `/api` to `http://localhost:8080`, so the browser talks to a single origin and the auth cookies work without CORS. API errors and confirmations (login, logout, KYC saved, review posted, ...) are shown through a shared toaster.
+
+The country and city lists are static files in `public/geo`. `npm run build:geo` regenerates them from the `countries-list` and `cities.json` packages (only needed when updating the data).
 
 ---
 
