@@ -252,7 +252,8 @@
               title="Account Menu"
             >
               <img 
-                [src]="storeService.currentUser()?.avatarUrl || ''" 
+                [src]="displayImageUrl(storeService.currentUser()?.profilePictureUrl, storeService.currentUser()?.avatarUrl)" 
+                (error)="fallbackToAvatar($event, storeService.currentUser()?.avatarUrl)"
                 alt="Avatar" 
                 class="w-7 h-7 rounded-full object-cover ring-2 ring-indigo-500/30"
               />

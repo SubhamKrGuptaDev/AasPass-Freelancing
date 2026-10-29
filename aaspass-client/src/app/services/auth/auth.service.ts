@@ -95,6 +95,7 @@ export class AuthService {
       aadharNumber: u.aadharNumber,
       panNumber: u.panNumber,
       avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) ? u.avatarUrl.trim() : getRandomAvatarUrl(u.username || u.name || String(u.id ?? '')),
+      profilePictureUrl: u.profilePictureUrl || undefined,
       city: u.city || 'Bengaluru',
       area: u.area || 'Indiranagar',
       country: u.country || DEFAULT_COUNTRY,
@@ -145,6 +146,7 @@ export class AuthService {
           lifetime: s.views?.lifetime ?? 1
         },
         avatarUrl: s.avatarUrl || u.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
+        ownerProfilePictureUrl: s.ownerProfilePictureUrl || u.profilePictureUrl || undefined,
         bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
         isAvailable: s.isAvailable !== false,
         isActive: s.isActive === true,
@@ -247,6 +249,33 @@ export class AuthService {
       map(resp => this.profileFromUserResponse(resp)),
       tap(profile => this._currentUser.set(profile))
     );
+  }
+
+  /** Uploads a (pre-resized) profile picture; the current user gets the new versioned URL from the backend. */
+  uploadProfilePicture(image: Blob, fileName: string): Observable<string | undefined> {
+    return this.authHttpService.uploadProfilePicture(image, fileName).pipe(
+      map(resp => resp?.data?.profilePictureUrl || undefined),
+      tap(url => this.applyProfilePicture(url))
+    );
+  }
+
+  /** Removes the uploaded profile picture; the generated avatar is shown again everywhere. */
+  removeProfilePicture(): Observable<void> {
+    return this.authHttpService.deleteProfilePicture().pipe(
+      map(() => undefined),
+      tap(() => this.applyProfilePicture(undefined))
+    );
+  }
+
+  /** Puts the picture URL on the current user and on the stores they own. */
+  private applyProfilePicture(url: string | undefined): void {
+    const current = this._currentUser();
+    if (!current) return;
+    this._currentUser.set({
+      ...current,
+      profilePictureUrl: url,
+      stores: current.stores?.map(s => ({ ...s, ownerProfilePictureUrl: url }))
+    });
   }
 
   /** Replaces the in-memory current user (e.g. after a store change confirmed by the backend). */

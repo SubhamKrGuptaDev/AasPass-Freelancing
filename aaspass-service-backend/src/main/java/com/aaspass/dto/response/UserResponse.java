@@ -20,6 +20,7 @@ public record UserResponse(
     String aadharNumber,
     String panNumber,
     String avatarUrl,
+    String profilePictureUrl,
     String city,
     String area,
     String country,

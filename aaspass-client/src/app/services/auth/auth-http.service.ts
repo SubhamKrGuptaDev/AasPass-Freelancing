@@ -3,7 +3,7 @@ import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
 import { SKIP_AUTH_REFRESH, SKIP_ERROR_TOAST } from '../../interceptors/http-context';
-import { ApiResponse, BackendAuthResponse, BackendAvailabilityResponse, BackendUserResponse } from '../../models/response.model';
+import { ApiResponse, BackendAuthResponse, BackendAvailabilityResponse, BackendProfilePictureResponse, BackendUserResponse } from '../../models/response.model';
 import { KycUpdatePayload, LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
 
 export type { LoginPayload, RegisterPayload, UpdateUserPayload, RequestOptions } from '../../models/request.model';
@@ -83,6 +83,17 @@ export class AuthHttpService {
 
   updateKyc(payload: KycUpdatePayload): Observable<ApiResponse<BackendUserResponse>> {
     return this.put<BackendUserResponse>('/users/me/kyc', payload);
+  }
+
+  /** Multipart upload; the browser sets the boundary header, so no Content-Type is given here. */
+  uploadProfilePicture(image: Blob, fileName: string): Observable<ApiResponse<BackendProfilePictureResponse>> {
+    const form = new FormData();
+    form.append('file', image, fileName);
+    return this.post<BackendProfilePictureResponse>('/users/me/profile-picture', form);
+  }
+
+  deleteProfilePicture(): Observable<ApiResponse<BackendProfilePictureResponse>> {
+    return this.delete<BackendProfilePictureResponse>('/users/me/profile-picture');
   }
 
   logout(): Observable<ApiResponse<void>> {

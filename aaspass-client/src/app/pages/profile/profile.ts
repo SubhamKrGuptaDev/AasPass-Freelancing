@@ -33,6 +33,7 @@ import {
 } from '../../models/store.model';
 import { DEFAULT_ENGAGEMENT_TYPE, ENABLED_ENGAGEMENT_TYPE_OPTIONS, FEATURE_FLAGS } from '../../config/feature-flags';
 import { getRandomAvatarUrl } from '../../models/user.model';
+import { PROFILE_PICTURE_ACCEPT, PROFILE_PICTURE_MAX_SOURCE_BYTES, resizeToSquareJpeg } from '../../utils/image-resize';
 import { clampRating, notBlank } from '../../forms/validators';
 import { DEFAULT_COUNTRY } from '../../geo/country';
 
@@ -133,6 +134,73 @@ export class ProfileComponent {
   randomizeAvatar(): void {
     const randomSeed = 'user-' + Math.random().toString(36).substring(2, 9);
     this.profileForm.controls.avatarUrl.setValue(getRandomAvatarUrl(randomSeed));
+  }
+
+  // Profile picture: uploaded separately from the profile form; the generated avatar is kept and
+  // revealed by sliding the picture aside on hover/focus.
+  readonly pictureAccept = PROFILE_PICTURE_ACCEPT;
+  readonly pictureBusy = signal(false);
+  /** Set when the uploaded picture fails to load, so the avatar is shown alone instead of a broken image. */
+  readonly pictureLoadFailed = signal(false);
+  readonly profilePictureUrl = computed(() => this.storeService.currentUser().profilePictureUrl);
+  readonly showProfilePicture = computed(() => !!this.profilePictureUrl() && !this.pictureLoadFailed());
+
+  async onProfilePictureSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (input) {
+      input.value = ''; // allow choosing the same file again later
+    }
+    if (!file || this.pictureBusy()) {
+      return;
+    }
+    if (!PROFILE_PICTURE_ACCEPT.split(',').includes(file.type)) {
+      this.toast.error('Please choose a JPEG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > PROFILE_PICTURE_MAX_SOURCE_BYTES) {
+      this.toast.error('Please choose an image smaller than 5 MB.');
+      return;
+    }
+
+    this.pictureBusy.set(true);
+    let resized: Blob;
+    try {
+      resized = await resizeToSquareJpeg(file);
+    } catch {
+      this.pictureBusy.set(false);
+      this.toast.error('That image could not be read. Please try another one.');
+      return;
+    }
+    this.storeService.uploadProfilePicture(resized, 'profile-picture.jpg').pipe(
+      finalize(() => this.pictureBusy.set(false))
+    ).subscribe({
+      next: () => {
+        this.pictureLoadFailed.set(false);
+        this.toast.success('Profile picture updated');
+      },
+      error: () => {
+        // The error interceptor shows the toast.
+      }
+    });
+  }
+
+  removeProfilePicture(): void {
+    if (this.pictureBusy()) {
+      return;
+    }
+    this.pictureBusy.set(true);
+    this.storeService.removeProfilePicture().pipe(
+      finalize(() => this.pictureBusy.set(false))
+    ).subscribe({
+      next: () => {
+        this.pictureLoadFailed.set(false);
+        this.toast.success('Profile picture removed');
+      },
+      error: () => {
+        // The error interceptor shows the toast.
+      }
+    });
   }
 
   handleAvatarError(event: Event): void {

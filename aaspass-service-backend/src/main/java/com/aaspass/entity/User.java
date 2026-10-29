@@ -11,12 +11,15 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Formula;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,6 +64,14 @@ public class User extends BaseAuditEntity {
 
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
+
+    /**
+     * Last update time of the uploaded profile picture, or null when none is uploaded.
+     * Read-only subquery so the image bytes in {@code user_profile_pictures} are never loaded with the user.
+     */
+    @Setter(AccessLevel.NONE)
+    @Formula("(SELECT p.last_updated_date_time FROM user_profile_pictures p WHERE p.user_id = id)")
+    private LocalDateTime profilePictureUpdatedAt;
 
     @Column(name = "city", length = 60)
     private String city;

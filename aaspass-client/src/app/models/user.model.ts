@@ -9,6 +9,8 @@ export interface UserProfile {
   aadharNumber?: string;
   panNumber?: string;
   avatarUrl: string;
+  /** Uploaded profile picture (versioned URL); shown instead of the avatar when set. */
+  profilePictureUrl?: string;
   city: string;
   area: string;
   country?: string;
@@ -36,4 +38,28 @@ export function getRandomAvatarUrl(seed?: string): string {
     : '';
   const finalSeed = clean.length > 0 ? clean : 'user-' + Math.random().toString(36).substring(2, 8);
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalSeed)}`;
+}
+
+/**
+ * The image to show for a person everywhere (navbar, store cards, profile): the uploaded profile
+ * picture when there is one, otherwise the generated avatar.
+ */
+export function displayImageUrl(profilePictureUrl?: string | null, avatarUrl?: string | null): string {
+  return profilePictureUrl?.trim() || avatarUrl?.trim() || '';
+}
+
+/**
+ * `(error)` handler for an <img> showing {@link displayImageUrl}: when the uploaded picture fails to
+ * load, falls back to the avatar once (never loops if the avatar fails too).
+ */
+export function fallbackToAvatar(event: Event, avatarUrl?: string | null): void {
+  const img = event.target as HTMLImageElement | null;
+  const fallback = avatarUrl?.trim();
+  if (!img || !fallback) {
+    return;
+  }
+  const fallbackHref = new URL(fallback, img.baseURI).href;
+  if (img.src !== fallbackHref) {
+    img.src = fallbackHref;
+  }
 }

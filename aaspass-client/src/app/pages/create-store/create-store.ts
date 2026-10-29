@@ -10,6 +10,7 @@ import { CountryPickerComponent } from '../../components/location-picker/country
 import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { StoreService } from '../../services/store/store.service';
 import { DEFAULT_COUNTRY } from '../../geo/country';
+import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 import { ToastService } from '../../services/toast/toast.service';
 import {
   SocialMediaLinksComponent,
@@ -39,6 +40,8 @@ import {
   styleUrl: './create-store.css'
 })
 export class CreateStoreComponent implements OnInit {
+  protected readonly displayImageUrl = displayImageUrl;
+  protected readonly fallbackToAvatar = fallbackToAvatar;
   storeService = inject(StoreService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);

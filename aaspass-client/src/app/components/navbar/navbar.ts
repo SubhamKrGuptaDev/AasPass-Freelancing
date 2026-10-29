@@ -2,6 +2,7 @@ import { Component, Injector, ElementRef, computed, afterNextRender, effect, inj
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
+import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 import { CityPickerComponent } from '../location-picker/city-picker';
 import { CountryPickerComponent } from '../location-picker/country-picker';
 
@@ -16,6 +17,8 @@ import { CountryPickerComponent } from '../location-picker/country-picker';
   styleUrl: './navbar.css'
 })
 export class NavbarComponent {
+  protected readonly displayImageUrl = displayImageUrl;
+  protected readonly fallbackToAvatar = fallbackToAvatar;
   storeService = inject(StoreService);
   authService = inject(AuthService);
 

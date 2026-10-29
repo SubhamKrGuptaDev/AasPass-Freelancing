@@ -29,7 +29,8 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div class="flex items-center gap-4 min-w-0 flex-1">
                 <img 
-                  [src]="s.avatarUrl" 
+                  [src]="displayImageUrl(s.ownerProfilePictureUrl, s.avatarUrl)" 
+                  (error)="fallbackToAvatar($event, s.avatarUrl)"
                   [alt]="s.ownerName" 
                   class="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md flex-shrink-0"
                 />
