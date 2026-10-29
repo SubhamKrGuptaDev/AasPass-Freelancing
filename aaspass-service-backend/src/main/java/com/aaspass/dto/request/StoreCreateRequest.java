@@ -35,6 +35,7 @@ public record StoreCreateRequest(
     String area,
 
     @NotBlank(message = "City is required")
+    @Size(max = 60, message = "City must be at most 60 characters")
     String city,
 
     @Size(max = 60, message = "Country must be at most 60 characters")

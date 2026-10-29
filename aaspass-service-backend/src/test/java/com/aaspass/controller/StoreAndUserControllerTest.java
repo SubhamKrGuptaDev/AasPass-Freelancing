@@ -117,6 +117,16 @@ public class StoreAndUserControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/stores - City longer than 60 characters is rejected with 400")
+    public void testCreateStoreRejectsOverlongCity() throws Exception {
+        mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                countryStoreBuilder("Long City Store").city("x".repeat(61)).build())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("POST /api/stores - Country is stored when provided")
     public void testCreateStoreWithCountry() throws Exception {
         mockMvc.perform(post("/api/stores").with(csrf()).cookie(loginAman())

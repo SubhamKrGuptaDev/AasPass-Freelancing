@@ -24,6 +24,7 @@ public record StoreUpdateRequest(
     BigDecimal hourlyRate,
     BigDecimal startingPrice,
     String area,
+    @Size(max = 60, message = "City must be at most 60 characters")
     String city,
     @Size(max = 60, message = "Country must be at most 60 characters")
     String country,
