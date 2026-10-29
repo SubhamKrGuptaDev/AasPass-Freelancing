@@ -203,6 +203,8 @@ openssl rand -base64 48   # AASPASS_JWT_SECRET
 openssl rand -base64 32   # AASPASS_KYC_KEY
 ```
 
+For the full production checklist, including the admin panel, see [Production configuration](#production-configuration).
+
 > **Warning:** the `dev` profile is the default (`spring.profiles.default=dev`) and its committed JWT/KYC keys in `application-dev.properties` are **DEV ONLY**. Never run production on them. Environment variables always override the dev keys. Rotating `AASPASS_KYC_KEY` makes existing encrypted KYC values unreadable, so back it up.
 
 ### Verifying the Auth Flow Locally
@@ -260,3 +262,20 @@ With MySQL running, start the backend (`.\mvnw.cmd spring-boot:run`; the first s
 ## Admin Panel
 
 `aaspass-admin/` is a separate Angular app for AasPass staff (store moderation, user KYC and suspension, dashboard). It talks to the admin API under `/api/admin` with its own JWT and cookies, and runs on <http://localhost:4300> (`npm start` inside `aaspass-admin`). See `COMMANDS.md` for details.
+
+---
+
+## Production configuration
+
+Every production deployment must set these. The committed fallbacks in `application-dev.properties` are DEV ONLY.
+
+| Setting | Required | Notes |
+| :--- | :--- | :--- |
+| `SPRING_PROFILES_ACTIVE` | Yes | e.g. `prod`. It must not fall back to `dev`: `spring.profiles.default=dev` would load the dev secrets and the well-known dev admin (`admin@aaspass.local` / `admin12345`). The backend logs an ERROR at startup if it seeds an admin with that dev password. |
+| `AASPASS_JWT_SECRET` | Yes | Marketplace JWT signing key, base64, at least 32 bytes (`openssl rand -base64 48`). |
+| `AASPASS_KYC_KEY` | Yes | AES-256-GCM key for Aadhaar/PAN, base64, exactly 32 bytes (`openssl rand -base64 32`). Back it up: rotating it makes stored KYC unreadable. |
+| `AASPASS_ADMIN_JWT_SECRET` | Yes | Admin-panel JWT signing key, base64, at least 32 bytes. Use a different value from `AASPASS_JWT_SECRET`. |
+| `AASPASS_ADMIN_EMAIL` / `AASPASS_ADMIN_PASSWORD` / `AASPASS_ADMIN_NAME` | Yes for the first start | Seed the first administrator when no admin exists yet (the name is optional, default `AasPass Admin`). Use a strong, unique password. |
+| `AASPASS_CORS_ORIGINS` | Yes | Comma-separated origins of the marketplace client and the admin app, e.g. `https://aaspass.com,https://admin.aaspass.com`. |
+| `AASPASS_COOKIE_DOMAIN` | Optional | Cookie `Domain` for real hostnames. If set to a parent domain (e.g. `aaspass.com`), the client and admin apps share the `XSRF-TOKEN` cookie, and admin login/logout rotates it: expect one CSRF retry in the other app. |
+| Admin app public-site URL | Yes | `publicSiteUrl` in `aaspass-admin/src/environments/environment.ts` (production build; placeholder `https://aaspass.com`) is used for "View public page" links. Change it to your marketplace host before `npm run build`. Development builds use `environment.development.ts` (`http://localhost:4200`). |
