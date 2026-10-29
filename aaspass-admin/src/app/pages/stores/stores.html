@@ -1,0 +1,117 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Stores</h1>
+
+  <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="search" aria-label="Filter stores" (submit)="$event.preventDefault()">
+    <div>
+      <label for="filter-country" class="block text-sm font-medium text-slate-800">Country</label>
+      <select
+        id="filter-country"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        (change)="onCountry($event)"
+      >
+        <option value="" [selected]="!country()">All countries</option>
+        @for (c of countries; track c.code) {
+          <option [value]="c.name" [selected]="c.name === country()">{{ c.name }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="filter-city" class="block text-sm font-medium text-slate-800">City</label>
+      <select
+        id="filter-city"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600"
+        [disabled]="!country()"
+        (change)="onCity($event)"
+      >
+        <option value="" [selected]="!city()">All cities</option>
+        @for (c of cityOptions(); track c) {
+          <option [value]="c" [selected]="c === city()">{{ c }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label for="filter-name" class="block text-sm font-medium text-slate-800">Store name</label>
+      <input
+        id="filter-name"
+        type="search"
+        autocomplete="off"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
+        [value]="nameDraft() ?? nameFilter()"
+        (input)="onName($event)"
+      />
+    </div>
+    <div>
+      <label for="filter-status" class="block text-sm font-medium text-slate-800">Status</label>
+      <select
+        id="filter-status"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900"
+        (change)="onStatus($event)"
+      >
+        @for (o of statusOptions; track o.value) {
+          <option [value]="o.value" [selected]="o.value === status()">{{ o.label }}</option>
+        }
+      </select>
+    </div>
+  </form>
+
+  <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white" [attr.aria-busy]="loading()">
+    <table class="w-full text-left text-sm">
+      <caption class="sr-only">Stores</caption>
+      <thead class="bg-slate-50 text-slate-700">
+        <tr>
+          <th scope="col" class="px-4 py-3 font-medium">Store</th>
+          <th scope="col" class="px-4 py-3 font-medium">Owner</th>
+          <th scope="col" class="px-4 py-3 font-medium">Location</th>
+          <th scope="col" class="px-4 py-3 font-medium">Created</th>
+          <th scope="col" class="px-4 py-3 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        @if (loading()) {
+          @for (row of skeletonRows; track row) {
+            <tr aria-hidden="true">
+              <td colspan="5" class="px-4 py-3"><div hlmSkeleton data-testid="skeleton" class="h-6"></div></td>
+            </tr>
+          }
+        } @else {
+          @for (store of rows(); track store.id) {
+            <tr>
+              <td class="px-4 py-3">
+                <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ store.storeName }}</a>
+                <p class="text-xs text-slate-600">{{ store.category }}</p>
+              </td>
+              <td class="px-4 py-3 text-slate-800">
+                {{ store.ownerName }}
+                <p class="text-xs text-slate-600">{{ '@' + store.ownerUsername }}</p>
+              </td>
+              <td class="px-4 py-3 text-slate-800">{{ store.city }}, {{ store.country }}</td>
+              <td class="px-4 py-3 text-slate-800">{{ store.creationDateTime | date: 'mediumDate' }}</td>
+              <td class="px-4 py-3">
+                <div class="flex flex-wrap gap-1">
+                  <app-status-chip [status]="chipFor(store)" />
+                  @if (!store.reviewed) {
+                    <app-status-chip status="unreviewed" />
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="px-4 py-8 text-center text-slate-700">
+                @if (failed()) {
+                  Stores could not be loaded. Adjust the filters or refresh to try again.
+                } @else {
+                  No stores match these filters.
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages() > 0) {
+    <app-pager [page]="page()" [totalPages]="totalPages()" (pageChange)="goToPage($event)" />
+  }
+</section>

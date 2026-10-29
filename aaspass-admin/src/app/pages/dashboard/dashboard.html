@@ -1,0 +1,112 @@
+<section class="space-y-8">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+
+  @if (data(); as d) {
+    <ul class="grid grid-cols-2 gap-4 lg:grid-cols-3" aria-label="Summary">
+      @for (card of cards(); track card.label) {
+        <li class="rounded-xl border border-slate-200 bg-white p-4" [attr.data-testid]="'stat-' + card.label">
+          <p class="text-sm font-medium text-slate-700">{{ card.label }}</p>
+          <p class="mt-1 text-3xl font-bold text-slate-900">{{ card.value }}</p>
+        </li>
+      }
+    </ul>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+      <section class="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="pending-heading">
+        <div class="flex items-center justify-between">
+          <h2 id="pending-heading" class="text-lg font-semibold text-slate-900">Pending verifications</h2>
+          <a
+            routerLink="/users"
+            [queryParams]="{ verification: 'pending' }"
+            class="text-sm font-medium text-indigo-700 underline underline-offset-2"
+            >View all<span class="sr-only"> pending verifications</span></a
+          >
+        </div>
+        @if (d.recentPendingUsers.length) {
+          <table class="mt-3 w-full text-left text-sm">
+            <caption class="sr-only">Users waiting for verification</caption>
+            <thead class="text-slate-700">
+              <tr>
+                <th scope="col" class="py-2 pr-2 font-medium">User</th>
+                <th scope="col" class="py-2 pr-2 font-medium">Email</th>
+                <th scope="col" class="py-2 font-medium">Joined</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (user of d.recentPendingUsers; track user.id) {
+                <tr>
+                  <td class="py-2 pr-2">
+                    <a [routerLink]="['/users', user.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ user.name }}</a>
+                  </td>
+                  <td class="py-2 pr-2 text-slate-700">{{ user.email }}</td>
+                  <td class="py-2 text-slate-700">{{ user.creationDateTime | date: 'mediumDate' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="mt-4 text-sm text-slate-700">Nothing waiting — all caught up.</p>
+        }
+      </section>
+
+      <section class="rounded-xl border border-slate-200 bg-white p-4" aria-labelledby="unreviewed-heading">
+        <div class="flex items-center justify-between">
+          <h2 id="unreviewed-heading" class="text-lg font-semibold text-slate-900">Unreviewed stores</h2>
+          <a
+            routerLink="/stores"
+            [queryParams]="{ status: 'unreviewed' }"
+            class="text-sm font-medium text-indigo-700 underline underline-offset-2"
+            >View all<span class="sr-only"> unreviewed stores</span></a
+          >
+        </div>
+        @if (d.recentUnreviewedStores.length) {
+          <table class="mt-3 w-full text-left text-sm">
+            <caption class="sr-only">Stores waiting for review</caption>
+            <thead class="text-slate-700">
+              <tr>
+                <th scope="col" class="py-2 pr-2 font-medium">Store</th>
+                <th scope="col" class="py-2 pr-2 font-medium">Owner</th>
+                <th scope="col" class="py-2 pr-2 font-medium">Created</th>
+                <th scope="col" class="py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (store of d.recentUnreviewedStores; track store.id) {
+                <tr>
+                  <td class="py-2 pr-2">
+                    <a [routerLink]="['/stores', store.id]" class="font-medium text-indigo-700 underline underline-offset-2">{{ store.storeName }}</a>
+                  </td>
+                  <td class="py-2 pr-2 text-slate-700">{{ store.ownerName }}</td>
+                  <td class="py-2 pr-2 text-slate-700">{{ store.creationDateTime | date: 'mediumDate' }}</td>
+                  <td class="py-2"><app-status-chip status="unreviewed" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="mt-4 text-sm text-slate-700">Nothing waiting — all caught up.</p>
+        }
+      </section>
+    </div>
+  } @else if (data() === null) {
+    <p role="alert" class="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+      The dashboard could not be loaded. Please refresh the page to try again.
+    </p>
+  } @else {
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-3" aria-busy="true">
+      <span class="sr-only" role="status">Loading dashboard</span>
+      @for (slot of skeletonSlots; track slot) {
+        <div hlmSkeleton data-testid="skeleton" class="h-24"></div>
+      }
+    </div>
+    <div class="grid gap-6 xl:grid-cols-2" aria-hidden="true">
+      @for (slot of [1, 2]; track slot) {
+        <div class="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+          @for (row of skeletonRows; track row) {
+            <div hlmSkeleton data-testid="skeleton" class="h-6"></div>
+          }
+        </div>
+      }
+    </div>
+  }
+</section>
