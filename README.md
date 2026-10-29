@@ -254,3 +254,9 @@ With MySQL running, start the backend (`.\mvnw.cmd spring-boot:run`; the first s
 ---
 
 > For exhaustive architectural details, ER schemas, and complete API specifications, see **[`doc/PROJECT_DETAILS.md`](doc/PROJECT_DETAILS.md)**.
+
+---
+
+## Admin Panel
+
+`aaspass-admin/` is a separate Angular app for AasPass staff (store moderation, user KYC and suspension, dashboard). It talks to the admin API under `/api/admin` with its own JWT and cookies, and runs on <http://localhost:4300> (`npm start` inside `aaspass-admin`). See `COMMANDS.md` for details.
