@@ -1,5 +1,5 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpParams, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { CountryPickerComponent } from '../../components/location-picker/country-picker';
@@ -41,12 +41,47 @@ describe('StoresComponent', () => {
   let service: StoreService;
   let router: Router;
 
-  async function open(url: string, stores: BackendStoreResponse[] = []): Promise<StoresComponent> {
-    const nav = harness.navigateByUrl(url, StoresComponent);
-    httpTesting.match(`${API_BASE_URL}/stores`).forEach(r => r.flush({ success: true, message: 'ok', data: stores }));
-    const cmp = await nav;
+  /** Mirrors StoreRepository#searchStores: case-insensitive equality filters plus a LIKE text query. */
+  function backendSearch(stores: BackendStoreResponse[], params: HttpParams): BackendStoreResponse[] {
+    const eq = (a: string | undefined, key: string): boolean => !params.has(key) || (a ?? '').toLowerCase() === params.get(key)?.toLowerCase();
+    const q = params.get('query')?.toLowerCase() ?? '';
+    return stores.filter(s =>
+      eq(s.country ?? 'India', 'country') && eq(s.city, 'city') && eq(s.category, 'category') &&
+      (params.get('availableOnly') !== 'true' || s.isAvailable !== false) &&
+      (!q || [s.storeName, s.ownerName, s.tagline, s.description, s.area, ...(s.skills ?? [])].some(v => (v ?? '').toLowerCase().includes(q)))
+    );
+  }
+
+  const backendAnswers = (stores: BackendStoreResponse[]) => (r: TestRequest): void =>
+    r.flush({ success: true, message: 'ok', data: backendSearch(stores, r.request.params) });
+
+  /**
+   * Awaits `work` while answering every GET /stores it triggers (the unfiltered startup load and the page's
+   * searches). A pending search keeps the app unstable, so `whenStable()` alone would never resolve.
+   */
+  async function answering<T>(work: Promise<T>, answer: (r: TestRequest) => void): Promise<T> {
+    let done = false;
+    void work.then(() => { done = true; }, () => { done = true; });
+    for (let i = 0; i < 100 && !done; i++) {
+      httpTesting.match(r => r.method === 'GET' && r.url === `${API_BASE_URL}/stores`).forEach(answer);
+      await (vi.isFakeTimers() ? vi.advanceTimersByTimeAsync(5) : new Promise(resolve => setTimeout(resolve, 5)));
+    }
+    if (!done) {
+      const pending = httpTesting.match(() => true).map(r => r.request.urlWithParams);
+      throw new Error(`still waiting; pending requests: ${JSON.stringify(pending)}`);
+    }
+    return work;
+  }
+
+  async function flushStores(stores: BackendStoreResponse[]): Promise<void> {
     harness.detectChanges();
-    await harness.fixture.whenStable();
+    await answering(harness.fixture.whenStable(), backendAnswers(stores));
+    harness.detectChanges();
+  }
+
+  async function open(url: string, stores: BackendStoreResponse[] = []): Promise<StoresComponent> {
+    const cmp = await answering(harness.navigateByUrl(url, StoresComponent), backendAnswers(stores));
+    await flushStores(stores);
     return cmp;
   }
 
@@ -62,6 +97,7 @@ describe('StoresComponent', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     httpTesting.match(() => true);
   });
 
@@ -126,7 +162,7 @@ describe('StoresComponent', () => {
     const spy = vi.spyOn(router, 'navigate');
     service.setSelectedCountry('Canada');
     TestBed.tick();
-    await harness.fixture.whenStable();
+    await flushStores([]);
     expect(router.url).toContain('country=Canada');
     expect(router.url).not.toContain('city=');
     expect(spy).toHaveBeenCalledTimes(1);
@@ -172,7 +208,7 @@ describe('StoresComponent', () => {
     const spy = vi.spyOn(router, 'navigate');
     service.setSelectedCity('Delhi NCR');
     TestBed.tick();
-    await harness.fixture.whenStable();
+    await flushStores([]);
     expect(router.url).toContain('city=Delhi%20NCR');
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -215,9 +251,8 @@ describe('StoresComponent', () => {
   it('re-canonicalises a bare /stores to the selected city after being on ?city=Pune', async () => {
     await open('/stores?city=Pune');
     expect(service.selectedCity()).toBe('Pune');
-    await harness.navigateByUrl('/stores');
-    harness.detectChanges();
-    await harness.fixture.whenStable();
+    await answering(harness.navigateByUrl('/stores'), backendAnswers([]));
+    await flushStores([]);
     expect(router.url).toContain('city=Pune');
   });
 
@@ -230,16 +265,58 @@ describe('StoresComponent', () => {
   });
 
   it('filters to open stores and sorts results', async () => {
-    const cmp = await open('/stores?city=Pune', [
+    const stores = [
       backendStore(1, { hourlyRate: 300 }),
       backendStore(2, { hourlyRate: 100, isAvailable: false }),
       backendStore(3, { hourlyRate: 200 })
-    ]);
+    ];
+    const cmp = await open('/stores?city=Pune', stores);
     cmp.setOpenOnly(true);
     cmp.setSort('price-asc');
+    await flushStores(stores);
     expect(cmp.results().map(s => s.id)).toEqual(['3', '1']);
     cmp.setOpenOnly(false);
+    await flushStores(stores);
     expect(cmp.results().map(s => s.id)).toEqual(['2', '3', '1']);
+  });
+
+  it('searches the backend with the URL filters', async () => {
+    const searches: HttpParams[] = [];
+    const answer = backendAnswers([]);
+    await answering(harness.navigateByUrl('/stores?country=India&city=Pune&category=photography&q=reels&open=1', StoresComponent), r => {
+      if (r.request.params.keys().length > 0) {
+        searches.push(r.request.params);
+      }
+      answer(r);
+    });
+    harness.detectChanges();
+    await answering(harness.fixture.whenStable(), r => {
+      searches.push(r.request.params);
+      answer(r);
+    });
+    const search = searches.at(-1);
+    expect(search?.get('country')).toBe('India');
+    expect(search?.get('city')).toBe('Pune');
+    expect(search?.get('category')).toBe('Photography');
+    expect(search?.get('query')).toBe('reels');
+    expect(search?.get('availableOnly')).toBe('true');
+  });
+
+  it('shows only what the backend returns for the search', async () => {
+    const cmp = await open('/stores?country=India&city=Pune&q=reels', [
+      backendStore(1, { skills: ['Reels'] }),
+      backendStore(2, { tagline: 'Wedding photos' })
+    ]);
+    expect(cmp.results().map(s => s.id)).toEqual(['1']);
+  });
+
+  it('shows a retry message when the search fails', async () => {
+    const fail = (r: TestRequest): void => r.flush({ message: 'boom' }, { status: 500, statusText: 'Server Error' });
+    await answering(harness.navigateByUrl('/stores?country=India&city=Pune', StoresComponent), fail);
+    harness.detectChanges();
+    await answering(harness.fixture.whenStable(), fail);
+    harness.detectChanges();
+    expect((harness.routeNativeElement as HTMLElement).textContent).toContain("Couldn't load stores");
   });
 
   it('/stores renders the list and /stores/store-7 renders detail', async () => {

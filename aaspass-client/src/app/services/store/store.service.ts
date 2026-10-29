@@ -18,7 +18,7 @@ import {
 } from '../../models/store.model';
 import { UserProfile, getRandomAvatarUrl } from '../../models/user.model';
 import { AuthService } from '../auth/auth.service';
-import { StoreHttpService } from './store-http.service';
+import { StoreHttpService, StoreSearchFilters } from './store-http.service';
 import { DEFAULT_COUNTRY, findCountryByName, normalizeCountry } from '../../geo/country';
 
 export const EMPTY_USER_PROFILE: UserProfile = {
@@ -95,6 +95,14 @@ export class StoreService {
         this.stores.set([]);
       }
     });
+  }
+
+  // Server-side search via StoreHttpService: GET /api/stores?country=&city=&category=&query=&availableOnly=
+  // Errors propagate to the caller (the error interceptor shows the toast).
+  searchStores(filters: StoreSearchFilters): Observable<StoreProfile[]> {
+    return this.storeHttpService.searchStores(filters).pipe(
+      map(res => Array.isArray(res?.data) ? res.data.map(s => this.mapBackendStoreToProfile(s)) : [])
+    );
   }
 
   // Map backend StoreResponse DTO to StoreProfile

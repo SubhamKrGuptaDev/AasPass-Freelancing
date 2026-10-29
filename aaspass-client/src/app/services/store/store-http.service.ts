@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpContext } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Observable, EMPTY } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
 import { SKIP_ERROR_TOAST } from '../../interceptors/http-context';
@@ -7,6 +7,15 @@ import { ApiResponse, BackendStoreResponse } from '../../models/response.model';
 import { CreateStorePayload, UpdateStorePayload, StoreReviewPayload, RequestOptions } from '../../models/request.model';
 
 export type { CreateStorePayload, UpdateStorePayload, StoreReviewPayload, RequestOptions } from '../../models/request.model';
+
+/** Query params of GET /api/stores (StoreController#getStores). */
+export interface StoreSearchFilters {
+  country?: string;
+  city?: string;
+  category?: string;
+  query?: string;
+  availableOnly?: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -47,6 +56,21 @@ export class StoreHttpService {
   // Specific Store API endpoints
   getAllStores(): Observable<ApiResponse<BackendStoreResponse[]>> {
     return this.get<BackendStoreResponse[]>('/stores');
+  }
+
+  /** GET /stores with the backend's search filters; blank/false filters are omitted (meaning "any"). */
+  searchStores(filters: StoreSearchFilters): Observable<ApiResponse<BackendStoreResponse[]>> {
+    let params = new HttpParams();
+    for (const key of ['country', 'city', 'category', 'query'] as const) {
+      const value = (filters[key] ?? '').trim();
+      if (value) {
+        params = params.set(key, value);
+      }
+    }
+    if (filters.availableOnly) {
+      params = params.set('availableOnly', 'true');
+    }
+    return this.get<BackendStoreResponse[]>('/stores', { params });
   }
 
   getStoreById(id: number | string): Observable<ApiResponse<BackendStoreResponse>> {
