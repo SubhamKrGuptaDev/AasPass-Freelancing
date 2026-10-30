@@ -20,7 +20,7 @@
           <dt class="font-medium text-slate-700 dark:text-slate-300">Name</dt>
           <dd class="text-slate-900 dark:text-slate-100">{{ r.name }}</dd>
           <dt class="font-medium text-slate-700 dark:text-slate-300">Email</dt>
-          <dd class="break-all"><a [href]="'mailto:' + r.email" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ r.email }}</a></dd>
+          <dd class="break-all"><a [href]="mailtoHref()" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ r.email }}</a></dd>
           @if (r.phone) {
             <dt class="font-medium text-slate-700 dark:text-slate-300">Phone</dt>
             <dd><a [href]="'tel:' + r.phone" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ r.phone }}</a></dd>

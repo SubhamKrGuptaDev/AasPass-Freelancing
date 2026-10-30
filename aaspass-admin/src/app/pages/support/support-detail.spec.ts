@@ -69,6 +69,13 @@ describe('SupportDetailPage', () => {
     expect(el.querySelector('a[href="tel:999"]')).not.toBeNull();
   });
 
+  it('escapesUriSignificantCharactersInMailto', async () => {
+    await setup(detail({ email: 'a@x.com?cc=x@y.com' }));
+    const href = el.querySelector<HTMLAnchorElement>('a[href^="mailto:"]')!.getAttribute('href')!;
+    expect(href).not.toContain('?');
+    expect(href).toBe('mailto:a@x.com%3Fcc%3Dx@y.com');
+  });
+
   it('hasNoTelLinkWithoutPhone', async () => {
     await setup(detail({ phone: null }));
     expect(el.querySelector('a[href^="tel:"]')).toBeNull();

@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Observable, of, throwError } from 'rxjs';
 import { ContactRequestPayload, ContactRequestResult } from '../../models/contact.model';
 import { UserProfile } from '../../models/user.model';
@@ -18,7 +19,7 @@ function setup(opts: { user?: Partial<UserProfile> | null; type?: string; submit
       provideRouter([]),
       { provide: AuthService, useValue: { currentUser: signal<UserProfile | null>(user) } },
       { provide: ContactService, useValue: { submit } },
-      { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(opts.type ? { type: opts.type } : {}) } } }
+      { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(opts.type ? { type: opts.type } : {}) }, queryParamMap: of(convertToParamMap(opts.type ? { type: opts.type } : {})) } }
     ]
   });
   const fixture: ComponentFixture<ContactComponent> = TestBed.createComponent(ContactComponent);
@@ -63,6 +64,21 @@ describe('ContactComponent', () => {
   it('preselects type from ?type=feedback', () => {
     const { fixture } = setup({ type: 'Feedback' });
     expect(fixture.componentInstance.form.controls.type.value).toBe('FEEDBACK');
+  });
+
+  it('updates the type when the query param changes while on /contact', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'contact', component: ContactComponent }]),
+        { provide: AuthService, useValue: { currentUser: signal<UserProfile | null>(null) } },
+        { provide: ContactService, useValue: { submit: vi.fn() } }
+      ]
+    });
+    const harness = await RouterTestingHarness.create();
+    const cmp = await harness.navigateByUrl('/contact', ContactComponent);
+    expect(cmp.form.controls.type.value).toBe('QUERY');
+    await harness.navigateByUrl('/contact?type=feedback', ContactComponent);
+    expect(cmp.form.controls.type.value).toBe('FEEDBACK');
   });
 
   it('defaults an unknown type to QUERY', () => {

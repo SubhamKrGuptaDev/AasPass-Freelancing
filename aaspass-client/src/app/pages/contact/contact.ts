@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -57,6 +57,12 @@ export class ContactComponent {
 
   constructor() {
     this.resetForm();
+    // Re-applies ?type= when the query changes while already on /contact (e.g. the footer feedback link).
+    this.route.queryParamMap?.pipe(takeUntilDestroyed()).subscribe(params => {
+      if (!this.submitted()) {
+        this.form.controls.type.setValue(contactTypeFromParam(params.get('type')));
+      }
+    });
   }
 
   /** Whether the named control should display its error message. */

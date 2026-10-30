@@ -55,6 +55,12 @@ export class SupportDetailPage {
     return update;
   });
 
+  /** mailto: link with URI-significant characters escaped so the address can't smuggle extra headers (?cc=). */
+  protected readonly mailtoHref = computed(() => {
+    const email = this.request()?.email ?? '';
+    return 'mailto:' + email.replace(/[?&#=%]/g, (c) => encodeURIComponent(c));
+  });
+
   protected readonly dirty = computed(() => Object.keys(this.changes()).length > 0);
 
   constructor() {

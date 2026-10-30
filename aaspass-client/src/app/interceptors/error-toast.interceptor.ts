@@ -71,6 +71,9 @@ export function toastMessageFor(err: HttpErrorResponse): ToastMessage | null {
   if (status === 404) {
     return { type: 'error', message: serverMessage(err) ?? NOT_FOUND_FALLBACK };
   }
+  if (status === 429) {
+    return { type: 'error', message: serverMessage(err) ?? GENERIC_CLIENT_MESSAGE };
+  }
   if (status >= 500) {
     return { type: 'error', message: SERVER_MESSAGE };
   }

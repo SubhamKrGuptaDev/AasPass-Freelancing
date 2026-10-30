@@ -30,11 +30,11 @@ import java.time.LocalDateTime;
 public class ContactRequest extends BaseAuditEntity {
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20)
+    @Column(name = "type", nullable = false, length = 20, columnDefinition = "VARCHAR(20) NOT NULL")
     private ContactRequestType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) NOT NULL")
     private ContactRequestStatus status = ContactRequestStatus.NEW;
 
     @Column(name = "name", nullable = false, length = 100)
