@@ -66,8 +66,8 @@ Bean Validation (`@NotNull`, `@NotBlank`, `@Email`, `@Size`) matches the column 
 `service/ContactRequestService.create(request, ip)`:
 
 1. If `website` is non-blank, log a warning and return success without saving (bots get no signal).
-2. Throttle: if more than **5** requests in the last hour from the same email **or** the same IP, throw
-   `BadRequestException` with a new `ErrorCode.CONTACT_RATE_LIMITED` ("Too many requests, please try again later").
+2. Throttle: if **5 or more** requests already exist in the last hour from the same email **or** the same IP, throw
+   a new `RateLimitedException` → HTTP 429 with `ErrorCode.CONTACT_RATE_LIMITED` ("Too many requests, please try again later.").
 3. If `CurrentUser.optionalUserId()` is present, load it with `findById(...).orElse(null)`
    and link it (a deleted account just leaves the request unlinked). Submitted name/email/phone are still stored as typed (the user may want a different contact number).
 4. Save with status NEW and return `ContactRequestResponse { id, type, status, creationDateTime }` — no admin fields.
@@ -129,7 +129,7 @@ Dashboard: `DashboardResponse` gains `newContactRequests` (`countByStatus(NEW)`)
 ## Error handling
 
 - Validation errors come back through the existing `GlobalExceptionHandler` and show as field errors/toasts.
-- Throttle → 400 with `CONTACT_RATE_LIMITED`; the client shows its message.
+- Throttle → 429 with `CONTACT_RATE_LIMITED`; the client shows its message.
 - Admin PATCH with neither field → 400; unknown id → 404.
 
 ## Testing
