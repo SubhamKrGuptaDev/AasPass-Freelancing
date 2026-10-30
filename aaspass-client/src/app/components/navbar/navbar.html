@@ -92,6 +92,16 @@
           <span>Browse Stores</span>
         </a>
 
+        <!-- Contact link -->
+        <a
+          routerLink="/contact"
+          routerLinkActive="text-indigo-600 font-semibold"
+          [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
+          class="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg transition"
+        >
+          <span>Contact</span>
+        </a>
+
         <!-- GUEST / UNAUTHENTICATED ACTIONS -->
         @if (!authService.isLoggedIn()) {
           <!-- Open Store CTA -->

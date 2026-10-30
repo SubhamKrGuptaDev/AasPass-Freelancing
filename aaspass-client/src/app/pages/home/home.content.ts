@@ -113,3 +113,9 @@ export const FAQS: readonly Faq[] = [
   { question: 'Is my ID data safe?', answer: 'Aadhaar and PAN are stored AES-256-GCM encrypted and only ever shown masked. Sessions use HttpOnly cookies, so tokens are never exposed to JavaScript.' },
   { question: 'Can I both hire and earn?', answer: 'Yes. AasPass uses a single, unified account: every user can hire local providers, and can open a store at any time to start receiving gigs.' }
 ];
+
+export const CONTACT_COPY = {
+  heading: 'Have a doubt?',
+  body: 'Questions about a store, your account, or how AasPass works? Send us a message and our team will contact you.',
+  cta: 'Contact us'
+} as const;

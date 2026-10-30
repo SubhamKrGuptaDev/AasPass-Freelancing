@@ -47,6 +47,11 @@ describe('NavbarComponent location popover', () => {
     expect(trigger().textContent).toContain('India');
   });
 
+  it('shows a Contact link', () => {
+    const link = Array.from(root.querySelectorAll('a')).find(a => a.textContent?.trim() === 'Contact');
+    expect(link?.getAttribute('href')).toBe('/contact');
+  });
+
   it('stays hidden below md', () => {
     expect(trigger().parentElement?.className).toContain('hidden md:inline-flex');
   });

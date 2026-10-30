@@ -25,7 +25,7 @@ import { StoreService } from '../../services/store/store.service';
 import { sortStores, topStoresForCity } from '../../services/store/store-query';
 import { normalizeCountry } from '../../geo/country';
 import {
-  COMPARISONS, EARN_STEPS, EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES,
+  COMPARISONS, CONTACT_COPY, EARN_STEPS, EXAMPLE_SELLERS, FAQS, HIRE_STEPS, HOME_CATEGORIES,
   SELLER_BENEFITS, SELLER_COPY, TRUST_POINTS, VALUE_PROPS
 } from './home.content';
 
@@ -60,6 +60,7 @@ export class HomeComponent {
   readonly valueProps = VALUE_PROPS;
   readonly trustPoints = TRUST_POINTS;
   readonly faqs = FAQS;
+  readonly contactCopy = CONTACT_COPY;
   readonly skeletons = [1, 2, 3, 4, 5, 6];
 
   /** Collapsed category grid shows 4 cards on mobile/tablet and 8 from the lg breakpoint up. */
