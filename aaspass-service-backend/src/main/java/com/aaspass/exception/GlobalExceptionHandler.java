@@ -49,6 +49,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), ex.code()));
     }
 
+    @ExceptionHandler(RateLimitedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleRateLimited(
+            RateLimitedException ex, HttpServletRequest request) {
+        log.warn("[API RATE LIMITED] Path: {} {}, Code: {}", request.getMethod(), request.getRequestURI(), ex.getCode());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error(ex.getMessage(), ex.getCode()));
+    }
+
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(
             BadRequestException ex, HttpServletRequest request) {
