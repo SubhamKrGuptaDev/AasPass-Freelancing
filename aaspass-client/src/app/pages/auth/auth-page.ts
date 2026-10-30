@@ -1,3 +1,5 @@
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
 import { Component, computed, inject, signal, OnInit, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,7 +17,8 @@ export type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | '
 
 @Component({
   selector: 'app-auth-page',
-  imports: [ReactiveFormsModule, RouterLink, CountryPickerComponent, CityPickerComponent],
+  imports: [ReactiveFormsModule, RouterLink, CountryPickerComponent, CityPickerComponent, NgIcon],
+  providers: [provideIcons({ lucideEye, lucideEyeOff })],
   templateUrl: './auth-page.html',
   styleUrl: './auth-page.css'
 })

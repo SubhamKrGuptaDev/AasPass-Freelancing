@@ -114,9 +114,11 @@
                 type="button" 
                 (click)="togglePasswordVisibility()"
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                title="Toggle password view"
+                [title]="showPassword() ? 'Hide password' : 'Show password'"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                [attr.aria-pressed]="showPassword()"
               >
-                <span>{{ showPassword() ? '🙈' : '👁️' }}</span>
+                <ng-icon [name]="showPassword() ? 'lucideEyeOff' : 'lucideEye'" size="16" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -237,9 +239,11 @@
                 type="button" 
                 (click)="togglePasswordVisibility()"
                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                title="Toggle password view"
+                [title]="showPassword() ? 'Hide password' : 'Show password'"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                [attr.aria-pressed]="showPassword()"
               >
-                <span>{{ showPassword() ? '🙈' : '👁️' }}</span>
+                <ng-icon [name]="showPassword() ? 'lucideEyeOff' : 'lucideEye'" size="16" aria-hidden="true" />
               </button>
             </div>
           </div>
