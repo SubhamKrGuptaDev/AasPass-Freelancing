@@ -6,43 +6,13 @@
 
   <form class="grid gap-4 sm:grid-cols-3" role="search" aria-label="Filter charts" (submit)="$event.preventDefault()">
     <div>
-      <label for="charts-period" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Period</label>
-      <select
-        id="charts-period"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onPeriod($event)"
-      >
-        @for (p of periods; track p.value) {
-          <option [value]="p.param" [selected]="p.value === period().value">{{ p.label }} ({{ p.range }})</option>
-        }
-      </select>
+      <app-search-select inputId="charts-period" label="Period" [options]="periodOptions" [selected]="period().param" (selectedChange)="onPeriod($event)" />
     </div>
     <div>
-      <label for="charts-country" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Country</label>
-      <select
-        id="charts-country"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onCountry($event)"
-      >
-        <option value="" [selected]="!country()">All countries</option>
-        @for (c of countries; track c.code) {
-          <option [value]="c.name" [selected]="c.name === country()">{{ c.name }}</option>
-        }
-      </select>
+      <app-search-select inputId="charts-country" label="Country" placeholder="Search countries" emptyText="No countries found." [options]="countryOptions" [selected]="country()" (selectedChange)="onCountry($event)" />
     </div>
     <div>
-      <label for="charts-city" class="block text-sm font-medium text-slate-800 dark:text-slate-200">City</label>
-      <select
-        id="charts-city"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-600 dark:disabled:text-slate-400"
-        [disabled]="!country()"
-        (change)="onCity($event)"
-      >
-        <option value="" [selected]="!city()">All cities</option>
-        @for (c of cityOptions(); track c) {
-          <option [value]="c" [selected]="c === city()">{{ c }}</option>
-        }
-      </select>
+      <app-search-select inputId="charts-city" label="City" placeholder="Search cities" emptyText="No cities found." [options]="citySelectOptions()" [selected]="city()" [disabled]="!country()" (selectedChange)="onCity($event)" />
     </div>
   </form>
 

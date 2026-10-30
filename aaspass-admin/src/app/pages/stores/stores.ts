@@ -9,6 +9,7 @@ import { AdminStoreSummary, PageResponse, StoreSearchParams, StoreStatusFilter }
 import { AdminApiService } from '../../services/admin-api.service';
 import { GeoService } from '../../services/geo/geo.service';
 import { HlmSkeleton } from '../../ui/skeleton/src';
+import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
 
 const PAGE_SIZE = 20;
 const NAME_DEBOUNCE_MS = 300;
@@ -38,7 +39,7 @@ const STATUS_OPTIONS: readonly StatusOption[] = [
 /** Search/filter list of stores; the filter state lives in the URL query string. */
 @Component({
   selector: 'app-stores',
-  imports: [DatePipe, RouterLink, StatusChipComponent, PagerComponent, HlmSkeleton],
+  imports: [DatePipe, RouterLink, StatusChipComponent, PagerComponent, HlmSkeleton, SearchSelectComponent],
   templateUrl: './stores.html'
 })
 export class StoresPage {
@@ -48,7 +49,6 @@ export class StoresPage {
   private readonly geo = inject(GeoService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly countries = this.geo.countries;
   protected readonly statusOptions = STATUS_OPTIONS;
 
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -71,6 +71,15 @@ export class StoresPage {
     const current = this.city();
     return current && !list.includes(current) ? [current, ...list] : list;
   });
+
+  protected readonly countryOptions: readonly SearchSelectOption[] = [
+    { value: '', label: 'All countries' },
+    ...this.geo.countries.map((c) => ({ value: c.name, label: c.name }))
+  ];
+  protected readonly citySelectOptions = computed<readonly SearchSelectOption[]>(() => [
+    { value: '', label: 'All cities' },
+    ...this.cityOptions().map((c) => ({ value: c, label: c }))
+  ]);
 
   private readonly query = computed<StoreSearchParams>(() => ({
     country: this.country() || undefined,
@@ -121,16 +130,16 @@ export class StoresPage {
 
   protected readonly chipFor = storeChip;
 
-  protected onCountry(event: Event): void {
-    this.updateFilters({ country: this.valueOf(event), city: '' });
+  protected onCountry(value: string): void {
+    this.updateFilters({ country: value, city: '' });
   }
 
-  protected onCity(event: Event): void {
-    this.updateFilters({ city: this.valueOf(event) });
+  protected onCity(value: string): void {
+    this.updateFilters({ city: value });
   }
 
-  protected onStatus(event: Event): void {
-    this.updateFilters({ status: this.valueOf(event) });
+  protected onStatus(value: string): void {
+    this.updateFilters({ status: value });
   }
 
   protected onName(event: Event): void {

@@ -8,6 +8,7 @@ import { map } from 'rxjs';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { CityPickerComponent } from '../../components/location-picker/city-picker';
+import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
 import { StoreService } from '../../services/store/store.service';
 import { DEFAULT_COUNTRY } from '../../geo/country';
 import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
@@ -35,7 +36,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, SearchSelectComponent],
   templateUrl: './create-store.html',
   styleUrl: './create-store.css'
 })
@@ -48,6 +49,13 @@ export class CreateStoreComponent implements OnInit {
   private toast = inject(ToastService);
 
   availableCategories = this.storeService.categories.filter(c => c !== 'All');
+  protected readonly categoryOptions: readonly SearchSelectOption[] = this.availableCategories.map(c => ({ value: c, label: c }));
+  protected readonly radiusOptions: readonly SearchSelectOption[] = [
+    { value: 5, label: '5 km radius' },
+    { value: 10, label: '10 km radius' },
+    { value: 20, label: '20 km radius' },
+    { value: 50, label: 'Entire City' },
+  ];
 
   isEditing = false;
   editingStoreId = '';

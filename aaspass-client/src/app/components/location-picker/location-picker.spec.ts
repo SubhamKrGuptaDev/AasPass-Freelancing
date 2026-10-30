@@ -306,6 +306,23 @@ describe('CityPickerComponent', () => {
     expect(fixture.componentInstance.city()).toBe('Pune');
   });
 
+  it('Enter right after the last letter picks the current first match, not the stale highlight', async () => {
+    const fixture = TestBed.createComponent(CitySignalHost);
+    await settle(fixture);
+    http.expectOne('geo/cities/IN.json').flush(['Punalūr', 'Pune']);
+    await settle(fixture);
+
+    await type(fixture, 'pun');
+    const input = inputOf(fixture);
+    expect(input.getAttribute('aria-activedescendant')).toBe(option(fixture, 'Punalūr').id);
+    // No change detection between the last letter and Enter (fast typing / slow device).
+    input.value = 'pune';
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await settle(fixture);
+    expect(fixture.componentInstance.city()).toBe('Pune');
+  });
+
   it('restores the selected city when the list closes without a pick', async () => {
     const fixture = TestBed.createComponent(CitySignalHost);
     await settle(fixture);

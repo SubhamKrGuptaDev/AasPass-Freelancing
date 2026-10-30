@@ -39,15 +39,7 @@
         />
       </div>
 
-      <label for="stores-sort-trigger" class="sr-only">Sort by</label>
-      <hlm-select [value]="sort()" [itemToString]="sortLabel" (valueChange)="onSortChange($event)">
-        <hlm-select-trigger buttonId="stores-sort-trigger" class="w-52"><hlm-select-value placeholder="Sort by" /></hlm-select-trigger>
-        <hlm-select-content *hlmSelectPortal>
-          @for (option of sortOptions; track option.key) {
-            <hlm-select-item [value]="option.key">{{ option.label }}</hlm-select-item>
-          }
-        </hlm-select-content>
-      </hlm-select>
+      <app-search-select class="w-52" inputId="stores-sort" label="Sort by" hideLabel placeholder="Sort by" [options]="sortSelectOptions" [selected]="sort()" (selectedChange)="onSortChange($event)" />
 
       <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
         <hlm-switch [checked]="openOnly()" (checkedChange)="setOpenOnly($event)" aria-label="Open for gigs only" />

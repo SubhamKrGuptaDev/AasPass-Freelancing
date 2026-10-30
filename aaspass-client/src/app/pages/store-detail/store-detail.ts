@@ -1,3 +1,5 @@
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideEye } from '@ng-icons/lucide';
 import { Component, inject, computed, signal, effect, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
@@ -28,7 +30,8 @@ import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
 @Component({
   selector: 'app-store-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, VerifiedBadgeComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, VerifiedBadgeComponent, NgIcon],
+  providers: [provideIcons({ lucideEye })],
   templateUrl: './store-detail.html',
   styleUrl: './store-detail.css'
 })

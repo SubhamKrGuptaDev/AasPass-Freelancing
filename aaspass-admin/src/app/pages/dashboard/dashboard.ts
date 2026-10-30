@@ -8,6 +8,7 @@ import { ActivityPeriod, DashboardResponse, NewActivityResponse } from '../../mo
 import { AdminApiService } from '../../services/admin-api.service';
 import { storeChip } from '../stores/stores';
 import { HlmSkeleton } from '../../ui/skeleton/src';
+import { SearchSelectComponent } from '../../components/search-select/search-select';
 
 interface PeriodOption {
   value: ActivityPeriod;
@@ -28,7 +29,7 @@ interface StatCard {
 /** Moderation overview: headline counts, items waiting for an admin, and the newest users and stores. */
 @Component({
   selector: 'app-dashboard',
-  imports: [DatePipe, RouterLink, StatusChipComponent, HlmSkeleton],
+  imports: [DatePipe, RouterLink, StatusChipComponent, HlmSkeleton, SearchSelectComponent],
   templateUrl: './dashboard.html'
 })
 export class DashboardPage {
@@ -73,8 +74,7 @@ export class DashboardPage {
 
   protected readonly chipFor = storeChip;
 
-  protected onPeriod(event: Event): void {
-    const value = (event.target as HTMLSelectElement | null)?.value;
+  protected onPeriod(value: string): void {
     const match = PERIOD_OPTIONS.find((o) => o.value === value);
     if (match) {
       this.period.set(match.value);

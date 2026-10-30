@@ -1,0 +1,20 @@
+<label [id]="labelId()" [for]="inputId()" class="block text-sm font-medium text-slate-800 dark:text-slate-200">{{ label() }}</label>
+<hlm-autocomplete
+  class="mt-1"
+  [value]="selectedLabel() || null"
+  (valueChange)="onSelect($event)"
+  [(search)]="search"
+  [disabled]="disabled()"
+  [autoHighlight]="true"
+  (stateChanged)="onPanelState($event)"
+>
+  <hlm-autocomplete-input [inputId]="inputId()" [placeholder]="placeholder()" (click)="openList()" />
+  <hlm-autocomplete-content *hlmAutocompletePortal>
+    <hlm-autocomplete-empty>{{ emptyText() }}</hlm-autocomplete-empty>
+    <div hlmAutocompleteList [aria-labelledby]="labelId()">
+      @for (name of matches(); track name) {
+        <hlm-autocomplete-item [value]="name">{{ name }}</hlm-autocomplete-item>
+      }
+    </div>
+  </hlm-autocomplete-content>
+</hlm-autocomplete>

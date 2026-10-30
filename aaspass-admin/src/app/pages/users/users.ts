@@ -9,6 +9,7 @@ import { AdminUserSummary, PageResponse, UserSearchParams, UserVerificationFilte
 import { AdminApiService } from '../../services/admin-api.service';
 import { HlmSkeleton } from '../../ui/skeleton/src';
 import { verificationChip } from './verification-panel/verification-panel';
+import { SearchSelectComponent } from '../../components/search-select/search-select';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -38,7 +39,7 @@ const SUSPENDED_OPTIONS: readonly Option<SuspendedFilter>[] = [
 /** Search/filter list of users; the filter state lives in the URL query string. */
 @Component({
   selector: 'app-users',
-  imports: [DatePipe, RouterLink, StatusChipComponent, PagerComponent, HlmSkeleton],
+  imports: [DatePipe, RouterLink, StatusChipComponent, PagerComponent, HlmSkeleton, SearchSelectComponent],
   templateUrl: './users.html'
 })
 export class UsersPage {
@@ -128,12 +129,12 @@ export class UsersPage {
     }, SEARCH_DEBOUNCE_MS);
   }
 
-  protected onVerification(event: Event): void {
-    this.updateFilters({ verification: this.valueOf(event) });
+  protected onVerification(value: string): void {
+    this.updateFilters({ verification: value });
   }
 
-  protected onSuspended(event: Event): void {
-    this.updateFilters({ suspended: this.valueOf(event) });
+  protected onSuspended(value: string): void {
+    this.updateFilters({ suspended: value });
   }
 
   protected goToPage(page: number): void {

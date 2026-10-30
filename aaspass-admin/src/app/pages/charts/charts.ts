@@ -9,6 +9,7 @@ import { ActivityPeriod, ChartsParams, ChartsResponse, CityCount } from '../../m
 import { AdminApiService } from '../../services/admin-api.service';
 import { GeoService } from '../../services/geo/geo.service';
 import { HlmSkeleton } from '../../ui/skeleton/src';
+import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
 
 /** Categorical slots 1 and 2 of the validated chart palette; light/dark values live in styles.css. */
 const SERIES_1 = 'var(--chart-series-1)';
@@ -59,7 +60,7 @@ function cityItems(cities: readonly CityCount[] | undefined): BarListItem[] {
  */
 @Component({
   selector: 'app-charts',
-  imports: [ColumnChartComponent, BarListComponent, HlmSkeleton],
+  imports: [ColumnChartComponent, BarListComponent, HlmSkeleton, SearchSelectComponent],
   templateUrl: './charts.html'
 })
 export class ChartsPage {
@@ -69,8 +70,7 @@ export class ChartsPage {
   private readonly geo = inject(GeoService);
   private readonly locale = inject(LOCALE_ID);
 
-  protected readonly periods = PERIODS;
-  protected readonly countries = this.geo.countries;
+  protected readonly periodOptions: readonly SearchSelectOption[] = PERIODS.map((p) => ({ value: p.param, label: `${p.label} (${p.range})` }));
   protected readonly series1 = SERIES_1;
 
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
@@ -87,6 +87,15 @@ export class ChartsPage {
     const current = this.city();
     return current && !list.includes(current) ? [current, ...list] : list;
   });
+
+  protected readonly countryOptions: readonly SearchSelectOption[] = [
+    { value: '', label: 'All countries' },
+    ...this.geo.countries.map((c) => ({ value: c.name, label: c.name }))
+  ];
+  protected readonly citySelectOptions = computed<readonly SearchSelectOption[]>(() => [
+    { value: '', label: 'All cities' },
+    ...this.cityOptions().map((c) => ({ value: c, label: c }))
+  ]);
 
   private readonly query = computed<ChartsParams>(() => ({
     period: this.period().value,
@@ -161,24 +170,19 @@ export class ChartsPage {
 
   protected readonly skeletonSlots = [1, 2, 3, 4];
 
-  protected onPeriod(event: Event): void {
-    const value = this.valueOf(event);
+  protected onPeriod(value: string): void {
     const match = PERIODS.find((p) => p.param === value);
     if (match) {
       this.updateFilters({ period: match.param === 'daily' ? null : match.param });
     }
   }
 
-  protected onCountry(event: Event): void {
-    this.updateFilters({ country: this.valueOf(event) || null, city: null });
+  protected onCountry(value: string): void {
+    this.updateFilters({ country: value || null, city: null });
   }
 
-  protected onCity(event: Event): void {
-    this.updateFilters({ city: this.valueOf(event) || null });
-  }
-
-  private valueOf(event: Event): string {
-    return (event.target as HTMLSelectElement | null)?.value ?? '';
+  protected onCity(value: string): void {
+    this.updateFilters({ city: value || null });
   }
 
   private updateFilters(changes: Record<string, string | null>): void {

@@ -1,3 +1,5 @@
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideEye } from '@ng-icons/lucide';
 import { Component, inject, signal, computed, Injector, afterNextRender } from '@angular/core';
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -41,7 +43,8 @@ import { DEFAULT_COUNTRY } from '../../geo/country';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, VerifiedBadgeComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, VerifiedBadgeComponent, NgIcon],
+  providers: [provideIcons({ lucideEye })],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })

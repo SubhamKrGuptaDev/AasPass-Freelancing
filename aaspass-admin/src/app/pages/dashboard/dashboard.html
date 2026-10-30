@@ -115,16 +115,7 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
       <h2 id="new-activity-heading" class="text-xl font-semibold text-slate-900 dark:text-slate-100">New activity</h2>
       <div>
-        <label for="activity-period" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Period</label>
-        <select
-          id="activity-period"
-          class="mt-1 h-10 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-          (change)="onPeriod($event)"
-        >
-          @for (option of periodOptions; track option.value) {
-            <option [value]="option.value" [selected]="option.value === period()">{{ option.label }}</option>
-          }
-        </select>
+        <app-search-select class="w-64" inputId="activity-period" label="Period" [options]="periodOptions" [selected]="period()" (selectedChange)="onPeriod($event)" />
       </div>
     </div>
 

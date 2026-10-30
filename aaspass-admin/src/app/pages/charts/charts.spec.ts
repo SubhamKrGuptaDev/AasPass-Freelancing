@@ -6,6 +6,7 @@ import { AdminApiService } from '../../services/admin-api.service';
 import { GeoService } from '../../services/geo/geo.service';
 import { ChartsPage } from './charts';
 import { signal } from '@angular/core';
+import { pickSearchSelect, searchSelect } from '../../components/search-select/search-select.testing';
 
 const response: ChartsResponse = {
   period: 'DAILY',
@@ -48,7 +49,7 @@ describe('ChartsPage', () => {
   it('loadsDailyByDefaultAndShowsTotals', async () => {
     await setup();
     expect(charts).toHaveBeenCalledWith({ period: 'DAILY', country: undefined, city: undefined });
-    expect((el.querySelector('#charts-period') as HTMLSelectElement).value).toBe('daily');
+    expect(el.querySelector<HTMLInputElement>('input#charts-period')?.value).toBe('Daily (last 30 days)');
     expect(el.querySelector('[data-testid="total-users"]')?.textContent).toContain('5 joined in the last 30 days');
     expect(el.querySelector('[data-testid="total-stores"]')?.textContent).toContain('1 created');
     expect(el.querySelector('[data-testid="total-verifications"]')?.textContent).toContain('5 verified');
@@ -61,23 +62,19 @@ describe('ChartsPage', () => {
 
   it('reloadsWhenPeriodAndLocationChange', async () => {
     await setup();
-    const period = el.querySelector('#charts-period') as HTMLSelectElement;
-    period.value = 'monthly';
-    period.dispatchEvent(new Event('change'));
+    pickSearchSelect(fixture, 'charts-period', 'monthly');
     await fixture.whenStable();
     fixture.detectChanges();
     expect(charts).toHaveBeenLastCalledWith({ period: 'MONTHLY', country: undefined, city: undefined });
     expect(el.textContent).toContain('last 12 months');
 
-    const country = el.querySelector('#charts-country') as HTMLSelectElement;
-    country.value = 'India';
-    country.dispatchEvent(new Event('change'));
+    expect(el.querySelector<HTMLInputElement>('input#charts-city')?.disabled).toBe(true);
+    pickSearchSelect(fixture, 'charts-country', 'India');
     await fixture.whenStable();
     fixture.detectChanges();
-    const city = el.querySelector('#charts-city') as HTMLSelectElement;
-    expect(city.disabled).toBe(false);
-    city.value = 'Pune';
-    city.dispatchEvent(new Event('change'));
+    expect(el.querySelector<HTMLInputElement>('input#charts-city')?.disabled).toBe(false);
+    expect(searchSelect(fixture, 'charts-country').selected()).toBe('India');
+    pickSearchSelect(fixture, 'charts-city', 'Pune');
     await fixture.whenStable();
     fixture.detectChanges();
     expect(charts).toHaveBeenLastCalledWith({ period: 'MONTHLY', country: 'India', city: 'Pune' });

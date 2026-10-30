@@ -3,31 +3,10 @@
 
   <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="search" aria-label="Filter stores" (submit)="$event.preventDefault()">
     <div>
-      <label for="filter-country" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Country</label>
-      <select
-        id="filter-country"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onCountry($event)"
-      >
-        <option value="" [selected]="!country()">All countries</option>
-        @for (c of countries; track c.code) {
-          <option [value]="c.name" [selected]="c.name === country()">{{ c.name }}</option>
-        }
-      </select>
+      <app-search-select inputId="filter-country" label="Country" placeholder="Search countries" emptyText="No countries found." [options]="countryOptions" [selected]="country()" (selectedChange)="onCountry($event)" />
     </div>
     <div>
-      <label for="filter-city" class="block text-sm font-medium text-slate-800 dark:text-slate-200">City</label>
-      <select
-        id="filter-city"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-600 dark:disabled:text-slate-400"
-        [disabled]="!country()"
-        (change)="onCity($event)"
-      >
-        <option value="" [selected]="!city()">All cities</option>
-        @for (c of cityOptions(); track c) {
-          <option [value]="c" [selected]="c === city()">{{ c }}</option>
-        }
-      </select>
+      <app-search-select inputId="filter-city" label="City" placeholder="Search cities" emptyText="No cities found." [options]="citySelectOptions()" [selected]="city()" [disabled]="!country()" (selectedChange)="onCity($event)" />
     </div>
     <div>
       <label for="filter-name" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Store name</label>
@@ -41,16 +20,7 @@
       />
     </div>
     <div>
-      <label for="filter-status" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Status</label>
-      <select
-        id="filter-status"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onStatus($event)"
-      >
-        @for (o of statusOptions; track o.value) {
-          <option [value]="o.value" [selected]="o.value === status()">{{ o.label }}</option>
-        }
-      </select>
+      <app-search-select inputId="filter-status" label="Status" [options]="statusOptions" [selected]="status()" (selectedChange)="onStatus($event)" />
     </div>
   </form>
 
