@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { PagerComponent } from '../../components/pager/pager';
 import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
@@ -33,7 +33,7 @@ const TYPE_OPTIONS: readonly SearchSelectOption[] = [
 /** Inbox of contact and feedback requests; the filter state lives in the URL query string. */
 @Component({
   selector: 'app-support',
-  imports: [DatePipe, StatusChipComponent, PagerComponent, HlmSkeleton, SearchSelectComponent],
+  imports: [DatePipe, RouterLink, StatusChipComponent, PagerComponent, HlmSkeleton, SearchSelectComponent],
   templateUrl: './support.html'
 })
 export class SupportPage {

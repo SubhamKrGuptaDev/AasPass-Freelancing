@@ -78,6 +78,13 @@ describe('SupportPage', () => {
     expect(TestBed.inject(Router).url).toBe('/support/5');
   });
 
+  it('rendersSubjectAsKeyboardReachableLinkToDetail', async () => {
+    await setup('/support');
+    const link = el.querySelector<HTMLAnchorElement>('tbody tr a');
+    expect(link?.getAttribute('href')).toBe('/support/5');
+    expect(link?.textContent?.trim()).toBe('Love the app');
+  });
+
   it('showsAnEmptyState', async () => {
     await setup('/support', []);
     expect(el.textContent).toContain('No requests match these filters.');

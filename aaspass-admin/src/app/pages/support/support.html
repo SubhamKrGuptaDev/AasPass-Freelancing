@@ -48,7 +48,7 @@
               <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ typeLabels[req.type] ?? req.type }}</td>
               <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.name }}</td>
               <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.email }}</td>
-              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.subject }}</td>
+              <td class="px-4 py-3"><a [routerLink]="['/support', req.id]" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400" (click)="$event.stopPropagation()">{{ req.subject }}</a></td>
               <td class="px-4 py-3"><app-status-chip [status]="chipFor(req.status)" /></td>
             </tr>
           } @empty {
