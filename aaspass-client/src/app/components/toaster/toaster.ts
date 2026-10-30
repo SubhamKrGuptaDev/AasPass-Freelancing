@@ -1,13 +1,25 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideCircleCheck,
+  lucideCircleX,
+  lucideInfo,
+  lucideTriangleAlert,
+  lucideX,
+} from '@ng-icons/lucide';
 import { Toast, ToastType } from '../../models/toast.model';
 import { ToastService } from '../../services/toast/toast.service';
 
 /** Renders the shared toast stack; mount once in the app shell. */
 @Component({
   selector: 'app-toaster',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, NgIcon],
+  providers: [
+    provideIcons({ lucideCircleCheck, lucideCircleX, lucideInfo, lucideTriangleAlert, lucideX }),
+  ],
   templateUrl: './toaster.html',
+  styleUrl: './toaster.css',
 })
 export class ToasterComponent {
   readonly toastService = inject(ToastService);
@@ -22,18 +34,19 @@ export class ToasterComponent {
     this.toastService.toasts().filter((t) => t.type === 'error' || t.type === 'warning'),
   );
 
+  /** Tone classes (icon chip + countdown bar) built only from theme tokens. */
   private static readonly STYLES: Record<ToastType, string> = {
-    success: 'border-emerald-300 bg-emerald-50 text-emerald-900',
-    error: 'border-rose-300 bg-rose-50 text-rose-900',
-    warning: 'border-amber-300 bg-amber-50 text-amber-900',
-    info: 'border-sky-300 bg-sky-50 text-sky-900',
+    success: 'toast-tone-primary',
+    error: 'toast-tone-destructive',
+    warning: 'toast-tone-ink',
+    info: 'toast-tone-primary',
   };
 
   private static readonly ICONS: Record<ToastType, string> = {
-    success: '✓',
-    error: '✕',
-    warning: '!',
-    info: 'i',
+    success: 'lucideCircleCheck',
+    error: 'lucideCircleX',
+    warning: 'lucideTriangleAlert',
+    info: 'lucideInfo',
   };
 
   private static readonly LABELS: Record<ToastType, string> = {

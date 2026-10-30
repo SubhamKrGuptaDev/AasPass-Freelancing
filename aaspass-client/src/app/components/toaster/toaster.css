@@ -1,0 +1,120 @@
+/* Modern toast: frosted card, tinted icon chip, countdown bar. Colors come only from theme tokens. */
+.toast {
+  --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 12px 32px -8px color-mix(in srgb, var(--foreground) 18%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  transition:
+    transform 200ms var(--toast-ease),
+    box-shadow 200ms var(--toast-ease);
+}
+
+.toast:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 16px 40px -8px color-mix(in srgb, var(--foreground) 24%, transparent);
+}
+
+/* Tones: success/info = primary, error = destructive, warning = ink with a dashed edge. */
+.toast-tone-primary {
+  --toast-tone: var(--primary);
+}
+.toast-tone-destructive {
+  --toast-tone: var(--destructive);
+}
+.toast-tone-ink {
+  --toast-tone: var(--foreground);
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--foreground) 35%, transparent);
+}
+
+.toast-icon {
+  color: var(--toast-tone);
+  background: color-mix(in srgb, var(--toast-tone) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--toast-tone) 18%, transparent);
+}
+
+.toast-close {
+  transition:
+    background-color 150ms var(--toast-ease),
+    color 150ms var(--toast-ease),
+    transform 150ms var(--toast-ease);
+}
+.toast-close:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+.toast-close:active {
+  transform: scale(0.92);
+}
+
+.toast-progress {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--toast-tone) 35%, transparent),
+    var(--toast-tone)
+  );
+  animation-name: toast-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Mirrors the service: the timer pauses while the toast is hovered or focused. */
+.toast:hover .toast-progress,
+.toast:focus-within .toast-progress {
+  animation-play-state: paused;
+}
+
+@keyframes toast-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast-enter {
+    animation: toast-in 380ms var(--toast-ease);
+  }
+  .toast-leave {
+    animation: toast-out 220ms var(--toast-ease) forwards;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast-close {
+    transition: none;
+  }
+  .toast:hover {
+    transform: none;
+  }
+  .toast-progress {
+    display: none;
+  }
+}

@@ -50,6 +50,9 @@ export class ToastService {
       } else {
         this.startTimer(existing.id, existing.durationMs);
       }
+      this._toasts.update((list) =>
+        list.map((t) => (t.id === existing.id ? { ...t, restarts: t.restarts + 1 } : t)),
+      );
       return;
     }
 
@@ -59,6 +62,7 @@ export class ToastService {
       message,
       title,
       durationMs: type === 'warning' || type === 'error' ? LONG_DURATION_MS : SHORT_DURATION_MS,
+      restarts: 0,
     };
 
     const next = [...this._toasts(), toast];
