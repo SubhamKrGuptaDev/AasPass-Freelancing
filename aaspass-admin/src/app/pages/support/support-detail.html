@@ -1,0 +1,99 @@
+<section class="space-y-6">
+  <p>
+    <a routerLink="/support" class="text-sm font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">Back to support</a>
+  </p>
+
+  @if (request(); as r) {
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ r.subject }}</h1>
+      <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+        <span>{{ typeLabels[r.type] ?? r.type }}</span>
+        <app-status-chip [status]="chipFor(r.status)" />
+        <span>Received {{ r.creationDateTime | date: 'medium' }}</span>
+      </div>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="contact-heading">
+        <h2 id="contact-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Contact</h2>
+        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt class="font-medium text-slate-700 dark:text-slate-300">Name</dt>
+          <dd class="text-slate-900 dark:text-slate-100">{{ r.name }}</dd>
+          <dt class="font-medium text-slate-700 dark:text-slate-300">Email</dt>
+          <dd class="break-all"><a [href]="'mailto:' + r.email" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ r.email }}</a></dd>
+          @if (r.phone) {
+            <dt class="font-medium text-slate-700 dark:text-slate-300">Phone</dt>
+            <dd><a [href]="'tel:' + r.phone" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">{{ r.phone }}</a></dd>
+          }
+          @if (r.userId !== null && r.userId !== undefined) {
+            <dt class="font-medium text-slate-700 dark:text-slate-300">User</dt>
+            <dd><a [routerLink]="['/users', r.userId]" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2">&#64;{{ r.username ?? r.userId }}</a></dd>
+          }
+        </dl>
+      </section>
+
+      <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="message-heading">
+        <h2 id="message-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Message</h2>
+        <p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-900 dark:text-slate-100">{{ r.message }}</p>
+      </section>
+    </div>
+
+    <section class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" aria-labelledby="handling-heading">
+      <h2 id="handling-heading" class="text-lg font-semibold text-slate-900 dark:text-slate-100">Handling</h2>
+      <form class="mt-3 space-y-4" (submit)="$event.preventDefault(); save()">
+        <div>
+          <label for="handling-status" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Status</label>
+          <select
+            id="handling-status"
+            class="mt-1 h-10 w-full max-w-xs rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100"
+            (change)="onStatus($event)"
+          >
+            @for (s of statusValues; track s) {
+              <option [value]="s" [selected]="s === statusDraft()">{{ statusLabels[s] }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label for="handling-note" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Admin note</label>
+          <textarea
+            id="handling-note"
+            rows="4"
+            maxlength="2000"
+            class="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+            [value]="noteDraft()"
+            (input)="onNote($event)"
+          ></textarea>
+        </div>
+        <button
+          type="submit"
+          class="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+          [disabled]="!dirty() || busy()"
+        >
+          Save
+        </button>
+      </form>
+      <div class="mt-4 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+        @if (r.handledByAdminId !== null && r.handledByAdminId !== undefined) {
+          <p>Last handled by admin #{{ r.handledByAdminId }}</p>
+        }
+        @if (r.resolvedAt) {
+          <p>Resolved at {{ r.resolvedAt | date: 'medium' }}</p>
+        }
+      </div>
+    </section>
+  } @else if (notFound()) {
+    <p role="alert" class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-4 text-sm text-rose-900 dark:text-rose-200">
+      Request not found.
+    </p>
+  } @else if (loadFailed()) {
+    <p role="alert" class="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 p-4 text-sm text-rose-900 dark:text-rose-200">
+      This request could not be loaded. Please refresh the page to try again.
+    </p>
+  } @else {
+    <div class="space-y-3" aria-busy="true">
+      <span class="sr-only" role="status">Loading request</span>
+      <div hlmSkeleton data-testid="skeleton" class="h-8 w-64"></div>
+      <div hlmSkeleton data-testid="skeleton" class="h-40"></div>
+    </div>
+  }
+</section>

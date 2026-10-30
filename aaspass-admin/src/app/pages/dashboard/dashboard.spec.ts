@@ -106,4 +106,11 @@ describe('DashboardPage', () => {
     expect(el.querySelectorAll('[data-testid="skeleton"]').length).toBeGreaterThan(0);
     expect(el.querySelector('[data-testid="stat-Users"]')).toBeNull();
   });
+
+  it('showsNewSupportRequestsCard', () => {
+    setup({ ...data, newContactRequests: 4 });
+    const card = el.querySelector('[data-testid="stat-New support requests"]');
+    expect(card?.textContent).toContain('4');
+    expect(card?.querySelector('a')?.getAttribute('href')).toBe('/support?status=NEW');
+  });
 });

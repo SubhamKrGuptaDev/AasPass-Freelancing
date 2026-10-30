@@ -7,6 +7,14 @@
         <li class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4" [attr.data-testid]="'stat-' + card.label">
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ card.label }}</p>
           <p class="mt-1 text-3xl font-bold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
+          @if (card.link; as link) {
+            <a
+              [routerLink]="link.path"
+              [queryParams]="link.queryParams"
+              class="mt-1 inline-block text-sm font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2"
+              >View all<span class="sr-only"> {{ card.label.toLowerCase() }}</span></a
+            >
+          }
         </li>
       }
     </ul>

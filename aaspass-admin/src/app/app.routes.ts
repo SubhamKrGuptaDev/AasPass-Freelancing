@@ -20,6 +20,7 @@ export const routes: Routes = [
       { path: 'users', loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage) },
       { path: 'users/:id', loadComponent: () => import('./pages/users/user-detail').then((m) => m.UserDetailPage) },
       { path: 'support', loadComponent: () => import('./pages/support/support').then((m) => m.SupportPage) },
+      { path: 'support/:id', loadComponent: () => import('./pages/support/support-detail').then((m) => m.SupportDetailPage) },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: '**', redirectTo: 'dashboard' }
     ]
