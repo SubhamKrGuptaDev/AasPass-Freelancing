@@ -15,28 +15,10 @@
       />
     </div>
     <div>
-      <label for="filter-verification" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Verification</label>
-      <select
-        id="filter-verification"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onVerification($event)"
-      >
-        @for (o of verificationOptions; track o.value) {
-          <option [value]="o.value" [selected]="o.value === verification()">{{ o.label }}</option>
-        }
-      </select>
+      <app-search-select inputId="filter-verification" label="Verification" [options]="verificationOptions" [selected]="verification()" (selectedChange)="onVerification($event)" />
     </div>
     <div>
-      <label for="filter-suspended" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Suspension</label>
-      <select
-        id="filter-suspended"
-        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm text-slate-900 dark:text-slate-100"
-        (change)="onSuspended($event)"
-      >
-        @for (o of suspendedOptions; track o.value) {
-          <option [value]="o.value" [selected]="o.value === suspended()">{{ o.label }}</option>
-        }
-      </select>
+      <app-search-select inputId="filter-suspended" label="Suspension" [options]="suspendedOptions" [selected]="suspended()" (selectedChange)="onSuspended($event)" />
     </div>
   </form>
 

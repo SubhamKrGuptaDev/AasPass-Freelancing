@@ -218,13 +218,11 @@ describe('StoresComponent', () => {
     expect(router.url).toContain(`city=${encodeURIComponent(service.selectedCity())}`);
   });
 
-  it('shows the sort label, not the raw key, in the sort trigger', async () => {
+  it('shows the sort label, not the raw key, in the searchable sort field', async () => {
     await open('/stores?city=Pune');
-    const text = (harness.routeNativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('Top rated');
     const el = harness.routeNativeElement as HTMLElement;
-    expect(el.querySelector('button#stores-sort-trigger')).not.toBeNull();
-    expect(el.querySelector('label[for="stores-sort-trigger"]')).not.toBeNull();
+    expect(el.querySelector<HTMLInputElement>('input#stores-sort')?.value).toBe('Top rated');
+    expect(el.querySelector('label[for="stores-sort"]')).not.toBeNull();
     for (const id of ['stores-country', 'stores-city']) {
       expect(el.querySelector(`input#${id}`)).not.toBeNull();
       expect(el.querySelector(`label[for="${id}"]`)).not.toBeNull();

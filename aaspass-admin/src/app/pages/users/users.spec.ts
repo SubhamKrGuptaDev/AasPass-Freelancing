@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { AdminUserSummary, PageResponse } from '../../models/admin.models';
 import { AdminApiService } from '../../services/admin-api.service';
 import { UsersPage } from './users';
+import { pickSearchSelect, searchSelect } from '../../components/search-select/search-select.testing';
 
 const user: AdminUserSummary = {
   id: 9, name: 'Asha Rao', username: 'asha', email: 'a@x.in', city: 'Pune', country: 'India',
@@ -38,7 +39,7 @@ describe('UsersPage', () => {
   it('mapsVerificationQueryParamIntoRequest', async () => {
     await setup('/users?verification=pending');
     expect(searchUsers).toHaveBeenCalledWith(expect.objectContaining({ verification: 'pending' }));
-    expect(el.querySelector<HTMLSelectElement>('#filter-verification')!.value).toBe('pending');
+    expect(searchSelect(harness.fixture, 'filter-verification').selected()).toBe('pending');
   });
 
   it('mapsSuspendedQueryParamToBoolean', async () => {
@@ -65,9 +66,7 @@ describe('UsersPage', () => {
 
   it('updatesUrlAndResetsPageWhenVerificationChanges', async () => {
     await setup('/users?page=2');
-    const select = el.querySelector<HTMLSelectElement>('#filter-verification')!;
-    select.value = 'verified';
-    select.dispatchEvent(new Event('change'));
+    pickSearchSelect(harness.fixture, 'filter-verification', 'verified');
     await harness.fixture.whenStable();
     harness.detectChanges();
     const router = TestBed.inject(Router);

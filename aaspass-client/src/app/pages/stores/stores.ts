@@ -7,7 +7,7 @@ import { provideIcons, NgIcon } from '@ng-icons/core';
 import { lucideSearch } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmInputImports } from '@spartan-ng/helm/input';
-import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSwitchImports } from '@spartan-ng/helm/switch';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
@@ -39,7 +39,7 @@ import { StoreService } from '../../services/store/store.service';
     CityPickerComponent,
     HlmButtonImports,
     HlmInputImports,
-    HlmSelectImports,
+    SearchSelectComponent,
     HlmSkeletonImports,
     HlmSwitchImports,
     HlmToggleGroupImports
@@ -53,7 +53,7 @@ export class StoresComponent {
   private readonly route = inject(ActivatedRoute);
 
   readonly sortOptions = STORE_SORT_OPTIONS;
-  readonly sortLabel = (key: StoreSortKey): string => STORE_SORT_OPTIONS.find(o => o.key === key)?.label ?? key;
+  readonly sortSelectOptions: readonly SearchSelectOption[] = STORE_SORT_OPTIONS.map(o => ({ value: o.key, label: o.label }));
   readonly maxSearchLength = MAX_SEARCH_LENGTH;
   readonly skeletonSlots = [1, 2, 3, 4, 5, 6];
 

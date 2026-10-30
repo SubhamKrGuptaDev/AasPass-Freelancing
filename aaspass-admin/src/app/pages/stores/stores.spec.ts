@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { AdminStoreSummary, PageResponse } from '../../models/admin.models';
 import { AdminApiService } from '../../services/admin-api.service';
 import { StoresPage } from './stores';
+import { pickSearchSelect } from '../../components/search-select/search-select.testing';
 
 const store: AdminStoreSummary = {
   id: 3, storeName: 'Chai Corner', category: 'Food', ownerId: 7, ownerName: 'Asha Rao', ownerUsername: 'asha',
@@ -41,8 +42,8 @@ describe('StoresPage', () => {
   it('readsQueryParamsIntoFormAndSearch', async () => {
     await setup('/stores?city=Bengaluru&status=blocked');
     expect(searchStores).toHaveBeenCalledWith(expect.objectContaining({ city: 'Bengaluru', status: 'blocked' }));
-    expect(el.querySelector<HTMLSelectElement>('#filter-status')!.value).toBe('blocked');
-    expect(el.querySelector<HTMLSelectElement>('#filter-city')!.value).toBe('Bengaluru');
+    expect(el.querySelector<HTMLInputElement>('input#filter-status')!.value).toBe('Blocked');
+    expect(el.querySelector<HTMLInputElement>('input#filter-city')!.value).toBe('Bengaluru');
   });
 
   it('rendersOwnerlessStoreWithoutNullText', async () => {
@@ -54,9 +55,7 @@ describe('StoresPage', () => {
 
   it('updatesUrlAndResetsPageWhenStatusChanges', async () => {
     await setup('/stores?status=blocked&page=2');
-    const select = el.querySelector<HTMLSelectElement>('#filter-status')!;
-    select.value = 'active';
-    select.dispatchEvent(new Event('change'));
+    pickSearchSelect(harness.fixture, 'filter-status', 'active');
     await harness.fixture.whenStable();
     harness.detectChanges();
     const router = TestBed.inject(Router);
@@ -68,8 +67,8 @@ describe('StoresPage', () => {
 
   it('disablesCityUntilCountryChosen', async () => {
     await setup('/stores');
-    expect(el.querySelector<HTMLSelectElement>('#filter-city')!.disabled).toBe(true);
-    expect(el.querySelector('#filter-country')?.textContent).toContain('All countries');
+    expect(el.querySelector<HTMLInputElement>('input#filter-city')!.disabled).toBe(true);
+    expect(el.querySelector<HTMLInputElement>('input#filter-country')?.value).toBe('All countries');
   });
 
   it('rendersRowsWithStatusTextAndDetailLink', async () => {

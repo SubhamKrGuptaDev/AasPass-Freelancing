@@ -4,6 +4,7 @@ import { Observable, Subject, of } from 'rxjs';
 import { ActivityPeriod, AdminStoreSummary, AdminUserSummary, DashboardResponse, NewActivityResponse } from '../../models/admin.models';
 import { AdminApiService } from '../../services/admin-api.service';
 import { DashboardPage } from './dashboard';
+import { pickSearchSelect, searchSelect } from '../../components/search-select/search-select.testing';
 
 const user: AdminUserSummary = {
   id: 7, name: 'Asha Rao', username: 'asha', email: 'asha@x.in', city: 'Pune', country: 'India',
@@ -71,7 +72,8 @@ describe('DashboardPage', () => {
     const blockedStore: AdminStoreSummary = { ...store, id: 5, storeName: 'Book Nook', adminBlocked: true, reviewed: true };
     setup(data, { ...activity, newUsers: 4, newStores: 2, recentUsers: [newUser], recentStores: [blockedStore] });
     expect(newActivity).toHaveBeenCalledWith('DAILY');
-    expect((el.querySelector('#activity-period') as HTMLSelectElement).value).toBe('DAILY');
+    expect(searchSelect(fixture, 'activity-period').selected()).toBe('DAILY');
+    expect(el.querySelector<HTMLInputElement>('input#activity-period')?.value).toBe('Daily (last 24 hours)');
     const users = el.querySelector('[aria-labelledby="new-users-heading"]');
     const stores = el.querySelector('[aria-labelledby="new-stores-heading"]');
     expect(users?.textContent).toContain('New users joined (4)');
@@ -86,11 +88,8 @@ describe('DashboardPage', () => {
 
   it('reloadsNewActivityWhenPeriodChanges', () => {
     setup(data);
-    const select = el.querySelector('#activity-period') as HTMLSelectElement;
     for (const period of ['WEEKLY', 'MONTHLY'] as const) {
-      select.value = period;
-      select.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
+      pickSearchSelect(fixture, 'activity-period', period);
       expect(newActivity).toHaveBeenLastCalledWith(period);
     }
     expect(newActivity).toHaveBeenCalledTimes(3);

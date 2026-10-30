@@ -15,6 +15,7 @@ import {
 import { ControlValueAccessor } from '@angular/forms';
 import { BrnAutocomplete } from '@spartan-ng/brain/autocomplete';
 import { filterCities } from './filter-cities';
+import { pickFirstMatchOnStaleEnter } from './pick-first-match';
 
 let nextId = 0;
 
@@ -57,7 +58,7 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
   protected readonly options = computed(() => filterCities(this.source(), this.search()));
   protected readonly labelId = computed(() => `${this.inputId()}-label`);
 
-  private readonly brnAutocomplete = viewChild(BrnAutocomplete);
+  private readonly brnAutocomplete = viewChild<BrnAutocomplete<string>>(BrnAutocomplete);
   private onChange: (value: string) => void = () => undefined;
   private onTouched: () => void = () => undefined;
   /** An option was picked since the panel opened, so the closing text must not override it. */
@@ -70,6 +71,9 @@ export abstract class LocationPickerBase implements ControlValueAccessor {
     // Capture phase: runs before the autocomplete input, which prevents every Enter and closes the
     // panel synchronously on a pick (so a bubbling listener could not tell a pick from a submit).
     const onKeydown = (event: KeyboardEvent): void => {
+      if (pickFirstMatchOnStaleEnter(event, this.brnAutocomplete(), this.search(), this.options())) {
+        return;
+      }
       if (!this.submitOnEnter() || event.key !== 'Enter' || event.isComposing || this.panelOpen) {
         return;
       }
