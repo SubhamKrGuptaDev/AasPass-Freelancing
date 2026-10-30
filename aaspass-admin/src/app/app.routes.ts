@@ -19,6 +19,7 @@ export const routes: Routes = [
       { path: 'stores/:id', loadComponent: () => import('./pages/stores/store-detail').then((m) => m.StoreDetailPage) },
       { path: 'users', loadComponent: () => import('./pages/users/users').then((m) => m.UsersPage) },
       { path: 'users/:id', loadComponent: () => import('./pages/users/user-detail').then((m) => m.UserDetailPage) },
+      { path: 'support', loadComponent: () => import('./pages/support/support').then((m) => m.SupportPage) },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: '**', redirectTo: 'dashboard' }
     ]

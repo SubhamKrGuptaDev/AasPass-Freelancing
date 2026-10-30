@@ -17,7 +17,7 @@ const store: AdminStoreSummary = {
   creationDateTime: '2026-10-02T10:00:00'
 };
 const data: DashboardResponse = {
-  totalUsers: 120, totalStores: 45, activeStores: 40, pendingUsers: 6, unreviewedStores: 4,
+  totalUsers: 120, totalStores: 45, activeStores: 40, pendingUsers: 6, unreviewedStores: 4, newContactRequests: 0,
   blockedStores: 2, suspendedUsers: 1, recentPendingUsers: [user], recentUnreviewedStores: [store]
 };
 const activity: NewActivityResponse = {

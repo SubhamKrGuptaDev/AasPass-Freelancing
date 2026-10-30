@@ -9,7 +9,10 @@ export type ChipStatus =
   | 'pending'
   | 'rejected'
   | 'unverified'
-  | 'suspended';
+  | 'suspended'
+  | 'new'
+  | 'in progress'
+  | 'resolved';
 
 /** Text-bearing status pill; the label is always rendered so colour is never the only signal. */
 const TONES: Record<ChipStatus, string> = {
@@ -21,7 +24,10 @@ const TONES: Record<ChipStatus, string> = {
   unreviewed: 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200',
   blocked: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200',
   rejected: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200',
-  suspended: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200'
+  suspended: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-200',
+  new: 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200',
+  'in progress': 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-900 dark:text-indigo-200',
+  resolved: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200'
 };
 
 @Component({

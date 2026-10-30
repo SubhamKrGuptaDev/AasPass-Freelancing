@@ -114,6 +114,7 @@ export interface DashboardResponse {
   activeStores: number;
   pendingUsers: number;
   unreviewedStores: number;
+  newContactRequests: number;
   blockedStores: number;
   suspendedUsers: number;
   recentPendingUsers: AdminUserSummary[];
@@ -174,6 +175,50 @@ export interface UserSearchParams {
   q?: string;
   verification?: UserVerificationFilter;
   suspended?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export type ContactRequestType = 'QUERY' | 'FEEDBACK' | 'COMPLAINT';
+export type ContactRequestStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED';
+
+export interface AdminContactRequestSummary {
+  id: number;
+  type: ContactRequestType;
+  status: ContactRequestStatus;
+  name: string;
+  email: string;
+  subject: string;
+  creationDateTime: string;
+}
+
+export interface AdminContactRequestDetail {
+  id: number;
+  type: ContactRequestType;
+  status: ContactRequestStatus;
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string;
+  message: string;
+  adminNote: string | null;
+  userId: number | null;
+  username: string | null;
+  handledByAdminId: number | null;
+  resolvedAt: string | null;
+  creationDateTime: string;
+  lastUpdatedDateTime: string;
+}
+
+export interface ContactRequestUpdate {
+  status?: ContactRequestStatus;
+  adminNote?: string;
+}
+
+export interface ContactRequestSearchParams {
+  q?: string;
+  status?: string;
+  type?: string;
   page?: number;
   size?: number;
 }
