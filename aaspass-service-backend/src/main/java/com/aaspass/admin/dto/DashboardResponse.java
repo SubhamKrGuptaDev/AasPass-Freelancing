@@ -11,6 +11,7 @@ public record DashboardResponse(
         long unreviewedStores,
         long blockedStores,
         long suspendedUsers,
+        long newContactRequests,
         List<AdminUserSummary> recentPendingUsers,
         List<AdminStoreSummary> recentUnreviewedStores) {
 }

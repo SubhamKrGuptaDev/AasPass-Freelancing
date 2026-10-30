@@ -10,6 +10,10 @@ import {
   ApiResponse,
   ChartsParams,
   ChartsResponse,
+  AdminContactRequestDetail,
+  AdminContactRequestSummary,
+  ContactRequestSearchParams,
+  ContactRequestUpdate,
   DashboardResponse,
   NewActivityResponse,
   PageResponse,
@@ -102,6 +106,24 @@ export class AdminApiService {
   ): Observable<AdminUserDetail> {
     return this.unwrap(
       this.http.put<ApiResponse<AdminUserDetail>>(`${BASE}/users/${id}/verification/${item}`, { decision, reason })
+    );
+  }
+
+  searchContactRequests(params: ContactRequestSearchParams = {}): Observable<PageResponse<AdminContactRequestSummary>> {
+    return this.unwrap(
+      this.http.get<ApiResponse<PageResponse<AdminContactRequestSummary>>>(`${BASE}/contact-requests`, {
+        params: toParams(params)
+      })
+    );
+  }
+
+  getContactRequest(id: number): Observable<AdminContactRequestDetail> {
+    return this.unwrap(this.http.get<ApiResponse<AdminContactRequestDetail>>(`${BASE}/contact-requests/${id}`));
+  }
+
+  updateContactRequest(id: number, body: ContactRequestUpdate): Observable<AdminContactRequestDetail> {
+    return this.unwrap(
+      this.http.patch<ApiResponse<AdminContactRequestDetail>>(`${BASE}/contact-requests/${id}`, body)
     );
   }
 

@@ -17,7 +17,7 @@ const store: AdminStoreSummary = {
   creationDateTime: '2026-10-02T10:00:00'
 };
 const data: DashboardResponse = {
-  totalUsers: 120, totalStores: 45, activeStores: 40, pendingUsers: 6, unreviewedStores: 4,
+  totalUsers: 120, totalStores: 45, activeStores: 40, pendingUsers: 6, unreviewedStores: 4, newContactRequests: 0,
   blockedStores: 2, suspendedUsers: 1, recentPendingUsers: [user], recentUnreviewedStores: [store]
 };
 const activity: NewActivityResponse = {
@@ -105,5 +105,12 @@ describe('DashboardPage', () => {
     setup(null);
     expect(el.querySelectorAll('[data-testid="skeleton"]').length).toBeGreaterThan(0);
     expect(el.querySelector('[data-testid="stat-Users"]')).toBeNull();
+  });
+
+  it('showsNewSupportRequestsCard', () => {
+    setup({ ...data, newContactRequests: 4 });
+    const card = el.querySelector('[data-testid="stat-New support requests"]');
+    expect(card?.textContent).toContain('4');
+    expect(card?.querySelector('a')?.getAttribute('href')).toBe('/support?status=NEW');
   });
 });

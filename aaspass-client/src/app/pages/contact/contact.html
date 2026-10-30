@@ -1,0 +1,94 @@
+<div class="min-h-screen bg-slate-50/70 px-4 py-12 sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-2xl">
+    <div class="mb-8 text-center">
+      <h1 class="text-3xl font-black tracking-tight text-slate-900">Contact us</h1>
+      <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+        Ask a question, share feedback or raise a complaint. We reply within 24–48 hours.
+      </p>
+    </div>
+
+    <section hlmCard class="p-6 sm:p-8">
+      @if (submitted()) {
+        <div class="py-6 text-center" role="status">
+          <h2 class="text-xl font-bold text-slate-900">Message sent</h2>
+          <p class="mt-2 text-sm text-slate-600">Thanks — we'll get back to you within 24–48 hours.</p>
+          <button hlmBtn variant="outline" type="button" class="mt-6" (click)="sendAnother()">Send another</button>
+        </div>
+      } @else {
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="space-y-5">
+          <div>
+            <label for="contact-type" class="mb-1 block text-xs font-bold text-slate-700">Type *</label>
+            <select hlmInput id="contact-type" formControlName="type" class="w-full">
+              @for (option of typeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              <label for="contact-name" class="mb-1 block text-xs font-bold text-slate-700">Name *</label>
+              <input hlmInput id="contact-name" type="text" formControlName="name" autocomplete="name" class="w-full"
+                [attr.maxlength]="limits.name" [attr.aria-invalid]="showError('name')"
+                [attr.aria-describedby]="showError('name') ? 'contact-name-error' : null" />
+              @if (showError('name')) {
+                <p id="contact-name-error" class="mt-1 text-xs text-red-700">{{ errorText('name') }}</p>
+              }
+            </div>
+            <div>
+              <label for="contact-email" class="mb-1 block text-xs font-bold text-slate-700">Email *</label>
+              <input hlmInput id="contact-email" type="email" formControlName="email" autocomplete="email" class="w-full"
+                [attr.maxlength]="limits.email" [attr.aria-invalid]="showError('email')"
+                [attr.aria-describedby]="showError('email') ? 'contact-email-error' : null" />
+              @if (showError('email')) {
+                <p id="contact-email-error" class="mt-1 text-xs text-red-700">{{ errorText('email') }}</p>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label for="contact-phone" class="mb-1 block text-xs font-bold text-slate-700">Phone (optional)</label>
+            <input hlmInput id="contact-phone" type="tel" formControlName="phone" autocomplete="tel" class="w-full"
+              [attr.maxlength]="limits.phone" [attr.aria-invalid]="showError('phone')"
+              [attr.aria-describedby]="showError('phone') ? 'contact-phone-error' : null" />
+            @if (showError('phone')) {
+              <p id="contact-phone-error" class="mt-1 text-xs text-red-700">{{ errorText('phone') }}</p>
+            }
+          </div>
+
+          <div>
+            <label for="contact-subject" class="mb-1 block text-xs font-bold text-slate-700">Subject *</label>
+            <input hlmInput id="contact-subject" type="text" formControlName="subject" class="w-full"
+              [attr.maxlength]="limits.subject" [attr.aria-invalid]="showError('subject')"
+              [attr.aria-describedby]="showError('subject') ? 'contact-subject-error' : null" />
+            @if (showError('subject')) {
+              <p id="contact-subject-error" class="mt-1 text-xs text-red-700">{{ errorText('subject') }}</p>
+            }
+          </div>
+
+          <div>
+            <label for="contact-message" class="mb-1 block text-xs font-bold text-slate-700">Message *</label>
+            <textarea hlmTextarea id="contact-message" rows="6" formControlName="message" class="w-full"
+              [attr.maxlength]="limits.message" [attr.aria-invalid]="showError('message')"
+              [attr.aria-describedby]="showError('message') ? 'contact-message-error contact-message-count' : 'contact-message-count'"></textarea>
+            <div class="mt-1 flex items-start justify-between gap-3">
+              <div>
+                @if (showError('message')) {
+                  <p id="contact-message-error" class="text-xs text-red-700">{{ errorText('message') }}</p>
+                }
+              </div>
+              <p id="contact-message-count" class="text-xs text-slate-600">{{ messageLength() }} / {{ limits.message }}</p>
+            </div>
+          </div>
+
+          <!-- Honeypot: hidden from users and assistive tech; bots tend to fill it. -->
+          <input type="text" name="website" formControlName="website" class="hidden" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+          <button hlmBtn type="submit" class="w-full" [disabled]="sending()">
+            {{ sending() ? 'Sending…' : 'Send message' }}
+          </button>
+        </form>
+      }
+    </section>
+  </div>
+</div>

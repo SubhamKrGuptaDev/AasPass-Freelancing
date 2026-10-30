@@ -31,6 +31,9 @@
               (click)="closeMenu()"
             >
               {{ item.label }}
+              @if (item.path === '/support' && newContactRequests() > 0) {
+                <span data-testid="support-badge" class="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50 px-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">{{ newContactRequests() }}</span>
+              }
             </a>
           </li>
         }

@@ -20,6 +20,10 @@
         <p>
           Empowering students, newcomers, and local freelancers with neighborhood trust.
         </p>
+        <p class="flex items-center justify-center gap-3 sm:justify-end">
+          <a routerLink="/contact" class="hover:text-slate-700 underline-offset-2 hover:underline">Contact us</a>
+          <a routerLink="/contact" [queryParams]="{ type: 'feedback' }" class="hover:text-slate-700 underline-offset-2 hover:underline">Give feedback</a>
+        </p>
         <p><a href="https://www.geonames.org/" target="_blank" rel="noopener" class="hover:text-slate-700 underline-offset-2 hover:underline">City data © GeoNames (CC BY 4.0)</a></p>
       </div>
     </div>

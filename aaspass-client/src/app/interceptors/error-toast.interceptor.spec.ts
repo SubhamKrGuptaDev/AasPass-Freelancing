@@ -55,6 +55,14 @@ describe('toastMessageFor', () => {
     expect(toastMessageFor(err(409, { message: 'Duplicate' })))
       .toEqual({ type: 'error', message: 'Duplicate' });
   });
+  it('429 shows the server throttle message', () => {
+    expect(toastMessageFor(err(429, { message: 'Too many requests, please try again later.' })))
+      .toEqual({ type: 'error', message: 'Too many requests, please try again later.' });
+  });
+  it('429 without a message falls back', () => {
+    expect(toastMessageFor(err(429, null)))
+      .toEqual({ type: 'error', message: 'Something went wrong. Please try again.' });
+  });
   it('404 uses the server message when present', () => {
     expect(toastMessageFor(err(404, { message: 'Store not found' })))
       .toEqual({ type: 'error', message: 'Store not found' });

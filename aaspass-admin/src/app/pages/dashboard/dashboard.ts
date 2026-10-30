@@ -24,6 +24,7 @@ const PERIOD_OPTIONS: readonly PeriodOption[] = [
 interface StatCard {
   label: string;
   value: number;
+  link?: { path: string; queryParams: Record<string, string> };
 }
 
 /** Moderation overview: headline counts, items waiting for an admin, and the newest users and stores. */
@@ -52,7 +53,12 @@ export class DashboardPage {
       { label: 'Pending verifications', value: d.pendingUsers },
       { label: 'Unreviewed stores', value: d.unreviewedStores },
       { label: 'Blocked stores', value: d.blockedStores },
-      { label: 'Suspended users', value: d.suspendedUsers }
+      { label: 'Suspended users', value: d.suspendedUsers },
+      {
+        label: 'New support requests',
+        value: d.newContactRequests ?? 0,
+        link: { path: '/support', queryParams: { status: 'NEW' } }
+      }
     ];
   });
 

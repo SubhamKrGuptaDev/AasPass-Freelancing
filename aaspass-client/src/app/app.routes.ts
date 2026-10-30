@@ -20,6 +20,8 @@ export const routes: Routes = [
   { path: 'create-store', component: CreateStoreComponent, canActivate: [authGuard], title: 'Open Your Skill Store - AasPass' },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard], title: 'My Profile & Store - AasPass' },
 
+  { path: 'contact', loadComponent: () => import('./pages/contact/contact').then(m => m.ContactComponent), title: 'Contact Us - AasPass' },
+
   { path: '**', redirectTo: '' }
 ];
 

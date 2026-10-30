@@ -1,0 +1,73 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Support</h1>
+
+  <form class="grid gap-4 sm:grid-cols-3" role="search" aria-label="Filter requests" (submit)="$event.preventDefault()">
+    <div>
+      <label for="filter-q" class="block text-sm font-medium text-slate-800 dark:text-slate-200">Search</label>
+      <input
+        id="filter-q"
+        type="search"
+        autocomplete="off"
+        class="mt-1 h-10 w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100"
+        [value]="qDraft() ?? q()"
+        (input)="onSearch($event)"
+      />
+    </div>
+    <div>
+      <app-search-select inputId="filter-status" label="Status" [options]="statusOptions" [selected]="status()" (selectedChange)="onStatus($event)" />
+    </div>
+    <div>
+      <app-search-select inputId="filter-type" label="Type" [options]="typeOptions" [selected]="type()" (selectedChange)="onType($event)" />
+    </div>
+  </form>
+
+  <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" [attr.aria-busy]="loading()">
+    <table class="w-full text-left text-sm">
+      <caption class="sr-only">Contact and feedback requests</caption>
+      <thead class="bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300">
+        <tr>
+          <th scope="col" class="px-4 py-3 font-medium">Date</th>
+          <th scope="col" class="px-4 py-3 font-medium">Type</th>
+          <th scope="col" class="px-4 py-3 font-medium">Name</th>
+          <th scope="col" class="px-4 py-3 font-medium">Email</th>
+          <th scope="col" class="px-4 py-3 font-medium">Subject</th>
+          <th scope="col" class="px-4 py-3 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+        @if (loading()) {
+          @for (row of skeletonRows; track row) {
+            <tr aria-hidden="true">
+              <td colspan="6" class="px-4 py-3"><div hlmSkeleton data-testid="skeleton" class="h-6"></div></td>
+            </tr>
+          }
+        } @else {
+          @for (req of rows(); track req.id) {
+            <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800" (click)="open(req.id)">
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.creationDateTime | date: 'mediumDate' }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ typeLabels[req.type] ?? req.type }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.name }}</td>
+              <td class="px-4 py-3 text-slate-800 dark:text-slate-200">{{ req.email }}</td>
+              <td class="px-4 py-3"><a [routerLink]="['/support', req.id]" class="font-medium text-indigo-700 dark:text-indigo-300 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:focus-visible:outline-indigo-400" (click)="$event.stopPropagation()">{{ req.subject }}</a></td>
+              <td class="px-4 py-3"><app-status-chip [status]="chipFor(req.status)" /></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-slate-700 dark:text-slate-300">
+                @if (failed()) {
+                  Requests could not be loaded. Adjust the filters or refresh to try again.
+                } @else {
+                  No requests match these filters.
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages() > 0) {
+    <app-pager [page]="page()" [totalPages]="totalPages()" (pageChange)="goToPage($event)" />
+  }
+</section>

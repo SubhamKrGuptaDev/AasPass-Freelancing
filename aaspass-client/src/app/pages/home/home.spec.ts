@@ -64,6 +64,14 @@ describe('HomeComponent', () => {
     expect(top[0].id).toBe('8');
   });
 
+  it('links to the contact page', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const link = Array.from(el.querySelectorAll('a')).find(a => a.textContent?.trim() === 'Contact us');
+    expect(link?.getAttribute('href')?.endsWith('/contact')).toBe(true);
+    expect(el.textContent).toContain('Have a doubt?');
+  });
+
   it('findTalent navigates to /stores with country, city and q', () => {
     const nav = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.heroSearch.setValue('  reels ');

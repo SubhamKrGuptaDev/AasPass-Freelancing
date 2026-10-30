@@ -4,5 +4,6 @@ package com.aaspass.admin.entity;
 public enum AuditTargetType {
     USER,
     STORE,
+    CONTACT_REQUEST,
     NONE
 }
