@@ -1,6 +1,8 @@
 <ng-template #toastTpl let-toast>
   <div
-    class="pointer-events-auto flex items-start gap-3 rounded-xl border p-3 shadow-lg motion-safe:transition motion-safe:duration-200 {{ styleFor(toast) }}"
+    class="toast group pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-2xl p-3.5 pr-3 {{ styleFor(toast) }}"
+    animate.enter="toast-enter"
+    animate.leave="toast-leave"
     data-testid="toast"
     tabindex="-1"
     (mouseenter)="onPointerEnter(toast.id)"
@@ -9,38 +11,43 @@
     (focusout)="onFocusOut(toast.id, $event)"
     (keydown.escape)="toastService.dismiss(toast.id)"
   >
-    <span
-      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold"
-      aria-hidden="true"
-      >{{ iconFor(toast) }}</span
-    >
-    <div class="min-w-0 flex-1 text-sm">
-      <span class="sr-only">{{ labelFor(toast) }}: </span>
+    <span class="toast-icon flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true">
+      <ng-icon [name]="iconFor(toast)" size="20" />
+    </span>
+    <div class="min-w-0 flex-1 pt-0.5 text-sm">
       @if (toast.title) {
-        <p class="font-semibold">{{ toast.title }}</p>
+        <span class="sr-only">{{ labelFor(toast) }}: </span>
       }
-      <p class="break-words">{{ toast.message }}</p>
+      <p class="font-semibold tracking-tight text-foreground">{{ toast.title || labelFor(toast) }}</p>
+      <p class="mt-0.5 break-words leading-relaxed text-muted-foreground">{{ toast.message }}</p>
     </div>
     <button
       type="button"
-      class="-m-1 shrink-0 rounded-md p-1 text-current hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+      class="toast-close -mr-0.5 -mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label="Dismiss notification"
       (click)="toastService.dismiss(toast.id)"
     >
-      <span aria-hidden="true">&#x2715;</span>
+      <ng-icon name="lucideX" size="16" aria-hidden="true" />
     </button>
+    @for (run of [toast.restarts]; track run) {
+      <span
+        class="toast-progress absolute inset-x-0 bottom-0 h-[3px] origin-left"
+        [style.animation-duration.ms]="toast.durationMs"
+        aria-hidden="true"
+      ></span>
+    }
   </div>
 </ng-template>
 
 <div
-  class="pointer-events-none fixed inset-x-4 top-4 z-50 flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-96"
+  class="pointer-events-none fixed inset-x-4 top-4 z-[60] flex flex-col gap-2.5 sm:inset-x-auto sm:right-4 sm:w-96"
 >
-  <div aria-live="polite" class="flex flex-col gap-2">
+  <div aria-live="polite" class="flex flex-col gap-2.5">
     @for (toast of politeToasts(); track toast.id) {
       <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
     }
   </div>
-  <div role="alert" aria-live="assertive" aria-atomic="false" class="flex flex-col gap-2">
+  <div role="alert" aria-live="assertive" aria-atomic="false" class="flex flex-col gap-2.5">
     @for (toast of alertToasts(); track toast.id) {
       <ng-container [ngTemplateOutlet]="toastTpl" [ngTemplateOutletContext]="{ $implicit: toast }" />
     }

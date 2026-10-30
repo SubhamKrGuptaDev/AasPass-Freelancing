@@ -8,4 +8,6 @@ export interface Toast {
   message: string;
   title?: string;
   durationMs: number;
+  /** Bumped each time a duplicate restarts the timer, so the countdown bar can restart too. */
+  restarts: number;
 }
