@@ -6,8 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.aaspass.entity.ContactRequest;
+import com.aaspass.entity.ContactRequestType;
 import com.aaspass.entity.Store;
 import com.aaspass.entity.User;
+import com.aaspass.repository.ContactRequestRepository;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
 import com.aaspass.support.AdminTestSupport;
@@ -35,6 +38,7 @@ class AdminDashboardControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired StoreRepository storeRepository;
     @Autowired UserRepository userRepository;
+    @Autowired ContactRequestRepository contactRequestRepository;
     @Autowired EntityManager entityManager;
 
     private Cookie[] admin;
@@ -59,7 +63,8 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.data.pendingUsers", is(3)))
                 .andExpect(jsonPath("$.data.unreviewedStores", is(2)))
                 .andExpect(jsonPath("$.data.blockedStores", is(0)))
-                .andExpect(jsonPath("$.data.suspendedUsers", is(0)));
+                .andExpect(jsonPath("$.data.suspendedUsers", is(0)))
+                .andExpect(jsonPath("$.data.newContactRequests", is(0)));
 
         Store reviewed = storeRepository.findAll().stream()
                 .filter(s -> "PixelCraft Studios".equals(s.getStoreName())).findFirst().orElseThrow();
@@ -72,12 +77,20 @@ class AdminDashboardControllerTest {
         User rohan = userRepository.findByEmail("rohan.gupta@example.com").orElseThrow();
         rohan.setSuspendedUntil(Instant.now().plus(5, ChronoUnit.DAYS));
         userRepository.saveAndFlush(rohan);
+        ContactRequest inbound = new ContactRequest();
+        inbound.setType(ContactRequestType.QUERY);
+        inbound.setName("Ravi");
+        inbound.setEmail("ravi@example.com");
+        inbound.setSubject("Hello");
+        inbound.setMessage("Hi there");
+        contactRequestRepository.saveAndFlush(inbound);
 
         mockMvc.perform(get("/api/admin/dashboard").cookie(admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.unreviewedStores", is(1)))
                 .andExpect(jsonPath("$.data.blockedStores", is(1)))
                 .andExpect(jsonPath("$.data.suspendedUsers", is(1)))
+                .andExpect(jsonPath("$.data.newContactRequests", is(1)))
                 .andExpect(jsonPath("$.data.activeStores", is(1)))
                 .andExpect(jsonPath("$.data.recentUnreviewedStores", hasSize(1)));
     }

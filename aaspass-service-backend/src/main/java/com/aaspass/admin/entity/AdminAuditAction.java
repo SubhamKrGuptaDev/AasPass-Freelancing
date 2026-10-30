@@ -10,5 +10,6 @@ public enum AdminAuditAction {
     LIFT_SUSPENSION,
     BLOCK_STORE,
     UNBLOCK_STORE,
-    REVIEW_STORE
+    REVIEW_STORE,
+    UPDATE_CONTACT_REQUEST
 }

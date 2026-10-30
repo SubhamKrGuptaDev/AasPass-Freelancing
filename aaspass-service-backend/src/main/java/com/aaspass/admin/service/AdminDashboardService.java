@@ -5,6 +5,8 @@ import com.aaspass.admin.dto.DashboardResponse;
 import com.aaspass.admin.dto.NewActivityResponse;
 import com.aaspass.entity.Store;
 import com.aaspass.entity.User;
+import com.aaspass.entity.ContactRequestStatus;
+import com.aaspass.repository.ContactRequestRepository;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
 import java.time.Clock;
@@ -25,13 +27,16 @@ public class AdminDashboardService {
 
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
+    private final ContactRequestRepository contactRequestRepository;
     private final AdminMapper mapper;
     private final Clock clock;
 
     public AdminDashboardService(StoreRepository storeRepository, UserRepository userRepository,
-                                 AdminMapper mapper, Clock clock) {
+                                 ContactRequestRepository contactRequestRepository, AdminMapper mapper,
+                                 Clock clock) {
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
+        this.contactRequestRepository = contactRequestRepository;
         this.mapper = mapper;
         this.clock = clock;
     }
@@ -52,6 +57,7 @@ public class AdminDashboardService {
                 storeRepository.count(unreviewed),
                 storeRepository.count(AdminStoreSpecs.filter(null, null, null, "blocked")),
                 userRepository.count(AdminUserSpecs.filter(null, "all", true, now)),
+                contactRequestRepository.countByStatus(ContactRequestStatus.NEW),
                 userRepository.findAll(pending, recent).map(mapper::toUserSummary).getContent(),
                 storeRepository.findAll(unreviewed, recent).map(mapper::toStoreSummary).getContent());
     }
