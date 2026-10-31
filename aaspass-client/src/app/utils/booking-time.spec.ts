@@ -32,10 +32,10 @@ describe('booking-time', () => {
     it('rejects off-grid times', () => {
       expect(validateDayRanges([{ start: '09:10', end: '10:00' }])).toBe('Times must be on 15-minute boundaries');
     });
-    it('rejects overlap and touching ranges', () => {
+    it('rejects overlapping ranges but allows touching ones', () => {
       const msg = 'Time ranges on the same day must not overlap';
       expect(validateDayRanges([{ start: '09:00', end: '12:00' }, { start: '11:00', end: '13:00' }])).toBe(msg);
-      expect(validateDayRanges([{ start: '09:00', end: '12:00' }, { start: '12:00', end: '13:00' }])).toBe(msg);
+      expect(validateDayRanges([{ start: '09:00', end: '12:00' }, { start: '12:00', end: '13:00' }])).toBeNull();
     });
     it('rejects more than 4 ranges', () => {
       const r = [0, 1, 2, 3, 4].map(i => ({

@@ -59,7 +59,7 @@ export function validateDayRanges(ranges: { start: string; end: string }[]): str
   }
   const sorted = [...parsed].sort((a, b) => a.s - b.s);
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].s <= sorted[i - 1].e) {
+    if (sorted[i].s < sorted[i - 1].e) {
       return 'Time ranges on the same day must not overlap';
     }
   }

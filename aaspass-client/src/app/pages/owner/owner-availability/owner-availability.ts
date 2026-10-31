@@ -139,7 +139,7 @@ export class OwnerAvailabilityComponent {
         this.saving.set(false);
         if (this.storeId() !== storeId) return;
         this.availability.setValue(result.availability);
-        this.storeService.setBookingsOpen(storeId, (result.availability?.ranges ?? []).length > 0);
+        this.syncBookingsOpen(storeId, result.availability?.ranges ?? []);
         this.toast.success('Weekly hours saved.');
         if (result.confirmedOutsideCount > 0) {
           this.toast.warning(outsideMessage(result.confirmedOutsideCount));
@@ -174,6 +174,7 @@ export class OwnerAvailabilityComponent {
         this.addingException.set(false);
         if (this.storeId() !== storeId) return;
         this.exceptions.update(list => [...list, created].sort((a, b) => a.date.localeCompare(b.date)));
+        this.syncBookingsOpen(storeId);
         this.exceptionForm.patchValue({ date: '', reason: '' });
         this.toast.success('Date override added.');
         if ((created?.confirmedOutsideCount ?? 0) > 0) {
@@ -182,6 +183,13 @@ export class OwnerAvailabilityComponent {
       },
       error: () => this.addingException.set(false)
     });
+  }
+
+  /** Bookings are open when there are weekly ranges or any upcoming OPEN date override (mirrors the backend). */
+  private syncBookingsOpen(storeId: string, ranges: unknown[] = this.availability.getRawValue()?.ranges ?? []): void {
+    const today = todayIso();
+    const hasOpenException = this.exceptions().some(e => e.type === 'OPEN' && e.date >= today);
+    this.storeService.setBookingsOpen(storeId, ranges.length > 0 || hasOpenException);
   }
 
   private validateException(v: { date: string; start: string; end: string; reason: string }): string | null {
@@ -199,6 +207,7 @@ export class OwnerAvailabilityComponent {
       next: () => {
         if (this.storeId() !== storeId) return;
         this.exceptions.update(list => list.filter(e => e.id !== exception.id));
+        this.syncBookingsOpen(storeId);
       }
     });
   }

@@ -23,8 +23,11 @@ export class BookingHttpService {
   private readonly http = inject(HttpClient);
 
   /** Public: slot grid + offered start times for one day and duration. */
-  slots(storeId: string | number, date: string, duration: number): Observable<DaySlots> {
-    const params = new HttpParams().set('date', date).set('duration', String(duration));
+  slots(storeId: string | number, date: string, duration?: number | null): Observable<DaySlots> {
+    let params = new HttpParams().set('date', date);
+    if (duration) {
+      params = params.set('duration', String(duration));
+    }
     return this.http
       .get<ApiResponse<DaySlots>>(`${API_BASE_URL}/stores/${storeId}/slots`, { params })
       .pipe(map(resp => normalizeDaySlots(resp.data)));

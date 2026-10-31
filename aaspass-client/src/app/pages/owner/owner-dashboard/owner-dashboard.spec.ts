@@ -110,6 +110,23 @@ describe('OwnerDashboardComponent analytics', () => {
     expect(el().textContent).toContain('Ravi');
   });
 
+  it('clamps displayed percentages to 0-100', async () => {
+    await setup();
+    flushAll(analytics({
+      funnel: [
+        { step: 'BOOK_CLICK', visitors: 10, conversionPercent: 100 },
+        { step: 'BOOKING_PAGE_VIEW', visitors: 12, conversionPercent: 120 },
+        { step: 'SLOT_SELECTED', visitors: 4, conversionPercent: 80 },
+        { step: 'BOOKED', visitors: 1, conversionPercent: 25 }
+      ],
+      confirmed: 3
+    }));
+    expect(el().querySelector('[data-kpi="BOOKING_PAGE_VIEW"]')?.textContent).toContain('100%');
+    expect(el().querySelector('[data-kpi="BOOKING_PAGE_VIEW"]')?.textContent).not.toContain('120');
+    expect(el().querySelector('[data-kpi="CONFIRMED"]')?.textContent).toContain('100%');
+    expect(el().textContent).not.toContain('-20%');
+  });
+
   it('shows the empty state when the funnel is all zero', async () => {
     await setup();
     flushAll(analytics({

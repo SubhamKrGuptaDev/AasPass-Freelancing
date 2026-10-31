@@ -11,11 +11,11 @@ import { OwnerAvailabilityComponent } from './owner-availability';
 
 const SAVED: StoreAvailability = { slotMinutes: 60, maxBookingMinutes: 120, ranges: [{ day: 'MONDAY', start: '10:00', end: '14:00' }] };
 
-function setup(opts: { get?: ReturnType<typeof of> | ReturnType<typeof throwError>; confirmedOutsideCount?: number } = {}) {
+function setup(opts: { get?: ReturnType<typeof of> | ReturnType<typeof throwError>; confirmedOutsideCount?: number; exceptions?: unknown[] } = {}) {
   const http = {
     get: vi.fn(() => opts.get ?? of(SAVED)),
     save: vi.fn((_id: string, a: StoreAvailability) => of({ availability: a, confirmedOutsideCount: opts.confirmedOutsideCount ?? 0 })),
-    listExceptions: vi.fn(() => of([])),
+    listExceptions: vi.fn(() => of((opts.exceptions ?? []) as never[])),
     addException: vi.fn(),
     deleteException: vi.fn(() => of(undefined))
   };
@@ -64,6 +64,23 @@ describe('OwnerAvailabilityComponent', () => {
     expect(storeService.setBookingsOpen).toHaveBeenCalledWith('7', SAVED.ranges.length > 0);
     expect(toast.warning).not.toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('keeps bookings open after saving no weekly ranges when an upcoming OPEN override exists', async () => {
+    const open = { id: 1, date: '2999-01-01', type: 'OPEN', start: '09:00', end: '12:00', confirmedOutsideCount: 0 };
+    const { fixture, storeService } = setup({ exceptions: [open] });
+    await settle(fixture);
+    fixture.componentInstance.availability.setValue({ ...SAVED, ranges: [] });
+    fixture.componentInstance.saveWeekly();
+    expect(storeService.setBookingsOpen).toHaveBeenCalledWith('7', true);
+  });
+
+  it('recomputes bookingsOpen after deleting the last OPEN override of a store with no weekly ranges', async () => {
+    const open = { id: 1, date: '2999-01-01', type: 'OPEN', start: '09:00', end: '12:00', confirmedOutsideCount: 0 };
+    const { fixture, storeService } = setup({ get: of({ ...SAVED, ranges: [] }) as never, exceptions: [open] });
+    await settle(fixture);
+    fixture.componentInstance.deleteException(open as never);
+    expect(storeService.setBookingsOpen).toHaveBeenLastCalledWith('7', false);
   });
 
   it('never saves when the availability failed to load', async () => {

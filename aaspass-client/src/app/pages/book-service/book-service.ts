@@ -9,7 +9,6 @@ import { StoreService } from '../../services/store/store.service';
 import { bookingDateStrip, durationOptions, formatDuration } from '../../utils/booking-time';
 
 const NOTE_MAX = 500;
-const DEFAULT_DURATION = 60;
 
 function positiveInt(raw: string | null | undefined): number | null {
   const n = Number(raw);
@@ -41,8 +40,11 @@ export class BookServiceComponent {
   readonly service = computed(() => this.store()?.services?.find(s => String(s.id) === this.serviceId));
 
   // Selection mirrored to the query string so a login round trip restores it.
-  readonly date = signal(this.route.snapshot.queryParamMap.get('date') ?? this.dates[0]);
-  readonly duration = signal(positiveInt(this.route.snapshot.queryParamMap.get('duration')) ?? DEFAULT_DURATION);
+  readonly date = signal(this.initialDate());
+  // Unknown (null) until the first slots response tells us which durations the store allows.
+  readonly duration = signal<number | null>(null);
+  private restoredDuration: number | null = positiveInt(this.route.snapshot.queryParamMap.get('duration'));
+  private durationResolved = false;
   readonly time = signal(this.route.snapshot.queryParamMap.get('time') ?? '');
   readonly note = signal('');
 
@@ -54,8 +56,7 @@ export class BookServiceComponent {
 
   readonly durations = computed(() => {
     const d = this.day();
-    const options = durationOptions(d?.slotMinutes ?? 30, d?.maxBookingMinutes ?? 120);
-    return options.includes(this.duration()) ? options : [...options, this.duration()].sort((a, b) => a - b);
+    return d ? this.allowedDurations(d) : [];
   });
 
   private slotRequest = 0;
@@ -80,7 +81,8 @@ export class BookServiceComponent {
     });
 
     effect(() => {
-      const query = { date: this.date(), duration: String(this.duration()), time: this.time() || null };
+      const duration = this.duration();
+      const query = { date: this.date(), duration: duration ? String(duration) : null, time: this.time() || null };
       untracked(() => this.mirrorToUrl(query));
     });
   }
@@ -123,7 +125,8 @@ export class BookServiceComponent {
     const store = this.store();
     const service = this.service();
     const time = this.time();
-    if (!store || !service || !time || this.submitting()) {
+    const duration = this.duration();
+    if (!store || !service || !time || !duration || this.submitting()) {
       return;
     }
     if (!this.auth.isLoggedIn()) {
@@ -145,7 +148,7 @@ export class BookServiceComponent {
           storeId,
           serviceId,
           startAt: `${this.date()}T${time}:00`,
-          durationMinutes: this.duration(),
+          durationMinutes: duration,
           visitorId: this.funnel.visitorId(),
           ...(note ? { note } : {})
         },
@@ -179,14 +182,42 @@ export class BookServiceComponent {
     return 'Something went wrong. Please try again.';
   }
 
-  private loadSlots(storeId: string, date: string, duration: number): void {
+  private initialDate(): string {
+    const requested = this.route.snapshot.queryParamMap.get('date');
+    return requested && this.dates.includes(requested) ? requested : this.dates[0];
+  }
+
+  private allowedDurations(d: DaySlots): number[] {
+    const options = durationOptions(d.slotMinutes, d.maxBookingMinutes);
+    return options.length > 0 ? options : d.slotMinutes > 0 ? [d.slotMinutes] : [];
+  }
+
+  /** `duration` null means "let the server default to the slot length". */
+  private loadSlots(storeId: string, date: string, duration: number | null): void {
     const request = ++this.slotRequest;
     this.loadingSlots.set(true);
     this.http.slots(storeId, date, duration).subscribe({
       next: day => {
         if (request !== this.slotRequest) return;
         this.loadingSlots.set(false);
+        this.errorMessage.set(null);
         this.day.set(day);
+        const options = this.allowedDurations(day);
+        const current = this.duration();
+        if (!this.durationResolved) {
+          // First response: settle on a duration this store allows (restored one if valid), keep the restored time.
+          this.durationResolved = true;
+          const wanted = this.restoredDuration ?? current;
+          const chosen = wanted !== null && options.includes(wanted) ? wanted : (options[0] ?? day.slotMinutes);
+          if (chosen !== current) {
+            this.duration.set(chosen);
+          }
+          return;
+        }
+        if (current !== null && options.length > 0 && !options.includes(current)) {
+          this.duration.set(options[0]);
+          return;
+        }
         if (this.time() && !day.startTimes.includes(this.time())) {
           this.time.set('');
         }
@@ -200,7 +231,7 @@ export class BookServiceComponent {
     });
   }
 
-  private mirrorToUrl(query: { date: string; duration: string; time: string | null }): void {
+  private mirrorToUrl(query: { date: string; duration: string | null; time: string | null }): void {
     const tree = this.router.parseUrl(this.router.url);
     tree.queryParams = { ...tree.queryParams, ...query };
     this.router.navigateByUrl(tree, { replaceUrl: true }).catch(() => undefined);

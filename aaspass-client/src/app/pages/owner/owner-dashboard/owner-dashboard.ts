@@ -68,7 +68,8 @@ interface Kpi {
 
 /** Formats 50 -> "50%", 33.333 -> "33.3%"; non-finite values read as 0%. */
 function pct(v: number | null | undefined): string {
-  return `${+(Number.isFinite(v) ? (v as number) : 0).toFixed(1)}%`;
+  const clamped = Math.min(100, Math.max(0, Number.isFinite(v) ? (v as number) : 0));
+  return `${+clamped.toFixed(1)}%`;
 }
 
 /** Owner dashboard home: booking analytics (funnel, trend, per-service, abandoned) above the inbox. */
