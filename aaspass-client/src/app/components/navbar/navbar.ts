@@ -1,7 +1,7 @@
 import { Component, Injector, ElementRef, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked, viewChild } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, filter, forkJoin, map, of, startWith, switchMap } from 'rxjs';
+import { catchError, filter, forkJoin, map, merge, of, startWith, switchMap } from 'rxjs';
 import { OwnerBookingHttpService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
@@ -32,14 +32,14 @@ export class NavbarComponent {
   private readonly ownedStoreIds = computed(() => (this.storeService.userStores() ?? []).map(s => s?.id).filter((id): id is string => !!id).join(','));
 
   /**
-   * Pending booking requests across all owned stores, refreshed after every navigation.
-   * Silent on errors (the badge simply stays hidden); zero for non-owners.
+   * Pending booking requests across all owned stores, refreshed after every navigation and every owner
+   * decision (confirm/reject happen in place, without navigating). Silent on errors (the badge simply
+   * stays hidden); zero for non-owners.
    */
   readonly pendingBookings = toSignal(
     toObservable(this.ownedStoreIds).pipe(
       switchMap(ids =>
-        this.router.events.pipe(
-          filter(e => e instanceof NavigationEnd),
+        merge(this.router.events.pipe(filter(e => e instanceof NavigationEnd)), this.ownerBookings.decisions$).pipe(
           startWith(null),
           switchMap(() => {
             const list = ids ? ids.split(',') : [];

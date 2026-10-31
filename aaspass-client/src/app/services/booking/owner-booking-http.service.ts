@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, Subject, map, tap } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
 import { SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import {
@@ -38,6 +38,13 @@ function normalizeDay(d: ScheduleDay): ScheduleDay {
 @Service()
 export class OwnerBookingHttpService {
   private readonly http = inject(HttpClient);
+  private readonly decisions = new Subject<void>();
+
+  /**
+   * Emits after every decision settles (success or failure, since a 409 also means the booking changed),
+   * so state derived from bookings outside the caller, like the navbar badge, can re-query.
+   */
+  readonly decisions$ = this.decisions.asObservable();
 
   /** With `quiet` a failure is not toasted (used by the background navbar badge). */
   list(storeId: string | number, status: BookingStatus | undefined, page = 0, size = 20, quiet = false): Observable<PageResponse<OwnerBookingRow>> {
@@ -76,7 +83,10 @@ export class OwnerBookingHttpService {
     }
     return this.http
       .patch<ApiResponse<BookingDecisionResult>>(`${API_BASE_URL}/bookings/${bookingId}`, body)
-      .pipe(map(r => ({ booking: r.data?.booking, autoRejectedCount: r.data?.autoRejectedCount ?? 0 }) as BookingDecisionResult));
+      .pipe(
+        map(r => ({ booking: r.data?.booking, autoRejectedCount: r.data?.autoRejectedCount ?? 0 }) as BookingDecisionResult),
+        tap({ next: () => this.decisions.next(), error: () => this.decisions.next() })
+      );
   }
 
   /** `from`/`to` are 'yyyy-MM-dd', at most 7 days apart. */

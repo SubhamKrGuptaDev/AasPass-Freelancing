@@ -43,6 +43,20 @@ describe('OwnerBookingHttpService', () => {
     req.flush(ok({ booking: { id: 5 }, autoRejectedCount: 0 }));
   });
 
+  it('announces a decision once it settles, success or failure', () => {
+    const { service, http } = setup();
+    let changes = 0;
+    service.decisions$.subscribe(() => changes++);
+    service.decide(5, 'CONFIRM').subscribe();
+    expect(changes).toBe(0);
+    http.expectOne('/api/bookings/5').flush(ok({ booking: { id: 5 }, autoRejectedCount: 0 }));
+    expect(changes).toBe(1);
+    service.decide(6, 'REJECT').subscribe({ error: () => undefined });
+    http.expectOne('/api/bookings/6').flush(null, { status: 409, statusText: 'Conflict' });
+    expect(changes).toBe(2);
+    http.verify();
+  });
+
   it('normalizes schedule times', () => {
     const { service, http } = setup();
     let got: Schedule | undefined;
