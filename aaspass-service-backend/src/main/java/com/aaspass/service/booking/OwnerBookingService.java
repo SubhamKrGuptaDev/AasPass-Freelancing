@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -94,18 +95,25 @@ public class OwnerBookingService {
         return new ConfirmPreview(blockers.isEmpty(), blockers, rejects);
     }
 
-    @Transactional
+    /**
+     * READ_COMMITTED on purpose: MySQL's default REPEATABLE READ fixes the snapshot at the first plain SELECT,
+     * so after waiting on the store lock the reads below would still see pre-commit data and could overwrite a
+     * concurrent decision. Under READ_COMMITTED every statement after the lock sees committed rows.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingDecisionResult decide(Long bookingId, Long callerId, BookingDecisionRequest req) {
         if (req == null || req.action() == null) {
             throw new BadRequestException("Action is required");
         }
         Long storeId = bookingRepository.findStoreIdById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        // Ownership first so non-owners can never take the store row lock.
+        storeService.assertStoreOwner(storeId, callerId);
         // Serialize concurrent decisions per store before reading any booking state.
         storeRepository.findByIdForUpdate(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
-        storeService.assertStoreOwner(storeId, callerId);
         Booking booking = bookingRepository.findById(bookingId)
+                .filter(b -> b.getStore() != null && Objects.equals(b.getStore().getId(), storeId))
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
         String note = req.ownerNote() == null || req.ownerNote().isBlank() ? null : req.ownerNote().trim();
         LocalDateTime now = StoreTime.now(clock);

@@ -220,4 +220,21 @@ class OwnerBookingControllerTest {
                 .andExpect(jsonPath("$.data.content[0].serviceName", is(name)))
                 .andExpect(jsonPath("$.data.content[0].serviceId", nullValue()));
     }
+
+    @Test
+    void previewOfNonPendingRejected() throws Exception {
+        Booking a = insert("aman", at("10:00"), 60, BookingStatus.CONFIRMED);
+        mockMvc.perform(get("/api/stores/" + store.getId() + "/bookings/" + a.getId() + "/confirm-preview")
+                        .cookie(login("priya")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Booking is no longer pending")));
+    }
+
+    @Test
+    void completeNonConfirmedRejected() throws Exception {
+        LocalDateTime past = StoreTime.now(Clock.systemUTC()).minusDays(2).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        Booking a = insert("aman", past, 60, BookingStatus.PENDING);
+        decide(a.getId(), "COMPLETE", null).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Only past confirmed bookings can be completed")));
+    }
 }
