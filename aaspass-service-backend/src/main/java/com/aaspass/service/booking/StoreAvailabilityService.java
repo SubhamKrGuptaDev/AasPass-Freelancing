@@ -10,6 +10,7 @@ import com.aaspass.dto.booking.AvailabilityRangeDto;
 import com.aaspass.dto.booking.AvailabilitySaveResult;
 import com.aaspass.dto.booking.StoreAvailabilityDto;
 import com.aaspass.entity.Store;
+import com.aaspass.entity.booking.AvailabilityExceptionType;
 import com.aaspass.entity.booking.Booking;
 import com.aaspass.entity.booking.BookingStatus;
 import com.aaspass.entity.booking.StoreAvailabilityException;
@@ -36,6 +37,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Owner-managed weekly availability, slot settings and date exceptions of a store. */
 @Service
@@ -59,10 +61,16 @@ public class StoreAvailabilityService {
         this.clock = clock;
     }
 
-    /** Public read of a store's weekly availability. */
+    /** Public read of a store's weekly availability; admin-hidden stores read as not found except for their owner. */
     @Transactional(readOnly = true)
-    public StoreAvailabilityDto get(Long storeId) {
-        return toDto(findStore(storeId));
+    public StoreAvailabilityDto get(Long storeId, Optional<Long> callerId) {
+        Store store = findStore(storeId);
+        Long ownerId = store.getUser() != null ? store.getUser().getId() : null;
+        boolean owner = ownerId != null && callerId != null && callerId.isPresent() && ownerId.equals(callerId.get());
+        if (!owner && store.isAdminHidden(clock.instant())) {
+            throw new ResourceNotFoundException("Store", "id", storeId);
+        }
+        return toDto(store);
     }
 
     @Transactional
@@ -179,9 +187,18 @@ public class StoreAvailabilityService {
         log.info("[AVAILABILITY] Deleted exception {} of store {}", exceptionId, storeId);
     }
 
-    /** True when the store has at least one weekly opening range (bookings can be offered). */
+    /** True when the store has weekly opening ranges or any OPEN date override from today on (bookings can be offered). */
     public static boolean hasAnyAvailability(Store store) {
-        return store != null && store.getAvailabilityRanges() != null && !store.getAvailabilityRanges().isEmpty();
+        if (store == null) {
+            return false;
+        }
+        if (store.getAvailabilityRanges() != null && !store.getAvailabilityRanges().isEmpty()) {
+            return true;
+        }
+        LocalDate today = LocalDate.now(StoreTime.ZONE);
+        return exceptionsOf(store).stream().anyMatch(e -> e != null
+                && e.getType() == AvailabilityExceptionType.OPEN
+                && e.getDate() != null && !e.getDate().isBefore(today));
     }
 
     /** Single entry point for the effective opening ranges of a store on a date. */

@@ -101,7 +101,7 @@ class CsrfCookieTest {
         // Seeded store 1 belongs to priya
         Cookie[] auth = AuthTestSupport.login(mockMvc, "priya", "password123");
 
-        for (String action : new String[] {"deactivate", "activate", "deactivate"}) {
+        for (String action : new String[] {"deactivate", "activate", "deactivate", "activate"}) {
             MvcResult result = mockMvc.perform(patch("/api/stores/1/" + action)
                             .cookie(auth[0], auth[1], new Cookie(XSRF, token))
                             .header("X-XSRF-TOKEN", token))

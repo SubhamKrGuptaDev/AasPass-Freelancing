@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.aaspass.util.AvatarGenerator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -161,7 +162,7 @@ public class BookingAnalyticsService {
             User user = users.get(a.userId());
             return new AbandonedAttemptRow(a.userId(),
                     user != null ? user.getName() : null,
-                    user != null ? user.getAvatarUrl() : null,
+                    user != null ? AvatarGenerator.getOrDefault(user.getAvatarUrl(), user.getUsername()) : null,
                     a.serviceId() == null ? null : serviceNames.getOrDefault(a.serviceId(), DELETED_SERVICE),
                     a.lastStep(), a.clickedAt());
         }).toList();

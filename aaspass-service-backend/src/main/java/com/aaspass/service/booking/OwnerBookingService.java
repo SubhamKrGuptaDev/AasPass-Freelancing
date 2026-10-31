@@ -1,5 +1,6 @@
 package com.aaspass.service.booking;
 
+import com.aaspass.booking.AvailabilityRules;
 import com.aaspass.booking.ScheduleLanes;
 import com.aaspass.booking.StoreTime;
 import com.aaspass.booking.TimeRange;
@@ -49,7 +50,6 @@ public class OwnerBookingService {
     private static final Logger log = LoggerFactory.getLogger(OwnerBookingService.class);
     private static final List<BookingStatus> ACTIVE = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
     private static final int MAX_SCHEDULE_SPAN_DAYS = 6;
-    private static final int DEFAULT_SLOT_MINUTES = 30;
     private static final String AUTO_REJECT_NOTE = "Slot no longer available";
 
     private final BookingRepository bookingRepository;
@@ -183,7 +183,7 @@ public class OwnerBookingService {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
         List<AvailabilityExceptionResponse> exceptions = availabilityService.listExceptions(storeId, callerId, from, to);
-        int slotMinutes = store.getSlotMinutes() == null ? DEFAULT_SLOT_MINUTES : store.getSlotMinutes();
+        int slotMinutes = AvailabilityRules.slotOrDefault(store.getSlotMinutes());
         List<ScheduleDay> days = new ArrayList<>();
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
             final LocalDate day = date;

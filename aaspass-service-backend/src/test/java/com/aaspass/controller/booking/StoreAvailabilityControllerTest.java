@@ -87,6 +87,38 @@ class StoreAvailabilityControllerTest {
     }
 
     @Test
+    @DisplayName("GET availability of an admin-hidden store is 404 for the public and others, but readable by its owner")
+    void getHiddenStoreIs404ExceptForOwner() throws Exception {
+        Store store = priyaStore();
+        store.setAdminBlocked(true);
+        storeRepository.saveAndFlush(store);
+        mockMvc.perform(get(path(store.getId()))).andExpect(status().isNotFound());
+        mockMvc.perform(get(path(store.getId())).cookie(login("aman"))).andExpect(status().isNotFound());
+        mockMvc.perform(get(path(store.getId())).cookie(login("priya"))).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("A store with no weekly ranges but an upcoming OPEN exception has bookings open")
+    void openOnlyStoreHasBookingsOpen() throws Exception {
+        Long storeId = priyaStore().getId();
+        Cookie[] auth = login("priya");
+        mockMvc.perform(put(path(storeId)).with(csrf()).cookie(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"slotMinutes\":30,\"maxBookingMinutes\":60,\"ranges\":[]}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/stores/" + storeId).cookie(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookingsOpen", is(false)));
+        mockMvc.perform(post(path(storeId) + "/exceptions").with(csrf()).cookie(auth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"" + nextMonday() + "\",\"type\":\"OPEN\",\"start\":\"09:00\",\"end\":\"12:00\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(get("/api/stores/" + storeId).cookie(auth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookingsOpen", is(true)));
+    }
+
+    @Test
     @DisplayName("PUT replaces ranges and slot, rounding max")
     void putReplacesRangesAndSlot() throws Exception {
         Long storeId = priyaStore().getId();

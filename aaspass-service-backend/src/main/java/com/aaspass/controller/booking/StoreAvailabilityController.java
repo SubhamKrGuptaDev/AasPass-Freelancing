@@ -44,7 +44,7 @@ public class StoreAvailabilityController {
     @GetMapping
     public ResponseEntity<ApiResponse<StoreAvailabilityDto>> get(@PathVariable("storeId") Long storeId) {
         log.info("[API-CALL] GET /api/stores/{}/availability", storeId);
-        return ResponseEntity.ok(ApiResponse.success(availabilityService.get(storeId), "Availability retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success(availabilityService.get(storeId, currentUser.optionalUserId()), "Availability retrieved successfully"));
     }
 
     @PutMapping

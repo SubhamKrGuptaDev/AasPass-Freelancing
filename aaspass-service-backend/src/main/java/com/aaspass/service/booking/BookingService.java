@@ -29,6 +29,7 @@ import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.booking.BookingRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -166,8 +167,16 @@ public class BookingService {
         return page.map(DtoMapper::toBookingResponse);
     }
 
-    @Transactional
+    /**
+     * Takes the same store row lock as OwnerBookingService.decide and runs at READ_COMMITTED (see there for why),
+     * so a cancel and an owner decision on the same store serialize and the status is re-checked after the lock.
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingResponse cancel(Long bookingId, Long callerId) {
+        Long storeId = bookingRepository.findStoreIdById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
+        storeRepository.findByIdForUpdate(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
         if (booking.getUser() == null || !Objects.equals(booking.getUser().getId(), callerId)) {

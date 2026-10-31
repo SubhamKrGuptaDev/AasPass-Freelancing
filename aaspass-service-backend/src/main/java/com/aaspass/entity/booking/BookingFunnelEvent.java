@@ -23,7 +23,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "booking_funnel_events", indexes = {
         @Index(name = "idx_funnel_store_step_time", columnList = "store_id, step, occurred_at"),
-        @Index(name = "idx_funnel_store_visitor_time", columnList = "store_id, visitor_id, occurred_at")
+        @Index(name = "idx_funnel_store_visitor_time", columnList = "store_id, visitor_id, occurred_at"),
+        @Index(name = "idx_funnel_ip_time", columnList = "submitter_ip, occurred_at")
 })
 @Getter
 @Setter
