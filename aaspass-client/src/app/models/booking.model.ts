@@ -50,3 +50,54 @@ export const DEFAULT_AVAILABILITY: StoreAvailability = {
     end: '18:00'
   }))
 };
+
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
+export type SlotStatus = 'FREE' | 'REQUESTED' | 'BOOKED' | 'CLOSED';
+
+export interface SlotView {
+  /** 'HH:mm' (normalized from the backend 'HH:mm:ss'). */
+  time: string;
+  status: SlotStatus;
+  pendingCount: number;
+}
+
+export interface DaySlots {
+  date: string;
+  open: boolean;
+  slotMinutes: number;
+  maxBookingMinutes: number;
+  slots: SlotView[];
+  /** Offered start times for the requested duration, 'HH:mm'. */
+  startTimes: string[];
+}
+
+export interface BookingCreatePayload {
+  storeId: number;
+  serviceId: number;
+  /** 'yyyy-MM-ddTHH:mm:00' in store-local time. */
+  startAt: string;
+  durationMinutes: number;
+  note?: string;
+  visitorId?: string;
+}
+
+export interface Booking {
+  id: number;
+  storeId: number;
+  storeName: string;
+  serviceId: number | null;
+  serviceName: string;
+  userId: number;
+  userName: string;
+  userAvatarUrl?: string | null;
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+  status: BookingStatus;
+  note?: string | null;
+  ownerNote?: string | null;
+  price?: number | null;
+  decidedAt?: string | null;
+  autoRejected?: boolean;
+  creationDateTime?: string;
+}

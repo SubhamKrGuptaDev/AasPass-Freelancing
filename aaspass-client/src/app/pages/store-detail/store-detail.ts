@@ -177,7 +177,11 @@ export class StoreDetailComponent {
   }
 
   selectService(srv: StoreServiceItem): void {
-    this.toast.success(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
+    const s = this.store();
+    if (!s || !s.bookingsOpen) {
+      return;
+    }
+    this.router.navigate(['/stores', this.storeService.getStoreUrlKey(s), 'book', srv.id]);
   }
 
   triggerInquiry(): void {

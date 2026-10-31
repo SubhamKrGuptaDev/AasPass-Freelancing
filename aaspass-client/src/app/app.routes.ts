@@ -12,6 +12,7 @@ export const routes: Routes = [
   { path: '', component: HomeComponent, title: 'AasPass - Hyperlocal Freelancing & Nearby Gigs' },
   { path: 'stores', loadComponent: () => import('./pages/stores/stores').then(m => m.StoresComponent), title: 'Browse Local Stores - AasPass' },
   { path: 'stores/:storeKey', component: StoreDetailComponent, title: 'Store Details - AasPass' },
+  { path: 'stores/:storeKey/book/:serviceId', loadComponent: () => import('./pages/book-service/book-service').then(m => m.BookServiceComponent), title: 'Book a Service - AasPass' },
   
   // Dedicated Auth Routes
   { path: 'login', component: AuthPageComponent, title: 'Sign In - AasPass' },
@@ -20,6 +21,8 @@ export const routes: Routes = [
   // Protected routes (Requires login - authGuard triggers popup login modal)
   { path: 'create-store', component: CreateStoreComponent, canActivate: [authGuard], title: 'Open Your Skill Store - AasPass' },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard], title: 'My Profile & Store - AasPass' },
+
+  { path: 'my-bookings', loadComponent: () => import('./pages/my-bookings/my-bookings').then(m => m.MyBookingsComponent), canActivate: [authGuard], title: 'My Bookings - AasPass' },
 
   { path: 'owner-dashboard/availability', loadComponent: () => import('./pages/owner/owner-availability/owner-availability').then(m => m.OwnerAvailabilityComponent), canActivate: [ownerGuard], title: 'Availability - AasPass' },
 

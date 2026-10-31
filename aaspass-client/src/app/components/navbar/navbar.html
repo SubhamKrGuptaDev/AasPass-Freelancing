@@ -319,6 +319,14 @@
                     <span>➕</span>
                     <span>Open Skill Store</span>
                   </a>
+                  <a 
+                    routerLink="/my-bookings" 
+                    (click)="closeDropdowns()"
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition"
+                  >
+                    <span>📅</span>
+                    <span>My bookings</span>
+                  </a>
                   @if ((storeService.userStores() || []).length > 0) {
                     <a 
                       routerLink="/owner-dashboard/availability" 

@@ -140,13 +140,24 @@
                     <div class="text-right">
                       <span class="text-base sm:text-lg font-black text-indigo-700">₹{{ srv.price }}</span>
                     </div>
-                    <button 
-                      type="button" 
-                      (click)="selectService(srv)"
-                      class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition"
-                    >
-                      Book Service
-                    </button>
+                    @if (isOwner()) {
+                      <a
+                        [routerLink]="['/owner-dashboard/availability']"
+                        [queryParams]="{ store: s.id }"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition"
+                      >
+                        Manage bookings
+                      </a>
+                    } @else {
+                      <button 
+                        type="button" 
+                        [disabled]="!s.bookingsOpen"
+                        (click)="selectService(srv)"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed"
+                      >
+                        {{ s.bookingsOpen ? 'Book Service' : 'Bookings not open yet' }}
+                      </button>
+                    }
                   </div>
                 </div>
               }
