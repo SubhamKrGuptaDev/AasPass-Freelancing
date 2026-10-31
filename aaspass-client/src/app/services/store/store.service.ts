@@ -651,6 +651,16 @@ export class StoreService {
   }
 
   // Update existing store details (supports optional storeId to update specific store)
+  /** Local-only flag update (no HTTP): keeps `bookingsOpen` in step after the owner saves availability. */
+  setBookingsOpen(storeId: string, open: boolean): void {
+    this.stores.update(list => list.map(s => (String(s.id) === String(storeId) ? { ...s, bookingsOpen: open } : s)));
+    this.patchCurrentUser(u => ({
+      ...u,
+      store: u.store && String(u.store.id) === String(storeId) ? { ...u.store, bookingsOpen: open } : u.store,
+      stores: u.stores?.map(s => (String(s.id) === String(storeId) ? { ...s, bookingsOpen: open } : s))
+    }));
+  }
+
   updateStore(updated: Partial<StoreProfile>, storeId?: string): Observable<StoreProfile> {
     const user = this.currentUser();
     const targetStoreId = storeId || user.store?.id || (user.stores && user.stores.length > 0 ? user.stores[0].id : undefined);

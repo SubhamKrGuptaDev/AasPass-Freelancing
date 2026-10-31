@@ -111,7 +111,10 @@
       <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4" data-abandoned>
         <h3 class="mb-1 text-sm font-bold text-slate-900">Abandoned bookings</h3>
         <p class="mb-3 text-xs text-slate-600">Signed-in customers who started a booking but did not send a request.</p>
-        @if (abandoned().length === 0) {
+        @if (abandonedFailed()) {
+          <p class="text-sm text-rose-700" role="alert" data-abandoned-error>Could not load abandoned bookings.
+            <button type="button" class="font-semibold underline" (click)="retryAbandoned()">Try again</button></p>
+        } @else if (abandoned().length === 0) {
           <p class="text-sm text-slate-600">Nobody abandoned a booking in this period.</p>
         } @else {
           <ul class="divide-y divide-slate-100">

@@ -105,6 +105,7 @@ export class OwnerDashboardComponent {
   readonly abandoned = signal<AbandonedAttempt[]>([]);
   readonly abandonedPage = signal(0);
   readonly abandonedTotalPages = signal(0);
+  readonly abandonedFailed = signal(false);
 
   protected readonly bookingsClosed = computed(() => {
     const id = this.storeId();
@@ -209,6 +210,13 @@ export class OwnerDashboardComponent {
     }
   }
 
+  protected retryAbandoned(): void {
+    const id = this.storeId();
+    if (id) {
+      this.loadAbandoned(id, this.period(), this.abandonedPage());
+    }
+  }
+
   protected gotoAbandoned(page: number): void {
     const id = this.storeId();
     if (id && page >= 0 && page < this.abandonedTotalPages()) {
@@ -234,15 +242,18 @@ export class OwnerDashboardComponent {
 
   private loadAbandoned(storeId: string, period: AnalyticsPeriod, page: number): void {
     const seq = ++this.abandonedSeq;
+    this.abandonedFailed.set(false);
     this.http.abandoned(storeId, period, page, ABANDONED_PAGE_SIZE).subscribe({
       next: p => {
         if (seq !== this.abandonedSeq) return;
+        this.abandonedFailed.set(false);
         this.abandoned.set(p?.content ?? []);
         this.abandonedPage.set(page);
         this.abandonedTotalPages.set(p?.totalPages ?? 0);
       },
       error: () => {
         if (seq !== this.abandonedSeq) return;
+        this.abandonedFailed.set(true);
         this.abandoned.set([]);
         this.abandonedTotalPages.set(0);
       }

@@ -12,6 +12,7 @@ import {
   StoreAvailability
 } from '../../../models/booking.model';
 import { AvailabilityHttpService } from '../../../services/booking';
+import { StoreService } from '../../../services/store/store.service';
 import { ToastService } from '../../../services/toast/toast.service';
 import { timeOptions, timeToMinutes } from '../../../utils/booking-time';
 import { OwnerStoreSwitcherComponent } from '../owner-store-switcher';
@@ -37,6 +38,7 @@ function outsideMessage(count: number): string {
 export class OwnerAvailabilityComponent {
   private readonly http = inject(AvailabilityHttpService);
   private readonly toast = inject(ToastService);
+  private readonly storeService = inject(StoreService);
 
   protected readonly times = timeOptions();
   protected readonly reasonMax = REASON_MAX;
@@ -137,6 +139,7 @@ export class OwnerAvailabilityComponent {
         this.saving.set(false);
         if (this.storeId() !== storeId) return;
         this.availability.setValue(result.availability);
+        this.storeService.setBookingsOpen(storeId, (result.availability?.ranges ?? []).length > 0);
         this.toast.success('Weekly hours saved.');
         if (result.confirmedOutsideCount > 0) {
           this.toast.warning(outsideMessage(result.confirmedOutsideCount));

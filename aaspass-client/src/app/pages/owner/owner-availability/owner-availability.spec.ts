@@ -20,17 +20,18 @@ function setup(opts: { get?: ReturnType<typeof of> | ReturnType<typeof throwErro
     deleteException: vi.fn(() => of(undefined))
   };
   const toast = { warning: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
+  const storeService = { userStores: signal([{ id: '7', storeName: 'My Store' }]), setBookingsOpen: vi.fn() };
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       { provide: AvailabilityHttpService, useValue: http },
       { provide: ToastService, useValue: toast },
-      { provide: StoreService, useValue: { userStores: signal([{ id: '7', storeName: 'My Store' }]) } }
+      { provide: StoreService, useValue: storeService }
     ]
   });
   const fixture: ComponentFixture<OwnerAvailabilityComponent> = TestBed.createComponent(OwnerAvailabilityComponent);
   fixture.detectChanges();
-  return { fixture, http, toast };
+  return { fixture, http, toast, storeService };
 }
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -57,9 +58,10 @@ describe('OwnerAvailabilityComponent', () => {
   });
 
   it('does not warn when nothing is outside the hours', async () => {
-    const { fixture, toast } = setup({ confirmedOutsideCount: 0 });
+    const { fixture, toast, storeService } = setup({ confirmedOutsideCount: 0 });
     await settle(fixture);
     fixture.componentInstance.saveWeekly();
+    expect(storeService.setBookingsOpen).toHaveBeenCalledWith('7', SAVED.ranges.length > 0);
     expect(toast.warning).not.toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalled();
   });

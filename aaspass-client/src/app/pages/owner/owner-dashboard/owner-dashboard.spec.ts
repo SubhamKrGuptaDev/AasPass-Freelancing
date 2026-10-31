@@ -120,6 +120,22 @@ describe('OwnerDashboardComponent analytics', () => {
     expect(el().querySelector('[data-kpi="CONFIRMED"]')?.textContent).toContain('0%');
   });
 
+  it('shows no banner when the owned store session copy has bookingsOpen true', async () => {
+    await setup(true);
+    flushAll(analytics());
+    expect(el().querySelector('[data-bookings-closed]')).toBeNull();
+  });
+
+  it('shows an error state when the abandoned list fails to load', async () => {
+    await setup();
+    analyticsReq('7D').flush({ success: true, message: 'ok', data: analytics() });
+    http.expectOne(r => r.url === '/api/stores/7/booking-analytics/abandoned').flush('x', { status: 500, statusText: 'err' });
+    http.match(r => r.url === '/api/stores/7/bookings').forEach(r => r.flush(page([])));
+    fixture.detectChanges();
+    expect(el().querySelector('[data-abandoned-error]')).not.toBeNull();
+    expect(el().textContent).not.toContain('Nobody abandoned');
+  });
+
   it('links to Availability when bookings are not open', async () => {
     await setup(false);
     flushAll(analytics());
