@@ -66,6 +66,9 @@ export class CreateStoreComponent implements OnInit {
 
   isSubmitting = signal<boolean>(false);
 
+  /** Edit mode only: the saved availability is sent on update only once it has loaded. */
+  readonly availabilityLoad = signal<'idle' | 'loading' | 'loaded' | 'failed'>('idle');
+
   readonly storeForm = new FormGroup({
     storeName: new FormControl('QuickEdits Bangalore', { nonNullable: true }),
     tagline: new FormControl('Fast 24-hour turnaround Instagram reels and shorts for local creators', { nonNullable: true }),
@@ -146,6 +149,8 @@ export class CreateStoreComponent implements OnInit {
     // Creating a new store (either first store or an additional store!)
     this.isEditing = false;
     this.editingStoreId = '';
+    this.availabilityLoad.set('idle');
+    this.storeForm.controls.availability.enable({ emitEvent: false });
     this.storeForm.controls.availability.setValue(DEFAULT_AVAILABILITY);
     this.storeForm.patchValue({
       googleMapLink: '',
@@ -187,15 +192,30 @@ export class CreateStoreComponent implements OnInit {
     }
   }
 
-  /** Loads the saved weekly availability into the editor; on failure the editor keeps its defaults. */
+  /**
+   * Loads the saved weekly availability. The editor stays disabled while loading and after a
+   * failure, so defaults can never be saved over the store's real hours.
+   */
   private loadAvailability(storeId: string): void {
+    const control = this.storeForm.controls.availability;
+    this.availabilityLoad.set('loading');
+    control.disable({ emitEvent: false });
     this.availabilityHttp.get(storeId).subscribe({
       next: availability => {
-        if (this.editingStoreId === storeId) {
-          this.storeForm.controls.availability.setValue(availability);
+        if (this.editingStoreId !== storeId) {
+          return;
         }
+        control.setValue(availability);
+        control.enable({ emitEvent: false });
+        this.availabilityLoad.set('loaded');
       },
-      error: () => undefined
+      error: () => {
+        if (this.editingStoreId !== storeId) {
+          return;
+        }
+        this.availabilityLoad.set('failed');
+        this.toast.error('Could not load your availability. Your saved hours will be left unchanged.');
+      }
     });
   }
 
@@ -217,6 +237,11 @@ export class CreateStoreComponent implements OnInit {
     if (googleMapLink.invalid) {
       googleMapLink.markAsTouched();
       this.toast.error('Please paste a Google Maps link (e.g. https://maps.app.goo.gl/...), or leave it empty.');
+      return;
+    }
+
+    if (this.isEditing && this.availabilityLoad() === 'loading') {
+      this.toast.error('Still loading your availability. Please try again in a moment.');
       return;
     }
 
@@ -257,7 +282,7 @@ export class CreateStoreComponent implements OnInit {
         storeSocialMediaLinks: storeSocialMediaLinks,
         userSocialLinks: storeSocialMediaLinks,
         description: formData.description,
-        availability: formData.availability
+        ...(this.availabilityLoad() === 'loaded' ? { availability: formData.availability } : {})
       }, this.editingStoreId).subscribe({
         next: (savedStore) => {
           this.isSubmitting.set(false);

@@ -1,7 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { StoreService } from '../../services/store/store.service';
+import { StoreProfile } from '../../models/store.model';
 import { API_BASE_URL } from '../../config/api.config';
 import { UserProfile } from '../../models/user.model';
 import { AuthService } from '../../services/auth/auth.service';
@@ -82,5 +85,65 @@ describe('CreateStoreComponent country', () => {
     expect(cmp.isSubmitting()).toBe(false);
     expect(cmp.storeForm.controls[field].touched).toBe(true);
     expect(TestBed.inject(ToastService).toasts().some(t => t.type === 'error' && t.message === message)).toBe(true);
+  });
+});
+
+describe('CreateStoreComponent edit-mode availability', () => {
+  const saved = { slotMinutes: 60, maxBookingMinutes: 120, ranges: [{ day: 'MONDAY', start: '10:00', end: '12:00' }] };
+
+  function setupEdit(): { fixture: ComponentFixture<CreateStoreComponent>; http: HttpTestingController } {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({ editStoreId: '7' })) } }
+      ]
+    });
+    TestBed.inject(AuthService).setCurrentUser({ ...EMPTY_USER_PROFILE, id: '1', name: 'Aman' });
+    TestBed.inject(StoreService).stores.set([
+      { id: '7', userId: '1', storeName: 'S', category: 'Video & Editing', area: 'A', city: 'Bengaluru', country: 'India', skills: [], socialMediaLinks: [], services: [] } as unknown as StoreProfile
+    ]);
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(CreateStoreComponent);
+    fixture.detectChanges();
+    http.match(r => r.url.includes('geo/cities')).forEach(r => r.flush([]));
+    return { fixture, http };
+  }
+
+  const availabilityReq = (http: HttpTestingController) =>
+    http.expectOne(r => r.method === 'GET' && r.url === `${API_BASE_URL}/stores/7/availability`);
+
+  it('loads saved availability into the editor and sends it on save', () => {
+    const { fixture, http } = setupEdit();
+    const cmp = fixture.componentInstance;
+    expect(cmp.storeForm.controls.availability.disabled).toBe(true);
+    availabilityReq(http).flush({ success: true, message: 'ok', data: saved });
+    expect(cmp.availabilityLoad()).toBe('loaded');
+    expect(cmp.storeForm.controls.availability.value).toEqual(saved);
+
+    cmp.onSubmit();
+    const put = http.expectOne(r => r.method === 'PUT' && r.url === `${API_BASE_URL}/stores/7`);
+    expect((put.request.body as { availability?: unknown }).availability).toEqual(saved);
+  });
+
+  it('omits availability from the update when the load failed', () => {
+    const { fixture, http } = setupEdit();
+    const cmp = fixture.componentInstance;
+    availabilityReq(http).flush({ success: false, message: 'boom' }, { status: 500, statusText: 'Server Error' });
+    expect(cmp.availabilityLoad()).toBe('failed');
+    expect(cmp.storeForm.controls.availability.disabled).toBe(true);
+    expect(TestBed.inject(ToastService).toasts().some(t => t.type === 'error')).toBe(true);
+
+    cmp.onSubmit();
+    const put = http.expectOne(r => r.method === 'PUT' && r.url === `${API_BASE_URL}/stores/7`);
+    expect('availability' in (put.request.body as object)).toBe(false);
+  });
+
+  it('blocks save while availability is still loading', () => {
+    const { fixture, http } = setupEdit();
+    fixture.componentInstance.onSubmit();
+    http.expectNone(r => r.method === 'PUT');
+    availabilityReq(http);
   });
 });

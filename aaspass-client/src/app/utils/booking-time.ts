@@ -1,6 +1,6 @@
 /** Pure time helpers for booking/availability. Times are 'HH:mm'; validation messages mirror the backend. */
 
-const MAX_RANGES_PER_DAY = 4;
+export const MAX_RANGES_PER_DAY = 4;
 
 /** Booking durations a customer may pick: multiples of the slot up to the max. */
 export function durationOptions(slot: number, max: number): number[] {

@@ -736,7 +736,8 @@ export class StoreService {
       isAvailable: updated.isAvailable !== undefined ? updated.isAvailable : updatedStore.isAvailable,
       storeSocialMediaLinks: updated.storeSocialMediaLinks || updatedStore.storeSocialMediaLinks,
       socialMediaLinks: cleanSocialLinks,
-      availability: updated.availability
+      // Omitted entirely when not provided so the server leaves availability unchanged
+      ...(updated.availability ? { availability: updated.availability } : {})
     }).pipe(
       map(res => {
         if (res && res.data) {

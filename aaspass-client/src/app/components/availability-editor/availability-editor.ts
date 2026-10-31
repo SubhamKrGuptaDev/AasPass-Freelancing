@@ -19,12 +19,13 @@ import {
 import {
   durationOptions,
   formatDuration,
+  MAX_RANGES_PER_DAY,
+  minutesToTime,
   timeOptions,
   timeToMinutes,
   validateDayRanges
 } from '../../utils/booking-time';
 
-const MAX_RANGES_PER_DAY = 4;
 const MAX_BOOKING_CAP = 720;
 const NEW_RANGE = { start: '09:00', end: '18:00' } as const;
 
@@ -132,8 +133,7 @@ export class AvailabilityEditorComponent implements ControlValueAccessor, Valida
     const lastEnd = Math.max(...mine.map(r => timeToMinutes(r.end)), 0);
     const startMin = Math.min(lastEnd + 60, 23 * 60);
     const endMin = Math.min(startMin + 60, 23 * 60 + 45);
-    const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-    this.withRanges([...this.value().ranges, { day, start: fmt(startMin), end: fmt(endMin) }]);
+    this.withRanges([...this.value().ranges, { day, start: minutesToTime(startMin), end: minutesToTime(endMin) }]);
   }
 
   protected removeRange(index: number): void {

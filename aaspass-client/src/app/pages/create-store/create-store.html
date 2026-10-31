@@ -187,6 +187,9 @@
           <div>
             <h3 class="text-sm font-bold text-slate-900 mb-1">Availability</h3>
             <p class="mb-3 text-xs text-slate-500">Set the hours customers can book you, how long each slot is, and the longest booking. You can change this any time.</p>
+            @if (availabilityLoad() === 'failed') {
+              <p class="mb-2 text-xs font-medium text-red-700" role="alert">Your saved availability could not be loaded, so it is locked and will stay unchanged. Reload the page to retry.</p>
+            }
             <app-availability-editor formControlName="availability" />
           </div>
 
