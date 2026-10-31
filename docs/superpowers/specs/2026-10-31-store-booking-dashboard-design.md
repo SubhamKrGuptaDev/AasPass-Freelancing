@@ -77,6 +77,9 @@ still block correctly; a slot is `BOOKED` if any CONFIRMED interval intersects i
 
 | Field | Type | Rules |
 |---|---|---|
+| `id` | Long | PK, auto-generated (inherited from `BaseIdEntity`) |
+| `creationDateTime` | LocalDateTime | set on insert, never updated (inherited from `BaseAuditEntity`) |
+| `lastUpdatedDateTime` | LocalDateTime | refreshed on every update (inherited from `BaseAuditEntity`) |
 | `store` | ManyToOne `Store` | required, indexed |
 | `dayOfWeek` | `java.time.DayOfWeek` | required |
 | `startTime` | `LocalTime` | required, on 15-min boundary |
@@ -89,6 +92,9 @@ with zero ranges and zero `OPEN` exceptions has **bookings not open**.
 
 | Field | Type | Rules |
 |---|---|---|
+| `id` | Long | PK, auto-generated (inherited from `BaseIdEntity`) |
+| `creationDateTime` | LocalDateTime | set on insert, never updated (inherited from `BaseAuditEntity`) |
+| `lastUpdatedDateTime` | LocalDateTime | refreshed on every update (inherited from `BaseAuditEntity`) |
 | `store` | ManyToOne `Store` | required; index `(store_id, date)` |
 | `date` | `LocalDate` | required, today or later on create |
 | `type` | enum `AvailabilityExceptionType` { OPEN, BLOCKED } | required |
@@ -99,6 +105,9 @@ with zero ranges and zero `OPEN` exceptions has **bookings not open**.
 
 | Field | Type | Rules |
 |---|---|---|
+| `id` | Long | PK, auto-generated (inherited from `BaseIdEntity`) |
+| `creationDateTime` | LocalDateTime | set on insert, never updated (inherited from `BaseAuditEntity`) |
+| `lastUpdatedDateTime` | LocalDateTime | refreshed on every update (inherited from `BaseAuditEntity`) |
 | `store` | ManyToOne `Store` | required |
 | `service` | ManyToOne `StoreServiceItem` | nullable column; required and must belong to `store` at creation; set to null if the service is later deleted |
 | `user` | ManyToOne `User` | required (booker) |
@@ -131,12 +140,15 @@ rows; bookings and funnel events are deleted with the store.
 
 | Field | Type | Rules |
 |---|---|---|
+| `id` | Long | PK, auto-generated (inherited from `BaseIdEntity`) |
+| `creationDateTime` | LocalDateTime | set on insert, never updated (inherited from `BaseAuditEntity`) |
+| `lastUpdatedDateTime` | LocalDateTime | refreshed on every update (inherited from `BaseAuditEntity`) |
 | `store` | ManyToOne `Store` | required |
 | `serviceId` | Long | nullable (plain column, no FK, so deleted services keep history) |
 | `step` | enum `FunnelStep` { BOOK_CLICK, BOOKING_PAGE_VIEW, SLOT_SELECTED, BOOKED } | required |
 | `visitorId` | String(64) | required; client-generated UUID kept in localStorage |
 | `userId` | Long | nullable; from `CurrentUser.optionalUserId()` (never trusted from the body) |
-| `occurredAt` | LocalDateTime | server time |
+| `occurredAt` | LocalDateTime | server time when the step happened (same as `creationDateTime` today; kept separate so analytics queries never depend on audit columns) |
 
 Index: `(store_id, step, occurred_at)`, `(store_id, visitor_id, occurred_at)`.
 
