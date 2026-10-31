@@ -176,6 +176,12 @@
                   @if (row.booking.price != null) { · ₹{{ row.booking.price }} }</p>
               </div>
               <div class="flex flex-wrap items-center gap-2">
+                @if (row.booking.status === 'REJECTED') {
+                  <span hlmBadge variant="outline" class="border-rose-300 bg-rose-50 text-rose-800" data-closed-type>
+                    {{ row.booking.autoRejected ? 'Auto-rejected' : 'Rejected' }}</span>
+                } @else if (row.booking.status === 'CANCELLED') {
+                  <span hlmBadge variant="outline" class="border-slate-300 bg-slate-100 text-slate-700" data-closed-type>Cancelled</span>
+                }
                 @if (row.outsideAvailability) {
                   <span hlmBadge variant="outline" class="border-amber-400 bg-amber-50 text-amber-800" data-outside>Outside your hours</span>
                 }
