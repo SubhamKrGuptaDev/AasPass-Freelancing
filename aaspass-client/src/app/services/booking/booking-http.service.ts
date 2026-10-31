@@ -41,13 +41,15 @@ export class BookingHttpService {
       .pipe(map(resp => resp.data));
   }
 
-  mine(status?: BookingStatus, page = 0, size = 20): Observable<PageResponse<Booking>> {
+  /** With `quiet` the failure is not toasted (for background lookups the page can do without). */
+  mine(status?: BookingStatus, page = 0, size = 20, quiet = false): Observable<PageResponse<Booking>> {
     let params = new HttpParams().set('page', String(page)).set('size', String(size));
     if (status) {
       params = params.set('status', status);
     }
+    const context = new HttpContext().set(SKIP_ERROR_TOAST, quiet);
     return this.http
-      .get<ApiResponse<PageResponse<Booking>>>(`${API_BASE_URL}/bookings/mine`, { params })
+      .get<ApiResponse<PageResponse<Booking>>>(`${API_BASE_URL}/bookings/mine`, { params, context })
       .pipe(map(resp => resp.data));
   }
 

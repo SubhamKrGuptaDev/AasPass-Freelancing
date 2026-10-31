@@ -1,8 +1,13 @@
 <div class="max-w-2xl mx-auto px-4 py-8">
   @if (store(); as s) {
-    @if (booked()) {
+    @if (booked(); as b) {
       <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center" role="status">
         <h1 class="text-lg font-bold text-emerald-900">Request sent — waiting for the owner to confirm</h1>
+        @if (b.startAt && b.durationMinutes) {
+          <p class="mt-2 text-sm font-semibold text-emerald-900">
+            {{ b.startAt.slice(0, 10) }} · {{ timeOfDay(b.startAt) }} – {{ timeOfDay(b.endAt) }} · {{ formatDuration(b.durationMinutes) }}
+          </p>
+        }
         <p class="mt-2 text-sm text-emerald-800">We will update the status in your bookings.</p>
         <a hlmBtn class="mt-4" routerLink="/my-bookings">View my bookings</a>
       </div>
@@ -29,18 +34,11 @@
         </div>
       </section>
 
-      <section class="mt-4">
-        <label for="duration" class="text-sm font-semibold text-slate-800">Duration</label>
-        <select id="duration" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          [value]="duration()" (change)="pickDuration($any($event.target).value)">
-          @for (d of durations(); track d) {
-            <option [value]="d" [selected]="d === duration()">{{ formatDuration(d) }}</option>
-          }
-        </select>
-      </section>
-
-      <section class="mt-6" aria-labelledby="time-label">
-        <h2 id="time-label" class="text-sm font-semibold text-slate-800">Start time</h2>
+      <section class="mt-6" aria-labelledby="time-label" aria-describedby="time-help">
+        <h2 id="time-label" class="text-sm font-semibold text-slate-800">Time slots</h2>
+        <p id="time-help" class="text-xs text-slate-600">
+          Pick one or more back-to-back slots (up to {{ formatDuration(maxSlots() * (day()?.slotMinutes ?? 0)) }}).
+        </p>
         @if (loadingSlots()) {
           <p class="mt-2 text-sm text-slate-500">Loading times…</p>
         } @else if (day(); as d) {
@@ -51,15 +49,21 @@
               @for (slot of d.slots; track slot.time) {
                 <button
                   type="button"
-                  class="rounded-lg border px-3 py-2 text-sm text-left disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                  [class.border-indigo-600]="slot.time === time()"
-                  [class.bg-indigo-50]="slot.time === time()"
+                  class="rounded-lg border px-3 py-2 text-sm text-left"
+                  [class]="slotClasses(slot)"
                   [disabled]="!isStartable(slot)"
-                  [attr.aria-pressed]="slot.time === time()"
+                  [attr.aria-pressed]="isSelected(slot)"
                   (click)="pickTime(slot)"
                 >
                   <span class="font-semibold">{{ slot.time }}</span>
-                  @if (slot.status === 'BOOKED') {
+                  @if (isMyBooked(slot)) {
+                    <span class="block text-xs font-medium">Your booking · Confirmed</span>
+                  } @else if (isMyPending(slot)) {
+                    <span class="block text-xs font-medium">Your request · Pending</span>
+                    @if (othersLabel(slot)) {
+                      <span class="block text-xs">{{ othersLabel(slot) }}</span>
+                    }
+                  } @else if (slot.status === 'BOOKED') {
                     <span class="block text-xs">Booked</span>
                   } @else if (slot.status === 'CLOSED') {
                     <span class="block text-xs">Closed</span>
@@ -71,6 +75,17 @@
             </div>
           }
         }
+        <div aria-live="polite">
+          @if (selectionHint(); as hint) {
+            <p class="mt-2 text-xs text-amber-800">{{ hint }}</p>
+          }
+          @if (duration(); as dur) {
+            <div class="mt-3 flex items-center justify-between gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+              <span>Selected: <span class="font-semibold">{{ time() }} – {{ endTime() }}</span> · {{ formatDuration(dur) }}</span>
+              <button type="button" class="text-xs font-semibold underline" (click)="clearSelection()">Clear</button>
+            </div>
+          }
+        </div>
       </section>
 
       <section class="mt-4">
@@ -84,7 +99,13 @@
       }
 
       <button hlmBtn class="mt-6 w-full" type="button" [disabled]="!time() || submitting()" (click)="submit()">
-        {{ submitting() ? 'Sending…' : 'Send request' }}
+        @if (submitting()) {
+          Sending…
+        } @else if (duration(); as dur) {
+          Send request · {{ time() }} – {{ endTime() }} ({{ formatDuration(dur) }})
+        } @else {
+          Select a time slot
+        }
       </button>
     } @else {
       <p class="text-sm text-slate-700">We could not find that service.</p>

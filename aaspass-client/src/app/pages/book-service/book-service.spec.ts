@@ -19,9 +19,15 @@ function day(slots: DaySlots['slots'], startTimes: string[]): DaySlots {
   return { date: '2026-11-02', open: true, slotMinutes: 30, maxBookingMinutes: 120, slots, startTimes };
 }
 
-function setup(opts: { loggedIn?: boolean; slots?: DaySlots; query?: Record<string, string> } = {}) {
+function free(...times: string[]): DaySlots['slots'] {
+  return times.map(time => ({ time, status: 'FREE' as const, pendingCount: 0 }));
+}
+
+function setup(opts: { loggedIn?: boolean; slots?: DaySlots; query?: Record<string, string>; mine?: { status: string }[] } = {}) {
   const http = {
-    slots: vi.fn((_s: string, _d: string, _dur?: number | null) => of(opts.slots ?? day([{ time: '10:00', status: 'FREE', pendingCount: 0 }], ['10:00']))),
+    slots: vi.fn((_s: string, _d: string, _dur?: number | null) => of(opts.slots ?? day(free('10:00', '10:30'), ['10:00', '10:30']))),
+    mine: vi.fn((status?: string, _page?: number, _size?: number, _quiet?: boolean) =>
+      of({ content: (opts.mine ?? []).filter(b => !status || b.status === status) })),
     create: vi.fn((_payload: unknown, _quiet?: boolean) => of({ id: 1, status: 'PENDING' }))
   };
   const funnel = { track: vi.fn((_s: string, _step: string, _svc?: string) => undefined), visitorId: vi.fn(() => 'visitor-1') };
@@ -45,7 +51,7 @@ function setup(opts: { loggedIn?: boolean; slots?: DaySlots; query?: Record<stri
 
 describe('BookServiceComponent', () => {
   it('tracksPageViewOnceAndSlotSelection', async () => {
-    const { fixture, funnel, component } = setup();
+    const { fixture, funnel, component } = setup({ query: {} });
     await fixture.whenStable();
     expect(funnel.track).toHaveBeenCalledWith('7', 'BOOKING_PAGE_VIEW', '3');
     expect(funnel.track.mock.calls.filter(c => c[1] === 'BOOKING_PAGE_VIEW').length).toBe(1);
@@ -61,12 +67,13 @@ describe('BookServiceComponent', () => {
   });
 
   it('restoresSelectionFromQueryParams', async () => {
-    const { fixture, http, component } = setup();
+    const { fixture, http, component } = setup({ slots: day(free('10:00', '10:30'), ['10:00', '10:30']) });
     await fixture.whenStable();
     expect(component.date()).toBe('2026-11-02');
     expect(component.duration()).toBe(60);
     expect(component.time()).toBe('10:00');
-    expect(http.slots).toHaveBeenCalledWith('7', '2026-11-02', 60);
+    expect(component.selected()).toEqual(['10:00', '10:30']);
+    expect(http.slots).toHaveBeenCalledWith('7', '2026-11-02', null);
   });
 
   it('anonymousSubmitOpensLoginModal', async () => {
@@ -93,31 +100,143 @@ describe('BookServiceComponent', () => {
     expect(component.booked()).not.toBeNull();
   });
 
-  describe('duration resolution', () => {
-    function storeDay(slotMinutes: number, maxBookingMinutes: number): DaySlots {
-      return { date: '2026-11-02', open: true, slotMinutes, maxBookingMinutes, slots: [], startTimes: [] };
-    }
+  describe('own pending requests', () => {
+    const mine = [
+      { id: 9, storeId: 7, status: 'PENDING', startAt: '2026-11-02T10:30:00', endAt: '2026-11-02T11:30:00', durationMinutes: 60 },
+      { id: 10, storeId: 8, status: 'PENDING', startAt: '2026-11-02T10:00:00', endAt: '2026-11-02T10:30:00', durationMinutes: 30 }
+    ];
+    const times = ['10:00', '10:30', '11:00', '11:30'];
+    const slots = (): DaySlots => {
+      const s = free(...times);
+      s[1] = { time: '10:30', status: 'REQUESTED', pendingCount: 2 };
+      s[2] = { time: '11:00', status: 'REQUESTED', pendingCount: 1 };
+      return day(s, times);
+    };
 
-    it.each([[45, 180, 45], [90, 180, 90], [30, 30, 30]])(
-      'loads a slot-%i / max-%i store without error and settles on %i min', async (slot, max, expected) => {
-        const { fixture, http, component } = setup({ slots: storeDay(slot, max), query: {} });
-        await fixture.whenStable();
-        expect(http.slots.mock.calls[0][2] ?? null).toBeNull();
-        expect(component.duration()).toBe(expected);
-        expect(component.errorMessage()).toBeNull();
-        expect(component.durations()).toContain(expected);
-      });
-
-    it('clamps an invalid restored duration to the first allowed option', async () => {
-      const { fixture, component } = setup({ slots: storeDay(45, 180), query: { duration: '60' } });
+    it('marks slots covered by my pending request at this store and blocks selecting them', async () => {
+      const { fixture, http, component } = setup({ loggedIn: true, slots: slots(), mine, query: { date: '2026-11-02' } });
       await fixture.whenStable();
-      expect(component.duration()).toBe(45);
+      fixture.detectChanges();
+      expect(http.mine).toHaveBeenCalledWith('PENDING', 0, 100, true);
+      expect([...component.myPendingTimes()]).toEqual(['10:30', '11:00']);
+      const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(text.match(/Your request · Pending/g)?.length).toBe(2);
+      expect(text).toContain('1 other requested');
+      component.pickTime({ time: '10:30', status: 'REQUESTED', pendingCount: 2 });
+      expect(component.selected()).toEqual([]);
+      component.pickTime({ time: '10:00', status: 'FREE', pendingCount: 0 });
+      component.pickTime({ time: '11:30', status: 'FREE', pendingCount: 0 });
+      expect(component.selected()).toEqual(['11:30']);
     });
 
-    it('keeps a valid restored duration and falls back to the first date for an out-of-strip date', async () => {
-      const { fixture, component } = setup({ slots: storeDay(45, 180), query: { duration: '90', date: '1999-01-01' } });
+    it('shows my confirmed booking in green, but not someone else\'s booked slot', async () => {
+      const s = free(...times);
+      s[0] = { time: '10:00', status: 'BOOKED', pendingCount: 0 };
+      s[3] = { time: '11:30', status: 'BOOKED', pendingCount: 0 };
+      const confirmed = [{ id: 11, storeId: 7, status: 'CONFIRMED', startAt: '2026-11-02T11:30:00', endAt: '2026-11-02T12:00:00', durationMinutes: 30 }];
+      const { fixture, http, component } = setup({ loggedIn: true, slots: day(s, ['10:30', '11:00']), mine: confirmed, query: { date: '2026-11-02' } });
       await fixture.whenStable();
+      fixture.detectChanges();
+      expect(http.mine).toHaveBeenCalledWith('CONFIRMED', 0, 100, true);
+      expect(component.isMyBooked(s[3])).toBe(true);
+      expect(component.isMyBooked(s[0])).toBe(false);
+      const buttons = (fixture.nativeElement as HTMLElement).querySelectorAll('[aria-labelledby="time-label"] button[aria-pressed]');
+      expect(buttons[3].className).toContain('bg-emerald-50');
+      expect(buttons[3].textContent).toContain('Your booking · Confirmed');
+      expect(buttons[0].className).not.toContain('bg-emerald-50');
+      expect(buttons[0].textContent).toContain('Booked');
+    });
+
+    it('skips the lookup when logged out', async () => {
+      const { fixture, http, component } = setup({ loggedIn: false, slots: slots(), mine });
+      await fixture.whenStable();
+      expect(http.mine).not.toHaveBeenCalled();
+      expect(component.myPendingTimes().size).toBe(0);
+    });
+  });
+
+  describe('multi-slot selection', () => {
+    const times = ['10:00', '10:30', '11:00', '11:30', '12:00'];
+
+    async function ready(slots: DaySlots = day(free(...times), times)) {
+      const ctx = setup({ loggedIn: true, slots, query: { date: '2026-11-02' } });
+      await ctx.fixture.whenStable();
+      return ctx;
+    }
+
+    const slot = (time: string) => ({ time, status: 'FREE' as const, pendingCount: 0 });
+
+    it('extends to back-to-back slots and submits their total length', async () => {
+      const { http, component } = await ready();
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('10:30'));
+      component.pickTime(slot('11:00'));
+      expect(component.selected()).toEqual(['10:00', '10:30', '11:00']);
       expect(component.duration()).toBe(90);
+      expect(component.endTime()).toBe('11:30');
+      component.submit();
+      expect(http.create.mock.calls[0][0]).toMatchObject({ startAt: '2026-11-02T10:00:00', durationMinutes: 90 });
+    });
+
+    it('shows the selected time range and total on the submit button and the confirmation', async () => {
+      const { fixture, http, component } = await ready();
+      http.create.mockReturnValue(of({
+        id: 1, status: 'PENDING', startAt: '2026-11-02T10:00:00', endAt: '2026-11-02T11:30:00', durationMinutes: 90
+      }));
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('11:00'));
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('button[hlmBtn]')?.textContent).toContain('10:00 – 11:30 (1 h 30 min)');
+      component.submit();
+      fixture.detectChanges();
+      expect(el.querySelector('[role="status"]')?.textContent).toContain('2026-11-02 · 10:00 – 11:30 · 1 h 30 min');
+    });
+
+    it('fills the gap when clicking a later free slot', async () => {
+      const { component } = await ready();
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('11:00'));
+      expect(component.selected()).toEqual(['10:00', '10:30', '11:00']);
+    });
+
+    it('shrinks from either end and trims when clicking inside', async () => {
+      const { component } = await ready();
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('11:30'));
+      component.pickTime(slot('10:00'));
+      expect(component.selected()).toEqual(['10:30', '11:00', '11:30']);
+      component.pickTime(slot('11:30'));
+      expect(component.selected()).toEqual(['10:30', '11:00']);
+      component.pickTime(slot('10:30'));
+      component.pickTime(slot('11:00'));
+      expect(component.selected()).toEqual([]);
+    });
+
+    it('starts a new selection across a booked slot', async () => {
+      const slots = free(...times);
+      slots[1] = { time: '10:30', status: 'BOOKED', pendingCount: 0 };
+      const { component } = await ready(day(slots, ['10:00', '11:00', '11:30', '12:00']));
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('11:00'));
+      expect(component.selected()).toEqual(['11:00']);
+      expect(component.selectionHint()).toContain('back-to-back');
+    });
+
+    it('caps the selection at the max booking length', async () => {
+      const { component } = await ready();
+      component.pickTime(slot('10:00'));
+      component.pickTime(slot('12:00'));
+      expect(component.selected()).toEqual(['12:00']);
+      expect(component.selectionHint()).toContain('at most 2 h');
+    });
+
+    it('keeps only the start slot when the restored run no longer fits, and falls back for an out-of-strip date', async () => {
+      const { fixture, component } = setup({
+        slots: day(free('10:00'), ['10:00']), query: { duration: '90', time: '10:00', date: '1999-01-01' }
+      });
+      await fixture.whenStable();
+      expect(component.selected()).toEqual(['10:00']);
       expect(component.date()).toBe(bookingDateStrip(new Date())[0]);
     });
   });

@@ -6,7 +6,7 @@ import { Booking, DaySlots, SlotView } from '../../models/booking.model';
 import { AuthService } from '../../services/auth/auth.service';
 import { BookingHttpService, FunnelTrackingService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
-import { bookingDateStrip, durationOptions, formatDuration } from '../../utils/booking-time';
+import { bookingDateStrip, formatDuration, minutesToTime, timeOfDay, timeToMinutes } from '../../utils/booking-time';
 
 const NOTE_MAX = 500;
 
@@ -15,7 +15,7 @@ function positiveInt(raw: string | null | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** Customer booking page: pick date, duration and start time, then send a request to the owner. */
+/** Customer booking page: pick a date and one or more back-to-back slots, then send a request to the owner. */
 @Component({
   selector: 'app-book-service',
   imports: [RouterLink, HlmButtonImports],
@@ -31,6 +31,7 @@ export class BookServiceComponent {
 
   protected readonly noteMax = NOTE_MAX;
   protected readonly formatDuration = formatDuration;
+  protected readonly timeOfDay = timeOfDay;
   protected readonly dates = bookingDateStrip(new Date());
 
   private readonly storeKey = this.route.snapshot.paramMap.get('storeKey') ?? '';
@@ -39,24 +40,46 @@ export class BookServiceComponent {
   readonly store = computed(() => this.storeService.getStoreByUrlKey(this.storeKey));
   readonly service = computed(() => this.store()?.services?.find(s => String(s.id) === this.serviceId));
 
-  // Selection mirrored to the query string so a login round trip restores it.
+  // Selection (start time + duration) mirrored to the query string so a login round trip restores it.
   readonly date = signal(this.initialDate());
-  // Unknown (null) until the first slots response tells us which durations the store allows.
-  readonly duration = signal<number | null>(null);
-  private restoredDuration: number | null = positiveInt(this.route.snapshot.queryParamMap.get('duration'));
-  private durationResolved = false;
-  readonly time = signal(this.route.snapshot.queryParamMap.get('time') ?? '');
+  /** Selected slot start times, 'HH:mm', ascending and back-to-back. */
+  readonly selected = signal<string[]>([]);
+  // Read from the snapshot up front, so the early URL mirror clearing it is harmless.
+  private restored: { time: string; duration: number | null } | null = this.restoredSelection();
   readonly note = signal('');
 
   readonly day = signal<DaySlots | null>(null);
   readonly loadingSlots = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly selectionHint = signal<string | null>(null);
   readonly booked = signal<Booking | null>(null);
+  /** The caller's own PENDING requests at this store (empty when logged out). */
+  readonly myPending = signal<Booking[]>([]);
+  /** The caller's own CONFIRMED bookings at this store (empty when logged out). */
+  readonly myConfirmed = signal<Booking[]>([]);
 
-  readonly durations = computed(() => {
+  /** Slot times on the selected date that overlap one of the caller's pending requests. */
+  readonly myPendingTimes = computed(() => this.coveredTimes(this.myPending()));
+  /** Slot times on the selected date that overlap one of the caller's confirmed bookings. */
+  readonly myConfirmedTimes = computed(() => this.coveredTimes(this.myConfirmed()));
+
+  /** First selected slot, or '' when nothing is selected. */
+  readonly time = computed(() => this.selected()[0] ?? '');
+  /** Total booking length in minutes, or null when nothing is selected. */
+  readonly duration = computed(() => {
+    const count = this.selected().length;
+    const slot = this.day()?.slotMinutes ?? 0;
+    return count > 0 && slot > 0 ? count * slot : null;
+  });
+  readonly endTime = computed(() => {
+    const duration = this.duration();
+    return this.time() && duration ? minutesToTime(timeToMinutes(this.time()) + duration) : '';
+  });
+  /** Most slots one booking may cover; at least one so a store with a bad max can still be booked. */
+  readonly maxSlots = computed(() => {
     const d = this.day();
-    return d ? this.allowedDurations(d) : [];
+    return d && d.slotMinutes > 0 ? Math.max(1, Math.floor(d.maxBookingMinutes / d.slotMinutes)) : 1;
   });
 
   private slotRequest = 0;
@@ -74,9 +97,20 @@ export class BookServiceComponent {
     effect(() => {
       const store = this.store();
       const date = this.date();
-      const duration = this.duration();
       if (store?.id) {
-        untracked(() => this.loadSlots(String(store.id), date, duration));
+        untracked(() => this.loadSlots(String(store.id), date));
+      }
+    });
+
+    effect(() => {
+      const store = this.store();
+      if (store?.id && this.auth.isLoggedIn()) {
+        untracked(() => this.loadMyBookings(String(store.id)));
+      } else {
+        untracked(() => {
+          this.myPending.set([]);
+          this.myConfirmed.set([]);
+        });
       }
     });
 
@@ -87,38 +121,96 @@ export class BookServiceComponent {
     });
   }
 
+  /** Own pending slots are not startable: the server rejects a second request from the same user at that time. */
   isStartable(slot: SlotView): boolean {
     const selectable = slot.status === 'FREE' || slot.status === 'REQUESTED';
-    return selectable && (this.day()?.startTimes ?? []).includes(slot.time);
+    return selectable && !this.isMyPending(slot) && (this.day()?.startTimes ?? []).includes(slot.time);
   }
 
+  isSelected(slot: SlotView): boolean {
+    return this.selected().includes(slot.time);
+  }
+
+  isMyPending(slot: SlotView): boolean {
+    return this.myPendingTimes().has(slot.time);
+  }
+
+  /** A BOOKED slot held by the caller's own confirmed booking. */
+  isMyBooked(slot: SlotView): boolean {
+    return slot.status === 'BOOKED' && this.myConfirmedTimes().has(slot.time);
+  }
+
+  /** Classes for a slot button; the caller's own slots get their own look instead of the generic disabled grey. */
+  slotClasses(slot: SlotView): string {
+    if (this.isMyBooked(slot)) {
+      return 'cursor-not-allowed border-emerald-400 bg-emerald-50 text-emerald-900';
+    }
+    if (this.isMyPending(slot)) {
+      return 'cursor-not-allowed border-amber-300 bg-amber-50 text-amber-900';
+    }
+    if (this.isSelected(slot)) {
+      return 'border-indigo-600 bg-indigo-50';
+    }
+    return 'disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400';
+  }
+
+  /** Other customers' pending requests; the caller's own request is counted in pendingCount too, so it is left out. */
   othersLabel(slot: SlotView): string {
-    const n = slot.pendingCount ?? 0;
+    const n = Math.max(0, (slot.pendingCount ?? 0) - (this.isMyPending(slot) ? 1 : 0));
     return n > 0 ? `${n} other${n === 1 ? '' : 's'} requested` : '';
   }
 
   pickDate(date: string): void {
     this.date.set(date);
-    this.time.set('');
+    this.clearSelection();
   }
 
-  pickDuration(value: string | number): void {
-    const n = positiveInt(String(value));
-    if (n) {
-      this.duration.set(n);
-      this.time.set('');
-    }
-  }
-
+  /**
+   * Toggles a slot. Clicking an end of the selection removes it, clicking inside trims the selection to end there,
+   * and clicking outside extends it when every slot in between is free and the max length allows; otherwise the
+   * clicked slot starts a new selection.
+   */
   pickTime(slot: SlotView): void {
-    if (this.isStartable(slot)) {
-      this.time.set(slot.time);
-      this.errorMessage.set(null);
-      const store = this.store();
-      if (store?.id) {
-        this.funnel.track(String(store.id), 'SLOT_SELECTED', this.serviceId);
-      }
+    const slots = this.day()?.slots ?? [];
+    const idx = slots.findIndex(s => s.time === slot.time);
+    if (idx < 0 || !this.isStartable(slots[idx])) {
+      return;
     }
+    this.errorMessage.set(null);
+    this.selectionHint.set(null);
+    const current = this.selectedRange(slots);
+    if (!current) {
+      this.select(slots, idx, idx);
+      this.trackSlotSelected();
+      return;
+    }
+    const [a, b] = current;
+    if (idx >= a && idx <= b) {
+      if (a === b) {
+        this.clearSelection();
+      } else if (idx === a) {
+        this.select(slots, a + 1, b);
+      } else {
+        this.select(slots, a, idx === b ? b - 1 : idx);
+      }
+      return;
+    }
+    const lo = Math.min(a, idx);
+    const hi = Math.max(b, idx);
+    if (this.isValidRun(slots, lo, hi)) {
+      this.select(slots, lo, hi);
+    } else {
+      this.selectionHint.set(hi - lo + 1 > this.maxSlots()
+        ? `One booking can be at most ${formatDuration(this.maxSlots() * (this.day()?.slotMinutes ?? 0))}, so a new selection was started.`
+        : 'Slots must be back-to-back with no booked or closed time in between, so a new selection was started.');
+      this.select(slots, idx, idx);
+    }
+    this.trackSlotSelected();
+  }
+
+  clearSelection(): void {
+    this.selected.set([]);
+    this.selectionHint.set(null);
   }
 
   submit(): void {
@@ -162,10 +254,74 @@ export class BookServiceComponent {
         error: (err: unknown) => {
           this.submitting.set(false);
           this.errorMessage.set(this.messageFrom(err));
-          this.time.set('');
-          this.loadSlots(String(store.id), this.date(), this.duration());
+          this.clearSelection();
+          this.loadSlots(String(store.id), this.date());
         }
       });
+  }
+
+  /** Best effort: without it the server still rejects a duplicate request, just later. */
+  private loadMyBookings(storeId: string): void {
+    const atStore = (content: Booking[] | null | undefined) => (content ?? []).filter(b => String(b.storeId) === storeId);
+    this.http.mine('PENDING', 0, 100, true).subscribe({
+      next: page => this.myPending.set(atStore(page?.content)),
+      error: () => this.myPending.set([])
+    });
+    this.http.mine('CONFIRMED', 0, 100, true).subscribe({
+      next: page => this.myConfirmed.set(atStore(page?.content)),
+      error: () => this.myConfirmed.set([])
+    });
+  }
+
+  /** Slot times on the selected date that overlap any of `bookings`. */
+  private coveredTimes(bookings: Booking[]): Set<string> {
+    const d = this.day();
+    const date = this.date();
+    const onDate = bookings.filter(b => b.startAt?.slice(0, 10) === date);
+    if (!d || d.slotMinutes <= 0 || onDate.length === 0) {
+      return new Set<string>();
+    }
+    const ranges = onDate.map(b => [timeToMinutes(timeOfDay(b.startAt)), timeToMinutes(timeOfDay(b.endAt))]);
+    return new Set(d.slots
+      .filter(s => {
+        const start = timeToMinutes(s.time);
+        return ranges.some(([bs, be]) => bs < start + d.slotMinutes && be > start);
+      })
+      .map(s => s.time));
+  }
+
+  private trackSlotSelected(): void {
+    const store = this.store();
+    if (store?.id) {
+      this.funnel.track(String(store.id), 'SLOT_SELECTED', this.serviceId);
+    }
+  }
+
+  private select(slots: SlotView[], lo: number, hi: number): void {
+    this.selected.set(slots.slice(lo, hi + 1).map(s => s.time));
+  }
+
+  /** Index range of the current selection in `slots`, or null when empty or no longer a valid run. */
+  private selectedRange(slots: SlotView[]): [number, number] | null {
+    const sel = this.selected();
+    if (sel.length === 0) return null;
+    const a = slots.findIndex(s => s.time === sel[0]);
+    const b = a + sel.length - 1;
+    const matches = a >= 0 && b < slots.length && sel.every((t, i) => slots[a + i]?.time === t);
+    return matches && this.isValidRun(slots, a, b) ? [a, b] : null;
+  }
+
+  /** True when slots lo..hi are all startable, contiguous in time and within the store's max booking length. */
+  private isValidRun(slots: SlotView[], lo: number, hi: number): boolean {
+    const step = this.day()?.slotMinutes ?? 0;
+    if (lo < 0 || hi >= slots.length || hi < lo || step <= 0 || hi - lo + 1 > this.maxSlots()) {
+      return false;
+    }
+    for (let i = lo; i <= hi; i++) {
+      if (!this.isStartable(slots[i])) return false;
+      if (i > lo && timeToMinutes(slots[i].time) - timeToMinutes(slots[i - 1].time) !== step) return false;
+    }
+    return true;
   }
 
   private messageFrom(err: unknown): string {
@@ -187,39 +343,28 @@ export class BookServiceComponent {
     return requested && this.dates.includes(requested) ? requested : this.dates[0];
   }
 
-  private allowedDurations(d: DaySlots): number[] {
-    const options = durationOptions(d.slotMinutes, d.maxBookingMinutes);
-    return options.length > 0 ? options : d.slotMinutes > 0 ? [d.slotMinutes] : [];
+  private restoredSelection(): { time: string; duration: number | null } | null {
+    const query = this.route.snapshot.queryParamMap;
+    const time = query.get('time');
+    return time ? { time, duration: positiveInt(query.get('duration')) } : null;
   }
 
-  /** `duration` null means "let the server default to the slot length". */
-  private loadSlots(storeId: string, date: string, duration: number | null): void {
+  /** Slots are always fetched at the slot length, so `startTimes` lists every individually bookable slot. */
+  private loadSlots(storeId: string, date: string): void {
     const request = ++this.slotRequest;
     this.loadingSlots.set(true);
-    this.http.slots(storeId, date, duration).subscribe({
+    this.http.slots(storeId, date, null).subscribe({
       next: day => {
         if (request !== this.slotRequest) return;
         this.loadingSlots.set(false);
         this.errorMessage.set(null);
         this.day.set(day);
-        const options = this.allowedDurations(day);
-        const current = this.duration();
-        if (!this.durationResolved) {
-          // First response: settle on a duration this store allows (restored one if valid), keep the restored time.
-          this.durationResolved = true;
-          const wanted = this.restoredDuration ?? current;
-          const chosen = wanted !== null && options.includes(wanted) ? wanted : (options[0] ?? day.slotMinutes);
-          if (chosen !== current) {
-            this.duration.set(chosen);
-          }
-          return;
-        }
-        if (current !== null && options.length > 0 && !options.includes(current)) {
-          this.duration.set(options[0]);
-          return;
-        }
-        if (this.time() && !day.startTimes.includes(this.time())) {
-          this.time.set('');
+        const restored = this.restored;
+        if (restored) {
+          this.restored = null;
+          this.applyRestored(day, restored);
+        } else if (this.selected().length > 0 && !this.selectedRange(day.slots)) {
+          this.clearSelection();
         }
       },
       error: (err: unknown) => {
@@ -229,6 +374,25 @@ export class BookServiceComponent {
         this.errorMessage.set(this.messageFrom(err));
       }
     });
+  }
+
+  /** Re-selects the run from the URL; drops it when it no longer fits, keeping only the start slot if that is free. */
+  private applyRestored(day: DaySlots, restored: { time: string; duration: number | null }): void {
+    const start = day.slots.findIndex(s => s.time === restored.time);
+    if (start < 0 || day.slotMinutes <= 0) {
+      this.selected.set([]);
+      return;
+    }
+    const wanted = restored.duration && restored.duration % day.slotMinutes === 0
+      ? restored.duration / day.slotMinutes : 1;
+    const end = start + wanted - 1;
+    if (this.isValidRun(day.slots, start, end)) {
+      this.select(day.slots, start, end);
+    } else if (this.isValidRun(day.slots, start, start)) {
+      this.select(day.slots, start, start);
+    } else {
+      this.selected.set([]);
+    }
   }
 
   private mirrorToUrl(query: { date: string; duration: string | null; time: string | null }): void {
