@@ -74,6 +74,12 @@ class AvailabilityResolverTest {
     }
 
     @Test
+    void openExceptionOnDayWithoutWeeklyRanges() {
+        List<StoreAvailabilityException> ex = List.of(exc(MONDAY_DATE, AvailabilityExceptionType.OPEN, "10:00", "12:00"));
+        assertEquals(List.of(r("10:00", "12:00")), AvailabilityResolver.effectiveRanges(MONDAY_DATE, List.of(), ex));
+    }
+
+    @Test
     void nullInputsYieldEmpty() {
         assertEquals(List.of(), AvailabilityResolver.effectiveRanges(MONDAY_DATE, null, null));
     }

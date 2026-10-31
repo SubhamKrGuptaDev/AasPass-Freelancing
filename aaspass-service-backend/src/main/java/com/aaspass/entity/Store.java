@@ -184,6 +184,11 @@ public class Store extends BaseAuditEntity {
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StoreAvailabilityException> availabilityExceptions = new ArrayList<>();
 
+    /**
+     * Bookings hold an FK to services, so they must be deleted before services on store delete.
+     * Hibernate cascades in (alphabetical) property order, so "bookings" precedes "services";
+     * pinned by StoreDeleteCascadeTest.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Booking> bookings = new ArrayList<>();
