@@ -253,16 +253,23 @@ public class StoreAvailabilityService {
             if (b.getStartAt() == null || b.getEndAt() == null) {
                 continue;
             }
-            LocalDate date = b.getStartAt().toLocalDate();
-            boolean sameDay = date.equals(b.getEndAt().toLocalDate());
-            LocalTime s = b.getStartAt().toLocalTime();
-            LocalTime e = b.getEndAt().toLocalTime();
-            boolean inside = sameDay && effectiveRanges(store, date).stream()
-                    .anyMatch(r -> !s.isBefore(r.start()) && !e.isAfter(r.end()));
-            if (!inside) {
+            if (isOutsideAvailability(store, b)) {
                 outside.add(b);
             }
         }
         return outside;
+    }
+
+    /** True when the booking is not fully inside one effective range of its date. */
+    public boolean isOutsideAvailability(Store store, Booking b) {
+        if (b == null || b.getStartAt() == null || b.getEndAt() == null) {
+            return false;
+        }
+        LocalDate date = b.getStartAt().toLocalDate();
+        boolean sameDay = date.equals(b.getEndAt().toLocalDate());
+        LocalTime s = b.getStartAt().toLocalTime();
+        LocalTime e = b.getEndAt().toLocalTime();
+        return !(sameDay && effectiveRanges(store, date).stream()
+                .anyMatch(r -> !s.isBefore(r.start()) && !e.isAfter(r.end())));
     }
 }

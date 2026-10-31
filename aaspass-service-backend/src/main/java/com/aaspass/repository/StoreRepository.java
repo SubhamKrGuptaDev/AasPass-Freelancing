@@ -1,7 +1,9 @@
 package com.aaspass.repository;
 
 import com.aaspass.entity.Store;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,9 +11,15 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StoreRepository extends JpaRepository<Store, Long>, JpaSpecificationExecutor<Store> {
+
+    /** Row-locks the store (SELECT ... FOR UPDATE) so concurrent booking decisions serialize. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Store s where s.id = :id")
+    Optional<Store> findByIdForUpdate(@Param("id") Long id);
 
     List<Store> findByUserId(Long userId);
 
