@@ -36,9 +36,9 @@ const TABS: readonly InboxTab[] = [
 const PAGE_SIZE = 20;
 
 const PERIODS: readonly { key: AnalyticsPeriod; label: string }[] = [
-  { key: '7D', label: '7D' },
-  { key: '30D', label: '30D' },
-  { key: 'ALL', label: 'All' }
+  { key: '7D', label: 'Weekly' },
+  { key: '30D', label: 'Monthly' },
+  { key: 'ALL', label: 'All time' }
 ];
 
 const FUNNEL_LABELS: Record<FunnelStepKey, string> = {
