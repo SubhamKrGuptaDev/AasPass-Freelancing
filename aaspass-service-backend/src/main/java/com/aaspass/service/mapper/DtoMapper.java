@@ -13,7 +13,9 @@ import com.aaspass.entity.SocialMediaLink;
 import com.aaspass.entity.Store;
 import com.aaspass.entity.StoreReview;
 import com.aaspass.entity.StoreServiceItem;
+import com.aaspass.dto.booking.BookingResponse;
 import com.aaspass.entity.User;
+import com.aaspass.entity.booking.Booking;
 import com.aaspass.security.crypto.KycMasking;
 import com.aaspass.util.AvatarGenerator;
 import com.aaspass.util.ProfilePictureUrls;
@@ -29,6 +31,25 @@ import java.util.stream.Collectors;
 public final class DtoMapper {
 
     private DtoMapper() {
+    }
+
+    public static BookingResponse toBookingResponse(Booking b) {
+        if (b == null) return null;
+        User u = b.getUser();
+        return new BookingResponse(
+                b.getId(),
+                b.getStore() != null ? b.getStore().getId() : null,
+                b.getStore() != null ? b.getStore().getStoreName() : null,
+                b.getService() != null ? b.getService().getId() : null,
+                b.getServiceNameAtBooking(),
+                u != null ? u.getId() : null,
+                u != null ? u.getName() : null,
+                u != null ? AvatarGenerator.getOrDefault(u.getAvatarUrl(), u.getUsername()) : null,
+                b.getStartAt(), b.getEndAt(),
+                b.getDurationMinutes() != null ? b.getDurationMinutes() : 0,
+                b.getStatus(), b.getNote(), b.getOwnerNote(), b.getPriceAtBooking(), b.getDecidedAt(),
+                Boolean.TRUE.equals(b.getAutoRejected()),
+                b.getCreationDateTime());
     }
 
     /**

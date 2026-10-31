@@ -2,6 +2,8 @@ package com.aaspass.repository.booking;
 
 import com.aaspass.entity.booking.Booking;
 import com.aaspass.entity.booking.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,4 +23,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                   @Param("statuses") Collection<BookingStatus> statuses,
                                   @Param("start") LocalDateTime start,
                                   @Param("end") LocalDateTime end);
+
+    Page<Booking> findByUserId(Long userId, Pageable pageable);
+
+    Page<Booking> findByUserIdAndStatus(Long userId, BookingStatus status, Pageable pageable);
 }
