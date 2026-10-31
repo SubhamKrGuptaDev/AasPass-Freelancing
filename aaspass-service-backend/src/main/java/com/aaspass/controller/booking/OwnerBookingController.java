@@ -7,6 +7,7 @@ import com.aaspass.dto.booking.BookingDecisionResult;
 import com.aaspass.dto.booking.BookingResponse;
 import com.aaspass.dto.booking.ConfirmPreview;
 import com.aaspass.dto.booking.OwnerBookingRow;
+import com.aaspass.dto.booking.ScheduleResponse;
 import com.aaspass.dto.response.ApiResponse;
 import com.aaspass.entity.booking.BookingStatus;
 import com.aaspass.service.booking.OwnerBookingService;
@@ -72,6 +73,17 @@ public class OwnerBookingController {
         log.info("[API-CALL] GET /api/stores/{}/bookings/{}/confirm-preview user={}", id, bookingId, callerId);
         return ResponseEntity.ok(ApiResponse.success(ownerBookingService.preview(id, bookingId, callerId),
                 "Preview retrieved successfully"));
+    }
+
+    @GetMapping("/api/stores/{id}/schedule")
+    public ResponseEntity<ApiResponse<ScheduleResponse>> schedule(
+            @PathVariable("id") Long id,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Long callerId = currentUser.requireUserId();
+        log.info("[API-CALL] GET /api/stores/{}/schedule user={} from={} to={}", id, callerId, from, to);
+        return ResponseEntity.ok(ApiResponse.success(ownerBookingService.schedule(id, callerId, from, to),
+                "Schedule retrieved successfully"));
     }
 
     @PatchMapping("/api/bookings/{id}")

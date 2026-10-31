@@ -1,6 +1,12 @@
 package com.aaspass.service.booking;
 
+import com.aaspass.booking.ScheduleLanes;
 import com.aaspass.booking.StoreTime;
+import com.aaspass.booking.TimeRange;
+import com.aaspass.dto.booking.AvailabilityExceptionResponse;
+import com.aaspass.dto.booking.ScheduleBooking;
+import com.aaspass.dto.booking.ScheduleDay;
+import com.aaspass.dto.booking.ScheduleResponse;
 import com.aaspass.dto.booking.BookingDecisionRequest;
 import com.aaspass.dto.booking.BookingDecisionResult;
 import com.aaspass.dto.booking.BookingResponse;
@@ -29,9 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** Owner-side booking workflow: inbox, overlaps, confirm preview and decisions. */
@@ -40,6 +48,8 @@ public class OwnerBookingService {
 
     private static final Logger log = LoggerFactory.getLogger(OwnerBookingService.class);
     private static final List<BookingStatus> ACTIVE = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
+    private static final int MAX_SCHEDULE_SPAN_DAYS = 6;
+    private static final int DEFAULT_SLOT_MINUTES = 30;
     private static final String AUTO_REJECT_NOTE = "Slot no longer available";
 
     private final BookingRepository bookingRepository;
@@ -156,6 +166,48 @@ public class OwnerBookingService {
         bookingRepository.saveAndFlush(booking);
         log.info("[BOOKING] Owner {} {} booking {} (auto-rejected {})", callerId, req.action(), bookingId, autoRejected);
         return new BookingDecisionResult(DtoMapper.toBookingResponse(booking), autoRejected);
+    }
+
+    @Transactional(readOnly = true)
+    public ScheduleResponse schedule(Long storeId, Long callerId, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new BadRequestException("Schedule start and end dates are required");
+        }
+        if (to.isBefore(from)) {
+            throw new BadRequestException("Schedule end date must not be before start date");
+        }
+        if (from.plusDays(MAX_SCHEDULE_SPAN_DAYS).isBefore(to)) {
+            throw new BadRequestException("Schedule range is at most 7 days");
+        }
+        storeService.assertStoreOwner(storeId, callerId);
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Store", "id", storeId));
+        List<AvailabilityExceptionResponse> exceptions = availabilityService.listExceptions(storeId, callerId, from, to);
+        int slotMinutes = store.getSlotMinutes() == null ? DEFAULT_SLOT_MINUTES : store.getSlotMinutes();
+        List<ScheduleDay> days = new ArrayList<>();
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+            final LocalDate day = date;
+            List<Booking> bookings = bookingRepository
+                    .findOverlapping(storeId, ACTIVE, day.atStartOfDay(), day.plusDays(1).atStartOfDay()).stream()
+                    .filter(b -> b.getStartAt() != null && b.getEndAt() != null)
+                    .sorted(Comparator.comparing(Booking::getStartAt).thenComparing(Booking::getEndAt))
+                    .toList();
+            Map<Long, ScheduleLanes.Placement> placements = ScheduleLanes.assign(bookings);
+            List<ScheduleBooking> scheduled = new ArrayList<>();
+            int laneCount = 0;
+            for (Booking b : bookings) {
+                ScheduleLanes.Placement p = placements.get(b.getId());
+                if (p == null) {
+                    continue;
+                }
+                laneCount = Math.max(laneCount, p.lane() + 1);
+                scheduled.add(new ScheduleBooking(DtoMapper.toBookingResponse(b), p.lane(), p.conflictGroup()));
+            }
+            List<TimeRange> open = availabilityService.effectiveRanges(store, day);
+            days.add(new ScheduleDay(day, open == null ? List.of() : open,
+                    exceptions.stream().filter(e -> day.equals(e.date())).toList(), scheduled, laneCount));
+        }
+        return new ScheduleResponse(slotMinutes, days);
     }
 
     // ---- helpers ----

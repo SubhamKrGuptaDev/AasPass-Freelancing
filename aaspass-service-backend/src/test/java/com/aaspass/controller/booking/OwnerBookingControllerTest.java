@@ -237,4 +237,40 @@ class OwnerBookingControllerTest {
         decide(a.getId(), "COMPLETE", null).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", is("Only past confirmed bookings can be completed")));
     }
+
+    @Test
+    void scheduleRangeLimitedTo7Days() throws Exception {
+        String base = "/api/stores/" + store.getId() + "/schedule?from=" + monday + "&to=";
+        mockMvc.perform(get(base + monday.plusDays(7)).cookie(login("priya")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Schedule range is at most 7 days")));
+        mockMvc.perform(get(base + monday.minusDays(1)).cookie(login("priya")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get(base + monday.plusDays(6)).cookie(login("priya")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.days", hasSize(7)));
+        mockMvc.perform(get(base + monday.plusDays(6)).cookie(login("aman")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void scheduleReturnsLanes() throws Exception {
+        insert("aman", at("10:00"), 60, BookingStatus.PENDING);
+        insert("rohan", at("10:30"), 60, BookingStatus.CONFIRMED);
+        insert("aman", at("12:00"), 30, BookingStatus.PENDING);
+        insert("aman", at("10:15"), 30, BookingStatus.REJECTED);
+        mockMvc.perform(get("/api/stores/" + store.getId() + "/schedule?from=" + monday + "&to=" + monday)
+                        .cookie(login("priya")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.slotMinutes", is(30)))
+                .andExpect(jsonPath("$.data.days", hasSize(1)))
+                .andExpect(jsonPath("$.data.days[0].laneCount", is(2)))
+                .andExpect(jsonPath("$.data.days[0].openRanges", hasSize(1)))
+                .andExpect(jsonPath("$.data.days[0].bookings", hasSize(3)))
+                .andExpect(jsonPath("$.data.days[0].bookings[0].lane", is(0)))
+                .andExpect(jsonPath("$.data.days[0].bookings[1].lane", is(1)))
+                .andExpect(jsonPath("$.data.days[0].bookings[1].conflictGroup", is(0)))
+                .andExpect(jsonPath("$.data.days[0].bookings[2].lane", is(0)))
+                .andExpect(jsonPath("$.data.days[0].bookings[2].conflictGroup", is(1)));
+    }
 }
