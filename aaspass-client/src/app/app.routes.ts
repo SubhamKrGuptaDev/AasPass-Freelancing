@@ -24,6 +24,8 @@ export const routes: Routes = [
 
   { path: 'my-bookings', loadComponent: () => import('./pages/my-bookings/my-bookings').then(m => m.MyBookingsComponent), canActivate: [authGuard], title: 'My Bookings - AasPass' },
 
+  { path: 'owner-dashboard', loadComponent: () => import('./pages/owner/owner-dashboard/owner-dashboard').then(m => m.OwnerDashboardComponent), canActivate: [ownerGuard], title: 'Owner Dashboard - AasPass' },
+  { path: 'owner-dashboard/schedule', loadComponent: () => import('./pages/owner/owner-schedule/owner-schedule').then(m => m.OwnerScheduleComponent), canActivate: [ownerGuard], title: 'Schedule - AasPass' },
   { path: 'owner-dashboard/availability', loadComponent: () => import('./pages/owner/owner-availability/owner-availability').then(m => m.OwnerAvailabilityComponent), canActivate: [ownerGuard], title: 'Availability - AasPass' },
 
   { path: 'contact', loadComponent: () => import('./pages/contact/contact').then(m => m.ContactComponent), title: 'Contact Us - AasPass' },

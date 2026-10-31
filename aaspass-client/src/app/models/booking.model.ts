@@ -101,3 +101,49 @@ export interface Booking {
   autoRejected?: boolean;
   creationDateTime?: string;
 }
+
+/** Owner inbox row: a booking plus how many competing requests it overlaps. */
+export interface OwnerBookingRow {
+  booking: Booking;
+  overlapPendingCount: number;
+  overlapConfirmedCount: number;
+  outsideAvailability: boolean;
+}
+
+export interface ConfirmPreview {
+  canConfirm: boolean;
+  conflictingConfirmed: Booking[];
+  willAutoReject: Booking[];
+}
+
+export type BookingAction = 'CONFIRM' | 'REJECT' | 'COMPLETE';
+
+export interface BookingDecisionResult {
+  booking: Booking;
+  autoRejectedCount: number;
+}
+
+export interface ScheduleRange {
+  /** 'HH:mm' (normalized from the backend 'HH:mm:ss'). */
+  start: string;
+  end: string;
+}
+
+export interface ScheduleBooking {
+  booking: Booking;
+  lane: number;
+  conflictGroup: number;
+}
+
+export interface ScheduleDay {
+  date: string;
+  openRanges: ScheduleRange[];
+  exceptions: AvailabilityException[];
+  bookings: ScheduleBooking[];
+  laneCount: number;
+}
+
+export interface Schedule {
+  slotMinutes: number;
+  days: ScheduleDay[];
+}
