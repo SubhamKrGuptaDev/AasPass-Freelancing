@@ -44,8 +44,8 @@ confirms or rejects.**
 
 - **Slot length** — `Store.slotMinutes`, set by the owner (15/30/45/60/90/120).
 - **Slot** — a `slotMinutes`-long cell on a given date. Slots are laid out from the start of each effective range
-  (e.g. range 09:00–13:00 with 45-min slots → 09:00, 09:45, 10:30, 11:15; the 12:00–13:00 remainder is too short
-  for a full slot and is unused). A booking covers `durationMinutes / slotMinutes` consecutive slots.
+  (e.g. range 09:00–13:00 with 45-min slots → 09:00, 09:45, 10:30, 11:15, 12:00; the 12:45–13:00 remainder is too
+  short for a full slot and is unused). A booking covers `durationMinutes / slotMinutes` consecutive slots.
 - **Effective availability** of a date — weekly ranges for that weekday ∪ `OPEN` exceptions on that date − `BLOCKED` exceptions on that date.
 - **Overlap** — two bookings of the same store whose `[startAt, endAt)` intervals intersect.
 - **Attempt** — a `BOOK_CLICK` event plus every later funnel event from the same `visitorId` for the same store within 1 hour.

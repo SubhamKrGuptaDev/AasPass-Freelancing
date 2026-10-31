@@ -212,7 +212,7 @@ Run: `cd aaspass-service-backend; .\mvnw.cmd test -Dtest="AvailabilityResolverTe
   - `BookingService.slots(Long storeId, LocalDate date, Integer duration)` — 404 if store missing/admin-hidden/inactive; 400 `"Date must be within the next 30 days"`; duration null → `slotMinutes`; 400 `"Duration must be a multiple of the slot length up to the maximum"`.
   - Endpoint `GET /api/stores/{id}/slots?date=yyyy-MM-dd&duration=`.
 - [ ] **Step 1: Failing tests** — `SlotCalculatorTest`:
-  - `fortyFiveMinuteSlotsDropRemainder` — range 09:00–13:00, slot 45 → times `09:00,09:45,10:30,11:15`.
+  - `fortyFiveMinuteSlotsDropRemainder` — range 09:00–13:00, slot 45 → times `09:00,09:45,10:30,11:15,12:00` (12:45–13:00 remainder dropped).
   - `startTimesNeverCrossRangeEnd` — ranges 09:00–13:00 & 14:00–18:00, slot 30, duration 60 → contains `12:00`, not `12:30`, not `13:30`.
   - `confirmedBlocksPendingCounts` — CONFIRMED 10:00–11:00, two PENDING 11:00–12:00 → 10:00/10:30 `BOOKED`, 11:00 `REQUESTED` with `pendingCount 2`.
   - `bookedUsesIntervalsNotGrid` — slot 30 but CONFIRMED 10:15–11:00 (legacy 45-min grid) → 10:00 and 10:30 `BOOKED`.
