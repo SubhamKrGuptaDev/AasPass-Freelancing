@@ -1,5 +1,8 @@
 import { Component, Injector, ElementRef, computed, afterNextRender, effect, inject, linkedSignal, signal, untracked, viewChild } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, filter, forkJoin, map, of, startWith, switchMap } from 'rxjs';
+import { OwnerBookingHttpService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
@@ -21,6 +24,38 @@ export class NavbarComponent {
   protected readonly fallbackToAvatar = fallbackToAvatar;
   storeService = inject(StoreService);
   authService = inject(AuthService);
+
+  private readonly router = inject(Router);
+  private readonly ownerBookings = inject(OwnerBookingHttpService);
+
+  /** Owned stores as a stable id list, so the badge only re-queries when the set of stores changes. */
+  private readonly ownedStoreIds = computed(() => (this.storeService.userStores() ?? []).map(s => s?.id).filter((id): id is string => !!id).join(','));
+
+  /**
+   * Pending booking requests across all owned stores, refreshed after every navigation.
+   * Silent on errors (the badge simply stays hidden); zero for non-owners.
+   */
+  readonly pendingBookings = toSignal(
+    toObservable(this.ownedStoreIds).pipe(
+      switchMap(ids =>
+        this.router.events.pipe(
+          filter(e => e instanceof NavigationEnd),
+          startWith(null),
+          switchMap(() => {
+            const list = ids ? ids.split(',') : [];
+            if (list.length === 0 || !this.authService.isLoggedIn()) {
+              return of(0);
+            }
+            return forkJoin(list.map(id => this.ownerBookings.list(id, 'PENDING', 0, 1, true).pipe(
+              map(p => p?.totalElements ?? 0),
+              catchError(() => of(0))
+            ))).pipe(map(counts => counts.reduce((a, b) => a + b, 0)));
+          })
+        )
+      )
+    ),
+    { initialValue: 0 }
+  );
 
   isDropdownOpen = signal<boolean>(false);
   isProfileMenuOpen = signal<boolean>(false);

@@ -153,6 +153,7 @@ export class AuthService {
         bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
         isAvailable: s.isAvailable !== false,
         isActive: s.isActive === true,
+        bookingsOpen: s.bookingsOpen === true,
         ownerVerified: s.ownerVerified ?? false,
         adminBlocked: s.adminBlocked ?? false,
         adminBlockReason: s.adminBlockReason ?? null,

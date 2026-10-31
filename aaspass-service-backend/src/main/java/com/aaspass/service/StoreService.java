@@ -16,6 +16,7 @@ import com.aaspass.exception.ForbiddenException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.UserRepository;
+import com.aaspass.service.booking.StoreAvailabilityService;
 import com.aaspass.service.mapper.DtoMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,11 +45,14 @@ public class StoreService {
     private final UserRepository userRepository;
 
     private final Clock clock;
+    private final StoreAvailabilityService availabilityService;
 
-    public StoreService(StoreRepository storeRepository, UserRepository userRepository, Clock clock) {
+    public StoreService(StoreRepository storeRepository, UserRepository userRepository, Clock clock,
+                        StoreAvailabilityService availabilityService) {
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
         this.clock = clock;
+        this.availabilityService = availabilityService;
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +192,10 @@ public class StoreService {
             }
         }
 
+        if (request.availability() != null) {
+            availabilityService.replace(store, request.availability());
+        }
+
         user.addStore(store);
         Store savedStore = storeRepository.save(store);
         userRepository.save(user);
@@ -240,6 +248,10 @@ public class StoreService {
                     store.addSocialMediaLink(link);
                 }
             }
+        }
+
+        if (request.availability() != null) {
+            availabilityService.replace(store, request.availability());
         }
 
         Store updated = storeRepository.save(store);

@@ -1,3 +1,4 @@
+import type { StoreAvailability } from './booking.model';
 import type { HttpContext, HttpHeaders, HttpParams } from '@angular/common/http';
 
 /**
@@ -111,6 +112,7 @@ export interface StoreCreateRequest {
   storeSocialMediaLinks?: StoreSocialMediaLinksRequest;
   socialMediaLinks?: SocialMediaLinkRequest[];
   services?: ServiceItemRequest[];
+  availability?: StoreAvailability;
 }
 
 export interface StoreUpdateRequest {
@@ -133,6 +135,7 @@ export interface StoreUpdateRequest {
   isAvailable?: boolean;
   storeSocialMediaLinks?: StoreSocialMediaLinksRequest;
   socialMediaLinks?: SocialMediaLinkRequest[];
+  availability?: StoreAvailability;
 }
 
 export interface StoreReviewRequest {

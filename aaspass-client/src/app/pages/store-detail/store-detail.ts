@@ -8,6 +8,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { clampRating, notBlank } from '../../forms/validators';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { StoreService } from '../../services/store/store.service';
+import { FunnelTrackingService } from '../../services/booking';
 import { ToastService } from '../../services/toast/toast.service';
 import { AuthService } from '../../services/auth/auth.service';
 import { 
@@ -43,6 +44,7 @@ export class StoreDetailComponent {
   storeService = inject(StoreService);
 
   private toast = inject(ToastService);
+  private funnel = inject(FunnelTrackingService);
 
   formatUrl = formatSocialUrl;
   authService = inject(AuthService);
@@ -177,7 +179,12 @@ export class StoreDetailComponent {
   }
 
   selectService(srv: StoreServiceItem): void {
-    this.toast.success(`Request sent for "${srv.name}" (₹${srv.price}). The freelancer will contact you shortly!`);
+    const s = this.store();
+    if (!s || !s.bookingsOpen) {
+      return;
+    }
+    this.funnel.track(String(s.id), 'BOOK_CLICK', String(srv.id));
+    this.router.navigate(['/stores', this.storeService.getStoreUrlKey(s), 'book', srv.id]);
   }
 
   triggerInquiry(): void {

@@ -196,6 +196,7 @@ export class StoreService {
       bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
       isAvailable: s.isAvailable !== false,
       isActive: s.isActive === true,
+      bookingsOpen: s.bookingsOpen === true,
       ownerVerified: s.ownerVerified ?? false,
       adminBlocked: s.adminBlocked ?? false,
       adminBlockReason: s.adminBlockReason ?? null,
@@ -476,7 +477,8 @@ export class StoreService {
       bannerGradient: newStore.bannerGradient || 'from-indigo-600 via-purple-600 to-pink-500',
       storeSocialMediaLinks: newStore.storeSocialMediaLinks,
       socialMediaLinks: cleanSocialLinks,
-      services: cleanServices
+      services: cleanServices,
+      availability: storeData.availability
     };
 
     const request$ = this.storeHttpService.createStore(payload).pipe(
@@ -649,6 +651,16 @@ export class StoreService {
   }
 
   // Update existing store details (supports optional storeId to update specific store)
+  /** Local-only flag update (no HTTP): keeps `bookingsOpen` in step after the owner saves availability. */
+  setBookingsOpen(storeId: string, open: boolean): void {
+    this.stores.update(list => list.map(s => (String(s.id) === String(storeId) ? { ...s, bookingsOpen: open } : s)));
+    this.patchCurrentUser(u => ({
+      ...u,
+      store: u.store && String(u.store.id) === String(storeId) ? { ...u.store, bookingsOpen: open } : u.store,
+      stores: u.stores?.map(s => (String(s.id) === String(storeId) ? { ...s, bookingsOpen: open } : s))
+    }));
+  }
+
   updateStore(updated: Partial<StoreProfile>, storeId?: string): Observable<StoreProfile> {
     const user = this.currentUser();
     const targetStoreId = storeId || user.store?.id || (user.stores && user.stores.length > 0 ? user.stores[0].id : undefined);
@@ -733,7 +745,9 @@ export class StoreService {
       bannerGradient: updated.bannerGradient || updatedStore.bannerGradient,
       isAvailable: updated.isAvailable !== undefined ? updated.isAvailable : updatedStore.isAvailable,
       storeSocialMediaLinks: updated.storeSocialMediaLinks || updatedStore.storeSocialMediaLinks,
-      socialMediaLinks: cleanSocialLinks
+      socialMediaLinks: cleanSocialLinks,
+      // Omitted entirely when not provided so the server leaves availability unchanged
+      ...(updated.availability ? { availability: updated.availability } : {})
     }).pipe(
       map(res => {
         if (res && res.data) {

@@ -1,6 +1,10 @@
 package com.aaspass.entity;
 
 import com.aaspass.entity.base.BaseAuditEntity;
+import com.aaspass.entity.booking.Booking;
+import com.aaspass.entity.booking.BookingFunnelEvent;
+import com.aaspass.entity.booking.StoreAvailabilityException;
+import com.aaspass.entity.booking.StoreAvailabilityRange;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -141,6 +145,14 @@ public class Store extends BaseAuditEntity {
     @Column(name = "member_since", length = 50)
     private String memberSince;
 
+    /** Booking slot length in minutes (15/30/45/60/90/120); null is treated as 30. */
+    @Column(name = "slot_minutes")
+    private Integer slotMinutes;
+
+    /** Longest bookable duration in minutes; null is treated as the default. */
+    @Column(name = "max_booking_minutes")
+    private Integer maxBookingMinutes;
+
     @Embedded
     @Builder.Default
     private StoreEngagementStats views = new StoreEngagementStats();
@@ -163,6 +175,27 @@ public class Store extends BaseAuditEntity {
     @Builder.Default
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StoreViewRecord> viewHistory = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StoreAvailabilityRange> availabilityRanges = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StoreAvailabilityException> availabilityExceptions = new ArrayList<>();
+
+    /**
+     * Bookings hold an FK to services, so they must be deleted before services on store delete.
+     * Hibernate cascades in (alphabetical) property order, so "bookings" precedes "services";
+     * pinned by StoreDeleteCascadeTest.
+     */
+    @Builder.Default
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Booking> bookings = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingFunnelEvent> funnelEvents = new ArrayList<>();
 
     /** True when an admin blocked this store or its owner is currently suspended. */
     public boolean isAdminHidden(Instant now) {

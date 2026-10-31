@@ -1,5 +1,6 @@
 package com.aaspass.dto.request;
 
+import com.aaspass.dto.booking.StoreAvailabilityDto;
 import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -39,5 +40,6 @@ public record StoreUpdateRequest(
     String bannerGradient,
     Boolean isAvailable,
     StoreSocialMediaLinks storeSocialMediaLinks,
-    List<SocialMediaLinkDto> socialMediaLinks
+    List<SocialMediaLinkDto> socialMediaLinks,
+    StoreAvailabilityDto availability
 ) {}

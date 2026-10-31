@@ -1,0 +1,225 @@
+<div class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Owner dashboard</h1>
+      <p class="mt-1 text-sm text-slate-600">Review booking requests and keep your schedule in order.</p>
+    </div>
+    <app-owner-store-switcher [(selectedStoreId)]="storeId" />
+  </div>
+
+  <nav class="mb-6 flex flex-wrap gap-2" aria-label="Owner pages">
+    <a hlmBtn size="sm" variant="secondary" routerLink="/owner-dashboard" [queryParams]="{ store: storeId() }" aria-current="page">Dashboard</a>
+    <a hlmBtn size="sm" variant="outline" routerLink="/owner-dashboard/schedule" [queryParams]="{ store: storeId() }">Schedule</a>
+    <a hlmBtn size="sm" variant="outline" routerLink="/owner-dashboard/availability" [queryParams]="{ store: storeId() }">Availability</a>
+    <a hlmBtn size="sm" variant="outline" routerLink="/create-store" [queryParams]="{ editStoreId: storeId() }">Edit store</a>
+  </nav>
+
+  @if (bookingsClosed()) {
+    <div class="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" data-bookings-closed>
+      Customers can't book this store yet.
+      <a class="font-semibold underline" routerLink="/owner-dashboard/availability" [queryParams]="{ store: storeId() }">Set your availability</a>
+      to open bookings.
+    </div>
+  }
+
+  <section class="mb-10" aria-labelledby="analytics-heading">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h2 id="analytics-heading" class="text-lg font-bold text-slate-900">Booking analytics</h2>
+      <div class="flex gap-1 rounded-lg bg-slate-100 p-1" role="tablist" aria-label="Period">
+        @for (p of periods; track p.key) {
+          <button type="button" role="tab" class="rounded-md px-3 py-1 text-sm font-semibold transition"
+            [class.bg-white]="period() === p.key" [class.text-indigo-700]="period() === p.key" [class.shadow-sm]="period() === p.key"
+            [class.text-slate-600]="period() !== p.key"
+            [attr.aria-selected]="period() === p.key" [attr.data-period]="p.key" (click)="selectPeriod(p.key)">{{ p.label }}</button>
+        }
+      </div>
+    </div>
+
+    @if (analyticsState() === 'failed') {
+      <p class="text-sm text-rose-700" role="alert">Could not load analytics.
+        <button type="button" class="font-semibold underline" (click)="reloadAnalytics()">Try again</button></p>
+    } @else if (!analytics()) {
+      <p class="text-sm text-slate-500">Loading analytics...</p>
+    } @else {
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" [class.opacity-60]="analyticsState() === 'loading'">
+        @for (k of kpis(); track k.key) {
+          <div class="rounded-2xl border border-slate-200 bg-white p-4" [attr.data-kpi]="k.key">
+            <p class="text-xs font-semibold text-slate-600">{{ k.label }}</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">{{ k.value }}</p>
+            <p class="text-xs text-slate-500"><span class="font-semibold">{{ k.percent }}</span> {{ k.percentNote }}</p>
+          </div>
+        }
+      </div>
+
+      @if (!hasActivity()) {
+        <p class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-600" data-no-activity>
+          No booking activity yet. Clicks, booking page views and requests will show up here.</p>
+      } @else {
+        <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4" data-funnel>
+          <h3 class="mb-3 text-sm font-bold text-slate-900">Funnel</h3>
+          <ul class="space-y-3">
+            @for (f of funnel(); track f.step) {
+              <li>
+                <div class="mb-1 flex items-baseline justify-between text-xs text-slate-700">
+                  <span class="font-semibold">{{ f.label }}</span>
+                  <span>{{ f.visitors }}@if (f.dropOff) { <span class="text-slate-500"> · {{ f.dropOff }} drop-off</span> }</span>
+                </div>
+                <div class="h-3 w-full rounded-full bg-slate-100">
+                  <div class="h-3 rounded-full bg-indigo-600" [style.width.%]="f.widthPercent"></div>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 class="mb-3 text-sm font-bold text-slate-900">Trend</h3>
+          <app-column-chart label="Booking activity per day" [ticks]="trendTicks()" [labels]="trendLabels()" [series]="trendSeries()" />
+        </div>
+
+        <div class="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4" data-services>
+          <h3 class="mb-3 text-sm font-bold text-slate-900">By service</h3>
+          @if ((analytics()?.services ?? []).length === 0) {
+            <p class="text-sm text-slate-600">No service activity yet.</p>
+          } @else {
+            <table class="w-full text-left text-sm">
+              <thead class="text-xs text-slate-600">
+                <tr>
+                  <th scope="col" class="py-1 pr-3 font-semibold">Service</th>
+                  <th scope="col" class="py-1 pr-3 text-right font-semibold">Clicks</th>
+                  <th scope="col" class="py-1 pr-3 text-right font-semibold">Requests</th>
+                  <th scope="col" class="py-1 pr-3 text-right font-semibold">Confirmed</th>
+                  <th scope="col" class="py-1 text-right font-semibold">Conversion</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-900">
+                @for (s of analytics()?.services ?? []; track $index) {
+                  <tr>
+                    <th scope="row" class="py-2 pr-3 font-medium">{{ s.name }}</th>
+                    <td class="py-2 pr-3 text-right tabular-nums">{{ s.clicks }}</td>
+                    <td class="py-2 pr-3 text-right tabular-nums">{{ s.bookings }}</td>
+                    <td class="py-2 pr-3 text-right tabular-nums">{{ s.confirmed }}</td>
+                    <td class="py-2 text-right tabular-nums">{{ s.conversionPercent }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      }
+
+      <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4" data-abandoned>
+        <h3 class="mb-1 text-sm font-bold text-slate-900">Abandoned bookings</h3>
+        <p class="mb-3 text-xs text-slate-600">Signed-in customers who started a booking but did not send a request.</p>
+        @if (abandonedFailed()) {
+          <p class="text-sm text-rose-700" role="alert" data-abandoned-error>Could not load abandoned bookings.
+            <button type="button" class="font-semibold underline" (click)="retryAbandoned()">Try again</button></p>
+        } @else if (abandoned().length === 0) {
+          <p class="text-sm text-slate-600">Nobody abandoned a booking in this period.</p>
+        } @else {
+          <ul class="divide-y divide-slate-100">
+            @for (a of abandoned(); track $index) {
+              <li class="flex items-center gap-3 py-2" data-abandoned-row>
+                @if (a.avatarUrl) {
+                  <img [src]="a.avatarUrl" alt="" class="h-8 w-8 rounded-full object-cover" />
+                } @else {
+                  <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700" aria-hidden="true">{{ initial(a.userName) }}</span>
+                }
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-semibold text-slate-900">{{ a.userName }}</p>
+                  <p class="truncate text-xs text-slate-600">{{ a.serviceName }} · {{ stepLabel(a.lastStep) }}</p>
+                </div>
+                <span class="text-xs text-slate-500">{{ timeAgo(a.clickedAt) }}</span>
+              </li>
+            }
+          </ul>
+          @if (abandonedTotalPages() > 1) {
+            <div class="mt-3 flex items-center justify-between">
+              <button hlmBtn variant="outline" size="sm" type="button" [disabled]="abandonedPage() <= 0" (click)="gotoAbandoned(abandonedPage() - 1)">Previous</button>
+              <span class="text-xs text-slate-600">Page {{ abandonedPage() + 1 }} of {{ abandonedTotalPages() }}</span>
+              <button hlmBtn variant="outline" size="sm" type="button" [disabled]="abandonedPage() + 1 >= abandonedTotalPages()" (click)="gotoAbandoned(abandonedPage() + 1)">Next</button>
+            </div>
+          }
+        }
+      </div>
+    }
+  </section>
+
+  <section aria-labelledby="inbox-heading">
+    <h2 id="inbox-heading" class="mb-3 text-lg font-bold text-slate-900">Bookings inbox</h2>
+
+    <div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200" role="tablist" aria-label="Booking status">
+      @for (t of tabs; track t.key) {
+        <button type="button" role="tab" class="-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition"
+          [class.border-indigo-600]="tab() === t.key" [class.text-indigo-700]="tab() === t.key"
+          [class.border-transparent]="tab() !== t.key" [class.text-slate-600]="tab() !== t.key"
+          [attr.aria-selected]="tab() === t.key" [attr.data-tab]="t.key" (click)="selectTab(t.key)">{{ t.label }}</button>
+      }
+    </div>
+
+    @if (state() === 'loading' && rows().length === 0) {
+      <p class="text-sm text-slate-500">Loading bookings...</p>
+    } @else if (state() === 'failed') {
+      <p class="text-sm text-rose-700" role="alert">Could not load your bookings.
+        <button type="button" class="font-semibold underline" (click)="reload()">Try again</button></p>
+    } @else if (rows().length === 0) {
+      <p class="text-sm text-slate-600">No bookings here yet.</p>
+    } @else {
+      <ul class="space-y-3">
+        @for (row of rows(); track row.booking.id) {
+          <li class="rounded-2xl border border-slate-200 bg-white p-4" data-inbox-row [attr.data-status]="row.booking.status">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p class="font-semibold text-slate-900">{{ row.booking.userName }}</p>
+                <p class="text-sm text-slate-700">{{ row.booking.serviceName }}</p>
+                <p class="mt-1 text-sm text-slate-700">{{ when(row.booking) }} · {{ formatDuration(row.booking.durationMinutes) }}
+                  @if (row.booking.price != null) { · ₹{{ row.booking.price }} }</p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                @if (row.outsideAvailability) {
+                  <span hlmBadge variant="outline" class="border-amber-400 bg-amber-50 text-amber-800" data-outside>Outside your hours</span>
+                }
+                @if (overlapTotal(row) > 0) {
+                  <button type="button" hlmBadge variant="secondary" data-overlap-badge [attr.aria-expanded]="expanded().has(row.booking.id)"
+                    (click)="toggleOverlaps(row)">Overlaps with {{ overlapTotal(row) }}</button>
+                }
+              </div>
+            </div>
+            @if (row.booking.note) {
+              <p class="mt-2 text-xs text-slate-600">Note: {{ row.booking.note }}</p>
+            }
+            @if (row.booking.ownerNote) {
+              <p class="mt-1 text-xs text-slate-500">Owner note: {{ row.booking.ownerNote }}</p>
+            }
+
+            @if (expanded().has(row.booking.id)) {
+              <div class="mt-3 grid gap-2 sm:grid-cols-2" data-overlaps>
+                @if (competitorsLoading(row.booking.id)) {
+                  <p class="text-xs text-slate-500">Loading overlapping requests...</p>
+                }
+                @for (c of competitors(row.booking.id); track c.id) {
+                  <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                    <p class="font-semibold text-slate-900">{{ c.userName }} <span class="font-normal text-slate-600">({{ c.status }})</span></p>
+                    <p class="text-slate-700">{{ c.serviceName }}</p>
+                    <p class="text-slate-700">{{ when(c) }} · {{ formatDuration(c.durationMinutes) }}</p>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="mt-3">
+              <app-booking-decision-panel [booking]="row" (decided)="reload()" />
+            </div>
+          </li>
+        }
+      </ul>
+      @if (totalPages() > 1) {
+        <div class="mt-4 flex items-center justify-between">
+          <button hlmBtn variant="outline" size="sm" type="button" [disabled]="page() <= 0" (click)="goto(page() - 1)">Previous</button>
+          <span class="text-xs text-slate-600">Page {{ page() + 1 }} of {{ totalPages() }}</span>
+          <button hlmBtn variant="outline" size="sm" type="button" [disabled]="page() + 1 >= totalPages()" (click)="goto(page() + 1)">Next</button>
+        </div>
+      }
+    }
+  </section>
+</div>

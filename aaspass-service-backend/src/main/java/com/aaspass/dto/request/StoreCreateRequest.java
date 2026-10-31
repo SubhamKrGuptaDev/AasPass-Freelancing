@@ -1,5 +1,6 @@
 package com.aaspass.dto.request;
 
+import com.aaspass.dto.booking.StoreAvailabilityDto;
 import com.aaspass.dto.common.SocialMediaLinkDto;
 import com.aaspass.entity.StoreSocialMediaLinks;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -52,7 +53,8 @@ public record StoreCreateRequest(
     String bannerGradient,
     StoreSocialMediaLinks storeSocialMediaLinks,
     List<SocialMediaLinkDto> socialMediaLinks,
-    List<ServiceItemRequest> services
+    List<ServiceItemRequest> services,
+    StoreAvailabilityDto availability
 ) {
     /** Long localized place names and directions links run well past 500 characters. */
     public static final int GOOGLE_MAP_LINK_MAX_LENGTH = 2048;

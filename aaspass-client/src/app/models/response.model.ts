@@ -118,6 +118,7 @@ export interface BackendStoreResponse {
   bannerGradient?: string;
   isAvailable?: boolean;
   isActive?: boolean;
+  bookingsOpen?: boolean;
   ownerVerified?: boolean;
   adminBlocked?: boolean;
   adminBlockReason?: string | null;
@@ -175,4 +176,13 @@ export type SocialMediaLinkResponse = BackendSocialMediaLinkResponse;
 
 export interface BackendProfilePictureResponse {
   profilePictureUrl?: string | null;
+}
+
+/** Spring page wrapper used by paged endpoints (e.g. GET /api/bookings/mine). */
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 }

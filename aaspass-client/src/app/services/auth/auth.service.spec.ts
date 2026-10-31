@@ -117,6 +117,19 @@ describe('AuthService', () => {
       .toEqual(['Account created successfully! Welcome to AasPass, Aman Sharma!']);
   });
 
+  it('restoreSessionCarriesBookingsOpenForOwnedStores', async () => {
+    const restore = authService.restoreSession();
+    httpTesting.expectOne(ME_URL).flush({
+      success: true, message: 'ok',
+      data: { ...AMAN, hasStore: true, stores: [{ id: 7, storeName: 'S', bookingsOpen: true }, { id: 8, storeName: 'T' }] }
+    });
+    await restore;
+
+    const stores = authService.currentUser()?.stores ?? [];
+    expect(stores.find(s => s.id === '7')?.bookingsOpen).toBe(true);
+    expect(stores.find(s => s.id === '8')?.bookingsOpen).toBe(false);
+  });
+
   it('restoreSessionLoadsUser', async () => {
     const restore = authService.restoreSession();
     httpTesting.expectOne(ME_URL).flush({ success: true, message: 'ok', data: AMAN });

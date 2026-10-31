@@ -8,6 +8,7 @@ import com.aaspass.exception.BadRequestException;
 import com.aaspass.exception.ResourceNotFoundException;
 import com.aaspass.repository.StoreRepository;
 import com.aaspass.repository.StoreServiceItemRepository;
+import com.aaspass.repository.booking.BookingRepository;
 import com.aaspass.service.mapper.DtoMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,13 +29,16 @@ public class StoreServiceItemService {
     private final StoreServiceItemRepository serviceItemRepository;
     private final StoreRepository storeRepository;
     private final StoreService storeService;
+    private final BookingRepository bookingRepository;
 
     public StoreServiceItemService(StoreServiceItemRepository serviceItemRepository,
                                    StoreRepository storeRepository,
-                                   StoreService storeService) {
+                                   StoreService storeService,
+                                   BookingRepository bookingRepository) {
         this.serviceItemRepository = serviceItemRepository;
         this.storeRepository = storeRepository;
         this.storeService = storeService;
+        this.bookingRepository = bookingRepository;
     }
 
     @Transactional(readOnly = true)
@@ -105,8 +109,12 @@ public class StoreServiceItemService {
             throw new BadRequestException("Service item does not belong to specified store");
         }
 
-        serviceItem.getStore().removeService(serviceItem);
-        serviceItemRepository.delete(serviceItem);
+        // Bookings keep their name/price snapshot; the update clears the persistence context, so reload.
+        bookingRepository.detachService(serviceId);
+        StoreServiceItem managed = serviceItemRepository.findById(serviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service item", "id", serviceId));
+        managed.getStore().removeService(managed);
+        serviceItemRepository.delete(managed);
         log.info("[SERVICE ITEM] Successfully deleted service item ID: {}", serviceId);
     }
 }

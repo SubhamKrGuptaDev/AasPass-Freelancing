@@ -9,6 +9,9 @@ import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { CountryPickerComponent } from '../../components/location-picker/country-picker';
 import { CityPickerComponent } from '../../components/location-picker/city-picker';
 import { SearchSelectComponent, SearchSelectOption } from '../../components/search-select/search-select';
+import { AvailabilityEditorComponent } from '../../components/availability-editor/availability-editor';
+import { DEFAULT_AVAILABILITY, StoreAvailability } from '../../models/booking.model';
+import { AvailabilityHttpService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
 import { DEFAULT_COUNTRY } from '../../geo/country';
 import { displayImageUrl, fallbackToAvatar } from '../../models/user.model';
@@ -36,7 +39,7 @@ import {
 @Component({
   selector: 'app-create-store',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, SearchSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, SocialMediaLinksComponent, CountryPickerComponent, CityPickerComponent, SearchSelectComponent, AvailabilityEditorComponent],
   templateUrl: './create-store.html',
   styleUrl: './create-store.css'
 })
@@ -47,6 +50,7 @@ export class CreateStoreComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
+  private availabilityHttp = inject(AvailabilityHttpService);
 
   availableCategories = this.storeService.categories.filter(c => c !== 'All');
   protected readonly categoryOptions: readonly SearchSelectOption[] = this.availableCategories.map(c => ({ value: c, label: c }));
@@ -61,6 +65,9 @@ export class CreateStoreComponent implements OnInit {
   editingStoreId = '';
 
   isSubmitting = signal<boolean>(false);
+
+  /** Edit mode only: the saved availability is sent on update only once it has loaded. */
+  readonly availabilityLoad = signal<'idle' | 'loading' | 'loaded' | 'failed'>('idle');
 
   readonly storeForm = new FormGroup({
     storeName: new FormControl('QuickEdits Bangalore', { nonNullable: true }),
@@ -79,6 +86,7 @@ export class CreateStoreComponent implements OnInit {
       nonNullable: true,
       validators: [Validators.maxLength(GOOGLE_MAP_LINK_MAX_LENGTH), Validators.pattern(GOOGLE_MAP_LINK_PATTERN)]
     }),
+    availability: new FormControl<StoreAvailability>(DEFAULT_AVAILABILITY, { nonNullable: true }),
     description: new FormControl('Specializing in fast video editing for neighborhood businesses, gyms, restaurants, and personal brands. Available for direct meetups and quick shoots.', { nonNullable: true }),
     socialMediaLinks: createSocialLinksArray([
       { id: 'sm-init-1', name: 'Instagram', url: 'https://instagram.com/myreels' },
@@ -130,6 +138,8 @@ export class CreateStoreComponent implements OnInit {
           skills: (storeToEdit.skills ?? []).join(', ')
         });
 
+        this.loadAvailability(storeToEdit.id);
+
         const normalized = normalizeSocialLinks(storeToEdit.socialMediaLinks, storeToEdit.storeSocialMediaLinks || storeToEdit.userSocialLinks);
         setSocialLinks(links, normalized ?? []);
         return;
@@ -139,6 +149,9 @@ export class CreateStoreComponent implements OnInit {
     // Creating a new store (either first store or an additional store!)
     this.isEditing = false;
     this.editingStoreId = '';
+    this.availabilityLoad.set('idle');
+    this.storeForm.controls.availability.enable({ emitEvent: false });
+    this.storeForm.controls.availability.setValue(DEFAULT_AVAILABILITY);
     this.storeForm.patchValue({
       googleMapLink: '',
       area: user.area || 'Indiranagar',
@@ -179,6 +192,33 @@ export class CreateStoreComponent implements OnInit {
     }
   }
 
+  /**
+   * Loads the saved weekly availability. The editor stays disabled while loading and after a
+   * failure, so defaults can never be saved over the store's real hours.
+   */
+  private loadAvailability(storeId: string): void {
+    const control = this.storeForm.controls.availability;
+    this.availabilityLoad.set('loading');
+    control.disable({ emitEvent: false });
+    this.availabilityHttp.get(storeId).subscribe({
+      next: availability => {
+        if (this.editingStoreId !== storeId) {
+          return;
+        }
+        control.setValue(availability);
+        control.enable({ emitEvent: false });
+        this.availabilityLoad.set('loaded');
+      },
+      error: () => {
+        if (this.editingStoreId !== storeId) {
+          return;
+        }
+        this.availabilityLoad.set('failed');
+        this.toast.error('Could not load your availability. Your saved hours will be left unchanged.');
+      }
+    });
+  }
+
   onSubmit(): void {
     if (this.isSubmitting()) {
       return;
@@ -197,6 +237,18 @@ export class CreateStoreComponent implements OnInit {
     if (googleMapLink.invalid) {
       googleMapLink.markAsTouched();
       this.toast.error('Please paste a Google Maps link (e.g. https://maps.app.goo.gl/...), or leave it empty.');
+      return;
+    }
+
+    if (this.isEditing && this.availabilityLoad() === 'loading') {
+      this.toast.error('Still loading your availability. Please try again in a moment.');
+      return;
+    }
+
+    const { availability } = this.storeForm.controls;
+    if (availability.invalid) {
+      availability.markAsTouched();
+      this.toast.error('Please fix the availability errors before saving.');
       return;
     }
 
@@ -229,7 +281,8 @@ export class CreateStoreComponent implements OnInit {
         socialMediaLinks: validSocialLinks,
         storeSocialMediaLinks: storeSocialMediaLinks,
         userSocialLinks: storeSocialMediaLinks,
-        description: formData.description
+        description: formData.description,
+        ...(this.availabilityLoad() === 'loaded' ? { availability: formData.availability } : {})
       }, this.editingStoreId).subscribe({
         next: (savedStore) => {
           this.isSubmitting.set(false);
@@ -282,6 +335,7 @@ export class CreateStoreComponent implements OnInit {
       userSocialLinks: storeSocialMediaLinks,
       description: formData.description,
       services: initialServices,
+      availability: formData.availability,
       avatarUrl: this.storeService.currentUser().avatarUrl,
       bannerGradient: 'from-indigo-600 via-purple-600 to-pink-500',
       isAvailable: true
