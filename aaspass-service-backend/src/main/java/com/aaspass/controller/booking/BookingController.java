@@ -7,7 +7,7 @@ import com.aaspass.dto.booking.DaySlotsResponse;
 import com.aaspass.entity.booking.BookingStatus;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
+import com.aaspass.admin.dto.PageResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -50,14 +50,14 @@ public class BookingController {
     }
 
     @GetMapping("/api/bookings/mine")
-    public ResponseEntity<ApiResponse<Page<BookingResponse>>> mine(
+    public ResponseEntity<ApiResponse<PageResponse<BookingResponse>>> mine(
             @RequestParam(value = "status", required = false) BookingStatus status,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         Long callerId = currentUser.requireUserId();
         log.info("[API-CALL] GET /api/bookings/mine user={} status={}", callerId, status);
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
-        return ResponseEntity.ok(ApiResponse.success(bookingService.mine(callerId, status, pageable),
+        return ResponseEntity.ok(ApiResponse.success(PageResponse.of(bookingService.mine(callerId, status, pageable)),
                 "Bookings retrieved successfully"));
     }
 

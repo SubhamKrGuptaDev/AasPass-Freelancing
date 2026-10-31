@@ -54,6 +54,8 @@ class BookingControllerTest {
     private StoreServiceItemRepository serviceItemRepository;
     @Autowired
     private BookingFunnelEventRepository funnelEventRepository;
+    @Autowired
+    private com.aaspass.repository.booking.BookingRepository bookingRepository;
 
     private Long storeId;
     private Long serviceId;
@@ -155,7 +157,9 @@ class BookingControllerTest {
         mockMvc.perform(get("/api/bookings/mine").cookie(login("aman")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].startAt", is(monday + "T11:00:00")))
-                .andExpect(jsonPath("$.data.content[1].startAt", is(monday + "T10:00:00")));
+                .andExpect(jsonPath("$.data.content[1].startAt", is(monday + "T10:00:00")))
+                .andExpect(jsonPath("$.data.totalElements", is(2)))
+                .andExpect(jsonPath("$.data.page", is(0)));
     }
 
     @Test
@@ -176,5 +180,29 @@ class BookingControllerTest {
         mockMvc.perform(patch("/api/bookings/" + id + "/cancel").with(csrf()).cookie(aman))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("Only pending or confirmed")));
+    }
+
+    @Test
+    void rejectsServiceFromOtherStore() throws Exception {
+        Long other = serviceItemRepository.findAll().stream()
+                .filter(x -> x.getStore() != null && !storeId.equals(x.getStore().getId()))
+                .findFirst().orElseThrow().getId();
+        mockMvc.perform(post("/api/bookings").with(csrf()).cookie(login("aman"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"storeId\":" + storeId + ",\"serviceId\":" + other
+                                + ",\"startAt\":\"" + monday + "T10:00:00\",\"durationMinutes\":60}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Service does not belong to this store")));
+    }
+
+    @Test
+    void cancelConfirmedSucceeds() throws Exception {
+        String body = book("aman", monday, "10:00", 60).andReturn().getResponse().getContentAsString();
+        int id = JsonPath.read(body, "$.data.id");
+        var b = bookingRepository.findById((long) id).orElseThrow();
+        b.setStatus(com.aaspass.entity.booking.BookingStatus.CONFIRMED);
+        bookingRepository.saveAndFlush(b);
+        mockMvc.perform(patch("/api/bookings/" + id + "/cancel").with(csrf()).cookie(login("aman")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status", is("CANCELLED")));
     }
 }
