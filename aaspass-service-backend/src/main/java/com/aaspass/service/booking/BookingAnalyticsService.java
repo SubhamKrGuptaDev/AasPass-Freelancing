@@ -104,6 +104,7 @@ public class BookingAnalyticsService {
                 .filter(a -> !a.clickedAt().isBefore(periodStart))
                 .toList();
         long abandonedCount = attempts.stream().filter(a -> !a.booked()).count();
+        // Denominator is attempts in the period (each starts with a click), so the percent never exceeds 100.
         double abandonedPercent = percent(abandonedCount, attempts.size());
 
         // Daily trend, oldest first, today inclusive.
@@ -209,9 +210,19 @@ public class BookingAnalyticsService {
             }
         }
         Map<Long, Long> confirmedByService = new HashMap<>();
+        Map<Long, String> snapshotNames = new HashMap<>();
+        Map<String, Long> detachedByName = new LinkedHashMap<>();
         for (Booking b : confirmed) {
+            String snapshot = b.getServiceNameAtBooking() == null || b.getServiceNameAtBooking().isBlank()
+                    ? null : b.getServiceNameAtBooking();
             if (b.getService() != null && b.getService().getId() != null) {
                 confirmedByService.merge(b.getService().getId(), 1L, Long::sum);
+                if (snapshot != null) {
+                    snapshotNames.put(b.getService().getId(), snapshot);
+                }
+            } else {
+                // Service deleted after booking: bucket by the snapshot name so totals still reconcile.
+                detachedByName.merge(snapshot == null ? DELETED_SERVICE : snapshot, 1L, Long::sum);
             }
         }
         Set<Long> ids = new TreeSet<>();
@@ -224,11 +235,13 @@ public class BookingAnalyticsService {
         for (Long id : ids) {
             long clicks = clickVisitors.getOrDefault(id, Set.of()).size();
             long booked = bookedVisitors.getOrDefault(id, Set.of()).size();
-            rows.add(new ServiceFunnelRow(id, names.getOrDefault(id, DELETED_SERVICE), clicks, booked,
+            String name = names.getOrDefault(id, snapshotNames.getOrDefault(id, DELETED_SERVICE));
+            rows.add(new ServiceFunnelRow(id, name, clicks, booked,
                     confirmedByService.getOrDefault(id, 0L), percent(booked, clicks)));
         }
+        detachedByName.forEach((name, count) -> rows.add(new ServiceFunnelRow(null, name, 0, 0, count, 0.0)));
         rows.sort(Comparator.comparingLong(ServiceFunnelRow::clicks).reversed()
-                .thenComparing(ServiceFunnelRow::serviceId));
+                .thenComparing(ServiceFunnelRow::serviceId, Comparator.nullsLast(Comparator.naturalOrder())));
         return rows;
     }
 

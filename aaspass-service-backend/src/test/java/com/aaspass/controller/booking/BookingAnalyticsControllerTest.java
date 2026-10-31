@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -180,5 +183,40 @@ class BookingAnalyticsControllerTest {
         mockMvc.perform(get(url("?period=1Y")).cookie(login("priya"))).andExpect(status().isBadRequest());
         mockMvc.perform(get(url("/abandoned?period=nope")).cookie(login("priya")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void detachedServiceBookingKeepsSnapshotName() throws Exception {
+        User aman = userRepository.findByUsername("aman").orElseThrow();
+        LocalDateTime start = now.plusDays(2);
+        bookingRepository.saveAndFlush(Booking.builder().store(store).service(null).user(aman)
+                .startAt(start).endAt(start.plusMinutes(30)).durationMinutes(30)
+                .status(BookingStatus.CONFIRMED).decidedAt(now.minusHours(1))
+                .serviceNameAtBooking("Old Reel").build());
+        bookingRepository.saveAndFlush(Booking.builder().store(store).service(service).user(aman)
+                .startAt(start.plusHours(3)).endAt(start.plusHours(3).plusMinutes(30)).durationMinutes(30)
+                .status(BookingStatus.COMPLETED).decidedAt(now.minusHours(2))
+                .serviceNameAtBooking(service.getName()).build());
+        mockMvc.perform(get(url("?period=7D")).cookie(login("priya")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.confirmed", is(2)))
+                .andExpect(jsonPath("$.data.services", hasSize(2)))
+                .andExpect(jsonPath("$.data.services[?(@.name=='Old Reel')].confirmed", contains(1)))
+                .andExpect(jsonPath("$.data.services[?(@.name=='Old Reel')].serviceId", contains(nullValue())))
+                .andExpect(jsonPath("$.data.services[*].confirmed", containsInAnyOrder(1, 1)));
+    }
+
+    @Test
+    void confirmedBeforePeriodNotCounted() throws Exception {
+        User aman = userRepository.findByUsername("aman").orElseThrow();
+        LocalDateTime start = now.plusDays(2);
+        bookingRepository.saveAndFlush(Booking.builder().store(store).service(service).user(aman)
+                .startAt(start).endAt(start.plusMinutes(30)).durationMinutes(30)
+                .status(BookingStatus.CONFIRMED).decidedAt(now.minusDays(20))
+                .serviceNameAtBooking(service.getName()).build());
+        mockMvc.perform(get(url("?period=7D")).cookie(login("priya")))
+                .andExpect(jsonPath("$.data.confirmed", is(0)));
+        mockMvc.perform(get(url("?period=30D")).cookie(login("priya")))
+                .andExpect(jsonPath("$.data.confirmed", is(1)));
     }
 }
