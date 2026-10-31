@@ -1,4 +1,4 @@
-import { bookingDateStrip, durationOptions, formatDuration, timeOptions, validateDayRanges } from './booking-time';
+import { bookingDateStrip, durationOptions, formatDuration, timeAgo, timeOptions, validateDayRanges } from './booking-time';
 
 describe('booking-time', () => {
   it('durationOptions lists multiples of the slot up to the max', () => {
@@ -50,5 +50,14 @@ describe('booking-time', () => {
     const strip = bookingDateStrip(new Date(2026, 9, 30), 4);
     expect(strip).toEqual(['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02']);
     expect(bookingDateStrip(new Date(2026, 9, 30))).toHaveLength(31);
+  });
+
+  it('timeAgo renders short relative time', () => {
+    const now = new Date(2026, 9, 31, 12, 0, 0);
+    expect(timeAgo('2026-10-31T11:59:30', now)).toBe('just now');
+    expect(timeAgo('2026-10-31T11:55:00', now)).toBe('5 min ago');
+    expect(timeAgo('2026-10-31T09:00:00', now)).toBe('3 h ago');
+    expect(timeAgo('2026-10-29T12:00:00', now)).toBe('2 d ago');
+    expect(timeAgo(null, now)).toBe('');
   });
 });

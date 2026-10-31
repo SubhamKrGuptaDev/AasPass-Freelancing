@@ -147,3 +147,46 @@ export interface Schedule {
   slotMinutes: number;
   days: ScheduleDay[];
 }
+
+export type AnalyticsPeriod = '7D' | '30D' | 'ALL';
+export type FunnelStepKey = 'BOOK_CLICK' | 'BOOKING_PAGE_VIEW' | 'SLOT_SELECTED' | 'BOOKED';
+
+export interface FunnelStepCount {
+  step: FunnelStepKey;
+  visitors: number;
+  /** % of the previous step (100 for the first step). */
+  conversionPercent: number;
+}
+
+export interface ServiceFunnelRow {
+  serviceId: number | null;
+  name: string;
+  clicks: number;
+  bookings: number;
+  confirmed: number;
+  conversionPercent: number;
+}
+
+export interface BookingAnalytics {
+  period: AnalyticsPeriod;
+  funnel: FunnelStepCount[];
+  confirmed: number;
+  abandonedCount: number;
+  abandonedPercent: number;
+  /** 'yyyy-MM-dd' per trend bucket; the three arrays below are aligned with it. */
+  buckets: string[];
+  clicks: number[];
+  bookings: number[];
+  abandoned: number[];
+  services: ServiceFunnelRow[];
+  pendingCount: number;
+}
+
+export interface AbandonedAttempt {
+  userId: number;
+  userName: string;
+  avatarUrl?: string | null;
+  serviceName: string;
+  lastStep: FunnelStepKey;
+  clickedAt: string;
+}

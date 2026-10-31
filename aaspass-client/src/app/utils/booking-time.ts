@@ -104,3 +104,14 @@ export function bookingDateStrip(today: Date, days = 31): string[] {
   }
   return out;
 }
+
+/** Short relative time ("just now", "5 min ago", "3 h ago", "2 d ago") of a backend timestamp; '' when unparseable. */
+export function timeAgo(dateTime: string | null | undefined, now: Date = new Date()): string {
+  const t = dateTime ? new Date(dateTime).getTime() : NaN;
+  if (Number.isNaN(t)) return '';
+  const minutes = Math.floor((now.getTime() - t) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} h ago`;
+  return `${Math.floor(minutes / 1440)} d ago`;
+}

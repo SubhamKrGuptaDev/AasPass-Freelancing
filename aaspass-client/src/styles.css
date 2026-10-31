@@ -92,6 +92,18 @@
   --ring: oklch(0.585 0.233 277.117); /* indigo-500 */
 }
 
+/* Chart series colours (ported from the admin app); slot 3 is a teal that stays distinct from 1-2. */
+:root {
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1f9d8a;
+}
+.dark {
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #2fb39f;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

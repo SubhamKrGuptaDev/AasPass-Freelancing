@@ -42,3 +42,87 @@ describe('OwnerDashboardComponent inbox', () => {
     expect(text).toContain('Asha');
   });
 });
+
+const analytics = (over: Record<string, unknown> = {}) => ({
+  period: '7D',
+  funnel: [
+    { step: 'BOOK_CLICK', visitors: 10, conversionPercent: 100 },
+    { step: 'BOOKING_PAGE_VIEW', visitors: 5, conversionPercent: 50 },
+    { step: 'SLOT_SELECTED', visitors: 4, conversionPercent: 80 },
+    { step: 'BOOKED', visitors: 2, conversionPercent: 50 }
+  ],
+  confirmed: 1, abandonedCount: 3, abandonedPercent: 60,
+  buckets: ['2026-10-30', '2026-10-31'], clicks: [4, 6], bookings: [1, 1], abandoned: [1, 2],
+  services: [{ serviceId: 3, name: 'Haircut', clicks: 10, bookings: 2, confirmed: 1, conversionPercent: 20 }],
+  pendingCount: 1,
+  ...over
+});
+
+const page = (content: unknown[]) => ({ success: true, message: 'ok', data: { content, page: 0, size: 10, totalElements: content.length, totalPages: 1 } });
+
+describe('OwnerDashboardComponent analytics', () => {
+  let http: HttpTestingController;
+  let fixture: ComponentFixture<OwnerDashboardComponent>;
+  const el = () => fixture.nativeElement as HTMLElement;
+
+  async function setup(bookingsOpen = true): Promise<void> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: StoreService, useValue: { userStores: signal([{ id: '7', storeName: 'S', bookingsOpen }]) } }
+      ]
+    });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(OwnerDashboardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  const analyticsReq = (period: string) =>
+    http.expectOne(r => r.url === '/api/stores/7/booking-analytics' && r.params.get('period') === period);
+
+  function flushAll(data: unknown, period = '7D'): void {
+    analyticsReq(period).flush({ success: true, message: 'ok', data });
+    http.expectOne(r => r.url === '/api/stores/7/booking-analytics/abandoned' && r.params.get('period') === period)
+      .flush(page([{ userId: 9, userName: 'Ravi', avatarUrl: null, serviceName: 'Haircut', lastStep: 'SLOT_SELECTED', clickedAt: '2020-01-01T10:00:00' }]));
+    http.match(r => r.url === '/api/stores/7/bookings').forEach(r => r.flush(page([])));
+    fixture.detectChanges();
+  }
+
+  it('refetches with 30D when the period tab changes', async () => {
+    await setup();
+    flushAll(analytics());
+    (el().querySelector('[data-period="30D"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    flushAll(analytics({ period: '30D' }), '30D');
+    expect(el().querySelector('[data-period="30D"]')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('shows page views as 50% of book clicks', async () => {
+    await setup();
+    flushAll(analytics());
+    const tile = el().querySelector('[data-kpi="BOOKING_PAGE_VIEW"]');
+    expect(tile?.textContent).toContain('50%');
+    expect(tile?.textContent).toContain('5');
+    expect(el().querySelector('[data-kpi="CONFIRMED"]')?.textContent).toContain('50%');
+    expect(el().querySelector('[data-kpi="ABANDONED"]')?.textContent).toContain('60%');
+    expect(el().textContent).toContain('Ravi');
+  });
+
+  it('shows the empty state when the funnel is all zero', async () => {
+    await setup();
+    flushAll(analytics({
+      funnel: ['BOOK_CLICK', 'BOOKING_PAGE_VIEW', 'SLOT_SELECTED', 'BOOKED'].map(step => ({ step, visitors: 0, conversionPercent: 0 })),
+      abandonedCount: 0, abandonedPercent: 0, confirmed: 0, clicks: [0, 0], bookings: [0, 0], abandoned: [0, 0], services: []
+    }));
+    expect(el().textContent).toContain('No booking activity yet');
+    expect(el().querySelector('[data-kpi="CONFIRMED"]')?.textContent).toContain('0%');
+  });
+
+  it('links to Availability when bookings are not open', async () => {
+    await setup(false);
+    flushAll(analytics());
+    expect(el().querySelector('[data-bookings-closed] a')?.getAttribute('href')).toContain('/owner-dashboard/availability');
+  });
+});

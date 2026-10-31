@@ -3,10 +3,20 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, map } from 'rxjs';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
-import { Booking, BookingStatus, OwnerBookingRow } from '../../../models/booking.model';
+import { ChartSeries, ColumnChartComponent } from '../../../components/column-chart/column-chart';
+import {
+  AbandonedAttempt,
+  AnalyticsPeriod,
+  Booking,
+  BookingAnalytics,
+  BookingStatus,
+  FunnelStepKey,
+  OwnerBookingRow
+} from '../../../models/booking.model';
+import { StoreService } from '../../../services/store/store.service';
 import { PageResponse } from '../../../models/response.model';
 import { OwnerBookingHttpService } from '../../../services/booking';
-import { formatDuration } from '../../../utils/booking-time';
+import { formatDuration, parseIsoDate, timeAgo } from '../../../utils/booking-time';
 import { BookingDecisionPanelComponent } from '../booking-decision-panel/booking-decision-panel';
 import { OwnerStoreSwitcherComponent } from '../owner-store-switcher';
 
@@ -25,14 +35,51 @@ const TABS: readonly InboxTab[] = [
 
 const PAGE_SIZE = 20;
 
-/** Owner dashboard home. Analytics sections are added above the inbox in a later task. */
+const PERIODS: readonly { key: AnalyticsPeriod; label: string }[] = [
+  { key: '7D', label: '7D' },
+  { key: '30D', label: '30D' },
+  { key: 'ALL', label: 'All' }
+];
+
+const FUNNEL_LABELS: Record<FunnelStepKey, string> = {
+  BOOK_CLICK: 'Book clicks',
+  BOOKING_PAGE_VIEW: 'Booking page views',
+  SLOT_SELECTED: 'Slot selected',
+  BOOKED: 'Booking requests'
+};
+
+const STEP_LABELS: Record<FunnelStepKey, string> = {
+  BOOK_CLICK: 'Clicked Book',
+  BOOKING_PAGE_VIEW: 'Opened booking page',
+  SLOT_SELECTED: 'Picked a slot',
+  BOOKED: 'Requested'
+};
+
+const ABANDONED_PAGE_SIZE = 10;
+
+interface Kpi {
+  key: string;
+  label: string;
+  value: number;
+  /** Already formatted, e.g. "50%". */
+  percent: string;
+  percentNote: string;
+}
+
+/** Formats 50 -> "50%", 33.333 -> "33.3%"; non-finite values read as 0%. */
+function pct(v: number | null | undefined): string {
+  return `${+(Number.isFinite(v) ? (v as number) : 0).toFixed(1)}%`;
+}
+
+/** Owner dashboard home: booking analytics (funnel, trend, per-service, abandoned) above the inbox. */
 @Component({
   selector: 'app-owner-dashboard',
-  imports: [RouterLink, HlmBadgeImports, HlmButtonImports, OwnerStoreSwitcherComponent, BookingDecisionPanelComponent],
+  imports: [RouterLink, HlmBadgeImports, HlmButtonImports, OwnerStoreSwitcherComponent, BookingDecisionPanelComponent, ColumnChartComponent],
   templateUrl: './owner-dashboard.html'
 })
 export class OwnerDashboardComponent {
   private readonly http = inject(OwnerBookingHttpService);
+  private readonly storeService = inject(StoreService);
 
   protected readonly tabs = TABS;
   protected readonly formatDuration = formatDuration;
@@ -48,10 +95,98 @@ export class OwnerDashboardComponent {
   protected readonly overlaps = signal<Record<number, Booking[] | 'loading'>>({});
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
 
+  protected readonly periods = PERIODS;
+  protected readonly timeAgo = timeAgo;
+  protected readonly stepLabel = (s: FunnelStepKey): string => STEP_LABELS[s] ?? s;
+
+  readonly period = signal<AnalyticsPeriod>('7D');
+  readonly analytics = signal<BookingAnalytics | null>(null);
+  readonly analyticsState = signal<'idle' | 'loading' | 'loaded' | 'failed'>('idle');
+  readonly abandoned = signal<AbandonedAttempt[]>([]);
+  readonly abandonedPage = signal(0);
+  readonly abandonedTotalPages = signal(0);
+
+  protected readonly bookingsClosed = computed(() => {
+    const id = this.storeId();
+    const store = (this.storeService.userStores() ?? []).find(s => String(s.id) === id);
+    return !!store && !store.bookingsOpen;
+  });
+
+  protected readonly funnel = computed(() => {
+    const steps = this.analytics()?.funnel ?? [];
+    const top = Math.max(1, ...steps.map(s => s.visitors ?? 0));
+    return steps.map((s, i) => {
+      const visitors = s.visitors ?? 0;
+      return {
+        step: s.step,
+        label: FUNNEL_LABELS[s.step] ?? s.step,
+        visitors,
+        widthPercent: Math.max((visitors / top) * 100, visitors > 0 ? 2 : 0),
+        dropOff: i === 0 ? null : pct(100 - (s.conversionPercent ?? 0))
+      };
+    });
+  });
+
+  protected readonly hasActivity = computed(() => {
+    const a = this.analytics();
+    return !!a && ((a.funnel ?? []).some(s => (s.visitors ?? 0) > 0) || (a.abandonedCount ?? 0) > 0);
+  });
+
+  protected readonly kpis = computed<Kpi[]>(() => {
+    const a = this.analytics();
+    if (!a) return [];
+    const funnel = a.funnel ?? [];
+    const kpis: Kpi[] = funnel.map((s, i) => ({
+      key: s.step,
+      label: FUNNEL_LABELS[s.step] ?? s.step,
+      value: s.visitors ?? 0,
+      percent: pct(i === 0 ? 100 : s.conversionPercent),
+      percentNote: i === 0 ? 'of visitors' : 'of previous'
+    }));
+    const booked = funnel.find(s => s.step === 'BOOKED')?.visitors ?? 0;
+    kpis.push({
+      key: 'CONFIRMED',
+      label: 'Confirmed',
+      value: a.confirmed ?? 0,
+      percent: pct(booked > 0 ? ((a.confirmed ?? 0) / booked) * 100 : 0),
+      percentNote: 'of requests'
+    });
+    kpis.push({
+      key: 'ABANDONED',
+      label: 'Abandoned',
+      value: a.abandonedCount ?? 0,
+      percent: pct(a.abandonedPercent),
+      percentNote: 'of attempts'
+    });
+    return kpis;
+  });
+
+  protected readonly trendTicks = computed(() => (this.analytics()?.buckets ?? []).map(b => this.dayLabel(b, false)));
+  protected readonly trendLabels = computed(() => (this.analytics()?.buckets ?? []).map(b => this.dayLabel(b, true)));
+  protected readonly trendSeries = computed<ChartSeries[]>(() => {
+    const a = this.analytics();
+    return [
+      { name: 'Clicks', color: 'var(--chart-series-1)', values: a?.clicks ?? [] },
+      { name: 'Bookings', color: 'var(--chart-series-2)', values: a?.bookings ?? [] },
+      { name: 'Abandoned', color: 'var(--chart-series-3)', values: a?.abandoned ?? [] }
+    ];
+  });
+
+  private analyticsSeq = 0;
+  private abandonedSeq = 0;
+
   private readonly activeTab = computed(() => TABS.find(t => t.key === this.tab()) ?? TABS[0]);
   private requestSeq = 0;
 
   constructor() {
+    effect(() => {
+      const id = this.storeId();
+      const period = this.period();
+      if (id) {
+        this.loadAnalytics(id, period);
+        this.loadAbandoned(id, period, 0);
+      }
+    });
     effect(() => {
       const id = this.storeId();
       if (id) {
@@ -59,6 +194,71 @@ export class OwnerDashboardComponent {
         this.load(id, 0);
       }
     });
+  }
+
+  protected selectPeriod(p: AnalyticsPeriod): void {
+    if (p !== this.period()) {
+      this.period.set(p);
+    }
+  }
+
+  protected reloadAnalytics(): void {
+    const id = this.storeId();
+    if (id) {
+      this.loadAnalytics(id, this.period());
+    }
+  }
+
+  protected gotoAbandoned(page: number): void {
+    const id = this.storeId();
+    if (id && page >= 0 && page < this.abandonedTotalPages()) {
+      this.loadAbandoned(id, this.period(), page);
+    }
+  }
+
+  private loadAnalytics(storeId: string, period: AnalyticsPeriod): void {
+    const seq = ++this.analyticsSeq;
+    this.analyticsState.set('loading');
+    this.http.analytics(storeId, period).subscribe({
+      next: a => {
+        if (seq !== this.analyticsSeq) return;
+        this.analytics.set(a);
+        this.analyticsState.set('loaded');
+      },
+      error: () => {
+        if (seq !== this.analyticsSeq) return;
+        this.analyticsState.set('failed');
+      }
+    });
+  }
+
+  private loadAbandoned(storeId: string, period: AnalyticsPeriod, page: number): void {
+    const seq = ++this.abandonedSeq;
+    this.http.abandoned(storeId, period, page, ABANDONED_PAGE_SIZE).subscribe({
+      next: p => {
+        if (seq !== this.abandonedSeq) return;
+        this.abandoned.set(p?.content ?? []);
+        this.abandonedPage.set(page);
+        this.abandonedTotalPages.set(p?.totalPages ?? 0);
+      },
+      error: () => {
+        if (seq !== this.abandonedSeq) return;
+        this.abandoned.set([]);
+        this.abandonedTotalPages.set(0);
+      }
+    });
+  }
+
+  private dayLabel(iso: string, long: boolean): string {
+    const d = parseIsoDate(iso);
+    if (!d) return iso;
+    return long
+      ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+      : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+
+  protected initial(name: string | null | undefined): string {
+    return (name ?? '?').trim().charAt(0).toUpperCase() || '?';
   }
 
   protected selectTab(key: string): void {

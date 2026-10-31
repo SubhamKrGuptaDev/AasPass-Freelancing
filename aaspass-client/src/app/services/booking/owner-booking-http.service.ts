@@ -4,9 +4,12 @@ import { Observable, map } from 'rxjs';
 import { API_BASE_URL } from '../../config/api.config';
 import { SKIP_ERROR_TOAST } from '../../interceptors/http-context';
 import {
+  AbandonedAttempt,
+  AnalyticsPeriod,
   AvailabilityException,
   Booking,
   BookingAction,
+  BookingAnalytics,
   BookingDecisionResult,
   BookingStatus,
   ConfirmPreview,
@@ -82,5 +85,33 @@ export class OwnerBookingHttpService {
     return this.http
       .get<ApiResponse<Schedule>>(`${API_BASE_URL}/stores/${storeId}/schedule`, { params })
       .pipe(map(r => ({ slotMinutes: r.data?.slotMinutes ?? 30, days: (r.data?.days ?? []).map(normalizeDay) })));
+  }
+
+  analytics(storeId: string | number, period: AnalyticsPeriod): Observable<BookingAnalytics> {
+    const params = new HttpParams().set('period', period);
+    return this.http
+      .get<ApiResponse<BookingAnalytics>>(`${API_BASE_URL}/stores/${storeId}/booking-analytics`, { params })
+      .pipe(
+        map(r => ({
+          period: r.data?.period ?? period,
+          funnel: r.data?.funnel ?? [],
+          confirmed: r.data?.confirmed ?? 0,
+          abandonedCount: r.data?.abandonedCount ?? 0,
+          abandonedPercent: r.data?.abandonedPercent ?? 0,
+          buckets: r.data?.buckets ?? [],
+          clicks: r.data?.clicks ?? [],
+          bookings: r.data?.bookings ?? [],
+          abandoned: r.data?.abandoned ?? [],
+          services: r.data?.services ?? [],
+          pendingCount: r.data?.pendingCount ?? 0
+        }))
+      );
+  }
+
+  abandoned(storeId: string | number, period: AnalyticsPeriod, page = 0, size = 10): Observable<PageResponse<AbandonedAttempt>> {
+    const params = new HttpParams().set('period', period).set('page', String(page)).set('size', String(size));
+    return this.http
+      .get<ApiResponse<PageResponse<AbandonedAttempt>>>(`${API_BASE_URL}/stores/${storeId}/booking-analytics/abandoned`, { params })
+      .pipe(map(r => r.data ?? { content: [], page, size, totalElements: 0, totalPages: 0 }));
   }
 }
