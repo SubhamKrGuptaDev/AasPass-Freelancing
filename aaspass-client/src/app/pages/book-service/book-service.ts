@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { Booking, DaySlots, SlotView } from '../../models/booking.model';
 import { AuthService } from '../../services/auth/auth.service';
-import { BookingHttpService } from '../../services/booking';
+import { BookingHttpService, FunnelTrackingService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
 import { bookingDateStrip, durationOptions, formatDuration } from '../../utils/booking-time';
 
@@ -28,6 +28,7 @@ export class BookServiceComponent {
   private readonly storeService = inject(StoreService);
   private readonly auth = inject(AuthService);
   private readonly http = inject(BookingHttpService);
+  private readonly funnel = inject(FunnelTrackingService);
 
   protected readonly noteMax = NOTE_MAX;
   protected readonly formatDuration = formatDuration;
@@ -60,6 +61,15 @@ export class BookServiceComponent {
   private slotRequest = 0;
 
   constructor() {
+    let pageViewTracked = false;
+    effect(() => {
+      const store = this.store();
+      if (store?.id && !pageViewTracked) {
+        pageViewTracked = true;
+        untracked(() => this.funnel.track(String(store.id), 'BOOKING_PAGE_VIEW', this.serviceId));
+      }
+    });
+
     effect(() => {
       const store = this.store();
       const date = this.date();
@@ -102,6 +112,10 @@ export class BookServiceComponent {
     if (this.isStartable(slot)) {
       this.time.set(slot.time);
       this.errorMessage.set(null);
+      const store = this.store();
+      if (store?.id) {
+        this.funnel.track(String(store.id), 'SLOT_SELECTED', this.serviceId);
+      }
     }
   }
 
@@ -132,6 +146,7 @@ export class BookServiceComponent {
           serviceId,
           startAt: `${this.date()}T${time}:00`,
           durationMinutes: this.duration(),
+          visitorId: this.funnel.visitorId(),
           ...(note ? { note } : {})
         },
         true

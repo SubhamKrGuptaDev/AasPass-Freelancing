@@ -208,6 +208,7 @@ public class SecurityConfig {
                         // Public booking reads covered by this matcher: GET /api/stores/{id}/slots and /api/stores/{id}/availability
                         .requestMatchers(HttpMethod.GET, "/api/stores/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/stores/*/views").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/stores/*/funnel-events").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile-picture").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()

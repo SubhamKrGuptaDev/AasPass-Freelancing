@@ -5,7 +5,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { DaySlots } from '../../models/booking.model';
 import { AuthService } from '../../services/auth/auth.service';
-import { BookingHttpService } from '../../services/booking';
+import { BookingHttpService, FunnelTrackingService } from '../../services/booking';
 import { StoreService } from '../../services/store/store.service';
 import { BookServiceComponent } from './book-service';
 
@@ -21,8 +21,9 @@ function day(slots: DaySlots['slots'], startTimes: string[]): DaySlots {
 function setup(opts: { loggedIn?: boolean; slots?: DaySlots } = {}) {
   const http = {
     slots: vi.fn(() => of(opts.slots ?? day([{ time: '10:00', status: 'FREE', pendingCount: 0 }], ['10:00']))),
-    create: vi.fn(() => of({ id: 1, status: 'PENDING' }))
+    create: vi.fn((_payload: unknown, _quiet?: boolean) => of({ id: 1, status: 'PENDING' }))
   };
+  const funnel = { track: vi.fn((_s: string, _step: string, _svc?: string) => undefined), visitorId: vi.fn(() => 'visitor-1') };
   const auth = { isLoggedIn: signal(opts.loggedIn ?? false), openLoginModal: vi.fn() };
   const query = convertToParamMap({ date: '2026-11-02', duration: '60', time: '10:00' });
   const params = convertToParamMap({ storeKey: 'glow-studio-7', serviceId: '3' });
@@ -30,6 +31,7 @@ function setup(opts: { loggedIn?: boolean; slots?: DaySlots } = {}) {
     providers: [
       provideRouter([]),
       { provide: BookingHttpService, useValue: http },
+      { provide: FunnelTrackingService, useValue: funnel },
       { provide: AuthService, useValue: auth },
       { provide: StoreService, useValue: { getStoreByUrlKey: () => STORE } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params, queryParamMap: query } } }
@@ -37,10 +39,26 @@ function setup(opts: { loggedIn?: boolean; slots?: DaySlots } = {}) {
   });
   const fixture: ComponentFixture<BookServiceComponent> = TestBed.createComponent(BookServiceComponent);
   fixture.detectChanges();
-  return { fixture, http, auth, component: fixture.componentInstance };
+  return { fixture, http, auth, funnel, component: fixture.componentInstance };
 }
 
 describe('BookServiceComponent', () => {
+  it('tracksPageViewOnceAndSlotSelection', async () => {
+    const { fixture, funnel, component } = setup();
+    await fixture.whenStable();
+    expect(funnel.track).toHaveBeenCalledWith('7', 'BOOKING_PAGE_VIEW', '3');
+    expect(funnel.track.mock.calls.filter(c => c[1] === 'BOOKING_PAGE_VIEW').length).toBe(1);
+    component.pickTime({ time: '10:00', status: 'FREE', pendingCount: 0 });
+    expect(funnel.track).toHaveBeenCalledWith('7', 'SLOT_SELECTED', '3');
+  });
+
+  it('sendsVisitorIdWithCreate', async () => {
+    const { fixture, http, component } = setup({ loggedIn: true });
+    await fixture.whenStable();
+    component.submit();
+    expect(http.create.mock.calls[0][0]).toMatchObject({ visitorId: 'visitor-1' });
+  });
+
   it('restoresSelectionFromQueryParams', async () => {
     const { fixture, http, component } = setup();
     await fixture.whenStable();
@@ -70,7 +88,7 @@ describe('BookServiceComponent', () => {
     await fixture.whenStable();
     component.submit();
     expect(http.create).toHaveBeenCalledWith(
-      { storeId: 7, serviceId: 3, startAt: '2026-11-02T10:00:00', durationMinutes: 60 }, true);
+      { storeId: 7, serviceId: 3, startAt: '2026-11-02T10:00:00', durationMinutes: 60, visitorId: 'visitor-1' }, true);
     expect(component.booked()).not.toBeNull();
   });
 });
