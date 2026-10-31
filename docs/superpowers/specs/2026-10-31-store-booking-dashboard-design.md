@@ -23,7 +23,8 @@ confirms or rejects.**
 | Availability source | Owner sets **weekly hours**: open days, **multiple time ranges per day** (breaks allowed). |
 | Date overrides | Owner can **add extra open time** or **block a date/time** on specific dates. |
 | Availability entry points | Create-store form, edit-store form, and a **separate Store Availability page**. Optional; new stores prefilled Mon–Sat 09:00–18:00. |
-| Duration | **30-minute steps** up to a per-store maximum the owner sets. Slots use a 30-minute grid. |
+| Slot length | Owner sets a per-store **slot length** (15, 30, 45, 60, 90 or 120 min, default 30). It is the **minimum booking**, the **duration step**, and the **start-time grid**. |
+| Duration | Multiples of the slot length up to a per-store maximum the owner sets. |
 | Slot visibility | Owner sees free / requested / booked slots; **users also see free slots and "N others requested"** (count only). |
 | Overlap visibility for owner | **Both** an "Overlaps with N" badge in the inbox **and** a day/week schedule timeline with overlapping requests stacked in lanes. |
 | Dashboard content | Booking funnel with conversion %, daily trend chart, per-service breakdown, bookings inbox. |
@@ -41,7 +42,10 @@ confirms or rejects.**
 
 ## Glossary
 
-- **Slot** — a 30-minute grid cell on a given date. A booking covers `durationMinutes / 30` consecutive slots.
+- **Slot length** — `Store.slotMinutes`, set by the owner (15/30/45/60/90/120).
+- **Slot** — a `slotMinutes`-long cell on a given date. Slots are laid out from the start of each effective range
+  (e.g. range 09:00–13:00 with 45-min slots → 09:00, 09:45, 10:30, 11:15; the 12:00–13:00 remainder is too short
+  for a full slot and is unused). A booking covers `durationMinutes / slotMinutes` consecutive slots.
 - **Effective availability** of a date — weekly ranges for that weekday ∪ `OPEN` exceptions on that date − `BLOCKED` exceptions on that date.
 - **Overlap** — two bookings of the same store whose `[startAt, endAt)` intervals intersect.
 - **Attempt** — a `BOOK_CLICK` event plus every later funnel event from the same `visitorId` for the same store within 1 hour.
@@ -62,7 +66,12 @@ New enums are `@Enumerated(STRING)` with explicit `length`, sized for future val
 
 | Field | Type | Rules |
 |---|---|---|
-| `maxBookingMinutes` | Integer | 30–480, multiple of 30, default 120; null treated as 120 |
+| `slotMinutes` | Integer | one of 15, 30, 45, 60, 90, 120; default 30; null treated as 30 |
+| `maxBookingMinutes` | Integer | `slotMinutes`..720, multiple of `slotMinutes`, default 120 (or `slotMinutes` if larger); null treated as the default. When `slotMinutes` changes, the server rounds `maxBookingMinutes` down to the nearest multiple (never below `slotMinutes`) |
+
+Changing `slotMinutes` affects only new bookings: existing PENDING/CONFIRMED bookings keep their `startAt` and
+`durationMinutes`. Overlap checks use time intervals, not slot indexes, so bookings made under an older slot length
+still block correctly; a slot is `BOOKED` if any CONFIRMED interval intersects it.
 
 **`StoreAvailabilityRange`** — table `store_availability_ranges`
 
@@ -70,8 +79,8 @@ New enums are `@Enumerated(STRING)` with explicit `length`, sized for future val
 |---|---|---|
 | `store` | ManyToOne `Store` | required, indexed |
 | `dayOfWeek` | `java.time.DayOfWeek` | required |
-| `startTime` | `LocalTime` | required, on 30-min grid |
-| `endTime` | `LocalTime` | required, on 30-min grid, `> startTime` |
+| `startTime` | `LocalTime` | required, on 15-min boundary |
+| `endTime` | `LocalTime` | required, on 15-min boundary, `> startTime` |
 
 Rules: max 4 ranges per day; ranges on the same day must not overlap or touch-overlap (`a.end <= b.start`). A store
 with zero ranges and zero `OPEN` exceptions has **bookings not open**.
@@ -83,7 +92,7 @@ with zero ranges and zero `OPEN` exceptions has **bookings not open**.
 | `store` | ManyToOne `Store` | required; index `(store_id, date)` |
 | `date` | `LocalDate` | required, today or later on create |
 | `type` | enum `AvailabilityExceptionType` { OPEN, BLOCKED } | required |
-| `startTime` / `endTime` | `LocalTime` | OPEN: both required. BLOCKED: both null = whole day, else both required. 30-min grid, end > start |
+| `startTime` / `endTime` | `LocalTime` | OPEN: both required. BLOCKED: both null = whole day, else both required. 15-min boundaries, end > start |
 | `reason` | String(200) | optional |
 
 **`Booking`** — table `bookings`
@@ -93,8 +102,8 @@ with zero ranges and zero `OPEN` exceptions has **bookings not open**.
 | `store` | ManyToOne `Store` | required |
 | `service` | ManyToOne `StoreServiceItem` | nullable column; required and must belong to `store` at creation; set to null if the service is later deleted |
 | `user` | ManyToOne `User` | required (booker) |
-| `startAt` / `endAt` | `LocalDateTime` | 30-min grid; `endAt = startAt + durationMinutes` |
-| `durationMinutes` | Integer | 30..`store.maxBookingMinutes`, multiple of 30 |
+| `startAt` / `endAt` | `LocalDateTime` | `startAt` must be a slot start (see glossary); `endAt = startAt + durationMinutes` |
+| `durationMinutes` | Integer | `store.slotMinutes`..`store.maxBookingMinutes`, multiple of `slotMinutes` (checked at creation only) |
 | `status` | enum `BookingStatus` { PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED } | default PENDING |
 | `note` | String(500) | optional, from user |
 | `ownerNote` | String(500) | optional, from owner (rejection reason / auto-reject reason) |
@@ -135,7 +144,7 @@ Index: `(store_id, step, occurred_at)`, `(store_id, visitor_id, occurred_at)`.
 
 - **`AvailabilityResolver`** — `List<TimeRange> effectiveRanges(Store, LocalDate)`: applies the glossary rule.
   Used by slot calculation, booking validation, and the schedule endpoint.
-- **`SlotCalculator`** — `List<SlotView> slotsFor(Store, LocalDate)`: returns every 30-min slot inside effective
+- **`SlotCalculator`** — `List<SlotView> slotsFor(Store, LocalDate)`: returns every `slotMinutes` slot inside effective
   ranges with status `FREE`, `REQUESTED(pendingCount)`, `BOOKED` (covered by a CONFIRMED booking), or `CLOSED`
   (in the past). Also `List<LocalTime> startTimesFor(Store, LocalDate, durationMinutes)`: start times where all covered
   slots are inside one continuous effective range, none is `BOOKED`, and the start is in the future.
@@ -146,8 +155,8 @@ Index: `(store_id, step, occurred_at)`, `(store_id, visitor_id, occurred_at)`.
 
 | Method & path | Body / params | Notes |
 |---|---|---|
-| `GET /api/stores/{id}/availability` | — | Public (booking page needs it). Returns `{maxBookingMinutes, ranges:[{day,start,end}]}` |
-| `PUT /api/stores/{id}/availability` | same shape | Owner. Replaces all ranges + max duration. Returns saved value plus `confirmedOutsideCount` (CONFIRMED future bookings now outside effective availability) for a warning |
+| `GET /api/stores/{id}/availability` | — | Public (booking page needs it). Returns `{slotMinutes, maxBookingMinutes, ranges:[{day,start,end}]}` |
+| `PUT /api/stores/{id}/availability` | same shape | Owner. Replaces all ranges, slot length and max duration. Returns saved value plus `confirmedOutsideCount` (CONFIRMED future bookings now outside effective availability) for a warning |
 | `GET /api/stores/{id}/availability/exceptions?from&to` | — | Owner. Default from = today, to = today + 60 days |
 | `POST /api/stores/{id}/availability/exceptions` | `{date,type,start?,end?,reason?}` | Owner. Returns created row plus `confirmedOutsideCount` |
 | `DELETE /api/stores/{id}/availability/exceptions/{exceptionId}` | — | Owner |
@@ -231,8 +240,8 @@ Links: profile store section and user menu → "Owner dashboard"; header shows a
   UUID) and `track(storeId, step, serviceId?)`; fire-and-forget, errors swallowed and logged.
 - **`BookingHttpService`** / **`AvailabilityHttpService`** — HTTP calls following `store-http.service.ts` patterns.
 - **`AvailabilityEditorComponent`** (`<app-availability-editor>`) — reactive-form control for
-  `{maxBookingMinutes, ranges}`: per weekday open/closed toggle, ranges with "+ Add time" (max 4) and remove,
-  "Copy to all open days", 30-min time selects, max-duration select, inline validation (end > start, no overlap).
+  `{slotMinutes, maxBookingMinutes, ranges}`: slot-length select (15/30/45/60/90/120), per weekday open/closed toggle, ranges with "+ Add time" (max 4) and remove,
+  "Copy to all open days", 15-min time selects, max-duration select (multiples of the slot length), inline validation (end > start, no overlap).
   Used by create-store, edit-store and the availability page.
 - **`ColumnChartComponent`** — ported from `aaspass-admin/src/app/components/column-chart` (same inputs, same
   `--chart-series-n` CSS variables, dark-mode aware). No chart library added.
@@ -247,7 +256,7 @@ Links: profile store section and user menu → "Owner dashboard"; header shows a
 
 1. On load: `track(BOOKING_PAGE_VIEW)`; show service name, price, store.
 2. Date strip: today..+30 days; days with no effective availability disabled (from slots `open:false`).
-3. Duration select: 30-min steps to `maxBookingMinutes`.
+3. Duration select: multiples of `slotMinutes` up to `maxBookingMinutes` (labelled "45 min", "1 h 30 min" …).
 4. Time grid from `/slots`: `startTimes` selectable; booked/closed slots shown greyed; free slots with
    `pendingCount > 0` show "N others requested". Picking a time → `track(SLOT_SELECTED)`.
 5. Optional note; Submit. Anonymous → `authService.openLoginModal(currentUrl)`; selection kept in component state
@@ -302,15 +311,15 @@ User's bookings with status chips, owner note on rejection, Cancel for PENDING/C
 | Store hidden/blocked by admin | 404 (existing behaviour) | Store-not-found page |
 
 All Java code follows AGENTS.md null-safety rules (guarded getters, `Optional.orElseThrow`, constant-first equals,
-no unguarded unboxing — e.g. `maxBookingMinutes` null → 120). TypeScript uses `?.` / `??` and `@if` guards.
+no unguarded unboxing — e.g. `slotMinutes` null → 30, `maxBookingMinutes` null → default). TypeScript uses `?.` / `??` and `@if` guards.
 
 ## Testing
 
 Backend integration tests in `src/test/java/com/aaspass/controller/` (style of `OwnershipAndKycTest`,
 `AdminChartControllerTest`):
 - `AvailabilityResolver`: weekly ranges, OPEN adds, BLOCKED whole-day and partial subtract.
-- `SlotCalculator`: grid, past slots CLOSED, BOOKED vs REQUESTED counts, start times respect duration and range edges.
-- Availability PUT validation (overlap, grid, max 4) and owner-only access; create/update store with availability.
+- `SlotCalculator`: grid for each allowed slot length (incl. 45-min remainder handling), past slots CLOSED, BOOKED vs REQUESTED counts, start times respect duration and range edges.
+- Availability PUT validation (overlap, 15-min boundaries, max 4, slot length values, max duration rounding) and owner-only access; create/update store with availability.
 - Booking create: happy path writes `BOOKED` event; rejects outside availability, own store, >30 days, overlapping own pending.
 - Confirm: auto-rejects overlapping pending only; 409 when a confirmed overlap exists; non-owner 403.
 - Transitions: cancel, complete-only-after-start, invalid transitions.
