@@ -47,7 +47,8 @@ public record StoreResponse(
     List<ServiceItemResponse> services,
     List<StoreReviewResponse> reviews,
     LocalDateTime creationDateTime,
-    LocalDateTime lastUpdateDateTime
+    LocalDateTime lastUpdateDateTime,
+    boolean bookingsOpen
 ) {
     public StoreResponse {
         skills = (skills != null) ? skills : List.of();

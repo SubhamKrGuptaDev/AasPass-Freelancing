@@ -1,6 +1,7 @@
 package com.aaspass.service.mapper;
 
 import com.aaspass.dto.common.SocialMediaLinkDto;
+import com.aaspass.service.booking.StoreAvailabilityService;
 import com.aaspass.dto.response.AddressResponse;
 import com.aaspass.dto.response.ServiceItemResponse;
 import com.aaspass.dto.response.StoreResponse;
@@ -168,6 +169,7 @@ public final class DtoMapper {
                 .reviews(reviewResponses)
                 .creationDateTime(store.getCreationDateTime())
                 .lastUpdateDateTime(store.getLastUpdateDateTime())
+                .bookingsOpen(StoreAvailabilityService.hasAnyAvailability(store))
                 .build();
     }
 
