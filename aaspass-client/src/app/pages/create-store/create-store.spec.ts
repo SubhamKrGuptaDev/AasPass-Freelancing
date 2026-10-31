@@ -61,6 +61,15 @@ describe('CreateStoreComponent country', () => {
     expect((req.request.body as { country?: string }).country).toBe('Canada');
   });
 
+  it('sends the default availability on create', () => {
+    const { fixture, http } = setup({ country: 'Canada', city: 'Toronto' });
+    fixture.componentInstance.onSubmit();
+    const req = http.expectOne(r => r.method === 'POST' && r.url === `${API_BASE_URL}/stores`);
+    const body = req.request.body as { availability?: { slotMinutes: number; ranges: unknown[] } };
+    expect(body.availability?.slotMinutes).toBe(30);
+    expect(body.availability?.ranges).toHaveLength(6);
+  });
+
   it.each([
     ['country', 'Please select your country and city.'],
     ['city', 'Please select your country and city.']

@@ -196,6 +196,7 @@ export class StoreService {
       bannerGradient: s.bannerGradient || 'from-indigo-500 to-purple-600',
       isAvailable: s.isAvailable !== false,
       isActive: s.isActive === true,
+      bookingsOpen: s.bookingsOpen === true,
       ownerVerified: s.ownerVerified ?? false,
       adminBlocked: s.adminBlocked ?? false,
       adminBlockReason: s.adminBlockReason ?? null,
@@ -476,7 +477,8 @@ export class StoreService {
       bannerGradient: newStore.bannerGradient || 'from-indigo-600 via-purple-600 to-pink-500',
       storeSocialMediaLinks: newStore.storeSocialMediaLinks,
       socialMediaLinks: cleanSocialLinks,
-      services: cleanServices
+      services: cleanServices,
+      availability: storeData.availability
     };
 
     const request$ = this.storeHttpService.createStore(payload).pipe(
@@ -733,7 +735,8 @@ export class StoreService {
       bannerGradient: updated.bannerGradient || updatedStore.bannerGradient,
       isAvailable: updated.isAvailable !== undefined ? updated.isAvailable : updatedStore.isAvailable,
       storeSocialMediaLinks: updated.storeSocialMediaLinks || updatedStore.storeSocialMediaLinks,
-      socialMediaLinks: cleanSocialLinks
+      socialMediaLinks: cleanSocialLinks,
+      availability: updated.availability
     }).pipe(
       map(res => {
         if (res && res.data) {

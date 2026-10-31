@@ -1,0 +1,111 @@
+<div class="space-y-4">
+  <div class="grid gap-3 sm:grid-cols-2">
+    <div>
+      <label class="mb-1 block text-xs font-bold text-slate-700" for="availability-slot">Slot length</label>
+      <select
+        id="availability-slot"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+        [disabled]="disabled()"
+        (change)="setSlot($any($event.target).value)"
+      >
+        @for (s of slotOptions; track s) {
+          <option [value]="s" [selected]="s === value().slotMinutes">{{ formatDuration(s) }}</option>
+        }
+      </select>
+    </div>
+    <div>
+      <label class="mb-1 block text-xs font-bold text-slate-700" for="availability-max">Longest booking</label>
+      <select
+        id="availability-max"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+        [disabled]="disabled()"
+        (change)="setMax($any($event.target).value)"
+      >
+        @for (m of maxOptions(); track m) {
+          <option [value]="m" [selected]="m === value().maxBookingMinutes">{{ formatDuration(m) }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <ul class="divide-y divide-slate-200 rounded-xl border border-slate-200">
+    @for (d of days(); track d.day) {
+      <li class="space-y-2 p-3" [attr.data-day]="d.day">
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex w-32 items-center gap-2 text-sm font-semibold text-slate-800">
+            <hlm-switch
+              [checked]="d.open"
+              [disabled]="disabled()"
+              (checkedChange)="toggleDay(d.day, $event)"
+              [attr.aria-label]="d.label + ' open'"
+            />
+            <span>{{ d.label }}</span>
+          </label>
+          @if (!d.open) {
+            <span class="text-sm text-slate-500">Closed</span>
+          }
+        </div>
+
+        @if (d.open) {
+          <div class="space-y-2 pl-0 sm:pl-12">
+            @for (r of d.ranges; track r.index) {
+              <div class="flex flex-wrap items-center gap-2" data-range>
+                <select
+                  class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  [attr.aria-label]="d.label + ' start time'"
+                  [disabled]="disabled()"
+                  (change)="setTime(r.index, 'start', $any($event.target).value)"
+                >
+                  @for (t of times; track t) {
+                    <option [value]="t" [selected]="t === r.start">{{ t }}</option>
+                  }
+                </select>
+                <span class="text-sm text-slate-500">to</span>
+                <select
+                  class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                  [attr.aria-label]="d.label + ' end time'"
+                  [disabled]="disabled()"
+                  (change)="setTime(r.index, 'end', $any($event.target).value)"
+                >
+                  @for (t of times; track t) {
+                    <option [value]="t" [selected]="t === r.end">{{ t }}</option>
+                  }
+                </select>
+                <button
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-sm font-semibold text-red-700 hover:bg-red-50"
+                  [attr.aria-label]="'Remove ' + d.label + ' time range'"
+                  [disabled]="disabled()"
+                  (click)="removeRange(r.index)"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="rounded-lg border border-slate-300 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                [disabled]="disabled() || d.ranges.length >= maxRanges"
+                (click)="addRange(d.day)"
+              >
+                + Add time
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-3 py-1 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                [disabled]="disabled()"
+                (click)="copyToOpenDays(d.day)"
+              >
+                Copy to all open days
+              </button>
+            </div>
+            @if (d.error) {
+              <p class="text-sm font-medium text-red-700" role="alert">{{ d.error }}</p>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+</div>

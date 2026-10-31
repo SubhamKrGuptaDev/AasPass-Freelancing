@@ -1,3 +1,5 @@
+import type { StoreAvailability } from './booking.model';
+
 export interface StoreServiceItem {
   id: string;
   name: string;
@@ -219,6 +221,10 @@ export interface StoreProfile {
   isAvailable: boolean;
   /** Published and visible in store search. New stores start inactive until the owner activates them. */
   isActive?: boolean;
+  /** Whether customers can currently book this store (read from the backend). */
+  bookingsOpen?: boolean;
+  /** Weekly availability; only sent on create/update, never populated from store responses. */
+  availability?: StoreAvailability;
   /** Whether the store owner is verified (public). */
   ownerVerified: boolean;
   /** Set by an admin; only meaningful on the owner's own record. */

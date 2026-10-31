@@ -118,6 +118,7 @@ export interface BackendStoreResponse {
   bannerGradient?: string;
   isAvailable?: boolean;
   isActive?: boolean;
+  bookingsOpen?: boolean;
   ownerVerified?: boolean;
   adminBlocked?: boolean;
   adminBlockReason?: string | null;
