@@ -1,0 +1,95 @@
+<div class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Availability</h1>
+      <p class="mt-1 text-sm text-slate-600">Set when customers can book you, plus one-off changes for specific dates.</p>
+    </div>
+    <app-owner-store-switcher [(selectedStoreId)]="storeId" />
+  </div>
+
+  <hlm-tabs tab="weekly">
+    <hlm-tabs-list>
+      <button hlmTabsTrigger="weekly">Weekly hours</button>
+      <button hlmTabsTrigger="overrides">Date overrides</button>
+    </hlm-tabs-list>
+
+    <div hlmTabsContent="weekly">
+      <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        @if (loadState() === 'failed') {
+          <p class="mb-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700" role="alert">
+            Could not load your saved hours, so editing is turned off to protect them.
+            <button type="button" class="font-semibold underline" (click)="reload()">Reload</button>
+          </p>
+        }
+        <app-availability-editor [formControl]="availability" />
+        <div class="mt-4 flex justify-end">
+          <button hlmBtn type="button" [disabled]="loadState() !== 'loaded' || saving()" (click)="saveWeekly()">
+            {{ saving() ? 'Saving...' : 'Save weekly hours' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div hlmTabsContent="overrides">
+      <form class="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 sm:p-5" [formGroup]="exceptionForm" (ngSubmit)="addException()">
+        <label class="text-sm font-semibold text-slate-700">Date
+          <input hlmInput type="date" class="mt-1 w-full" formControlName="date" [min]="minDate" />
+        </label>
+        <label class="text-sm font-semibold text-slate-700">Type
+          <select hlmInput class="mt-1 w-full" formControlName="type">
+            <option value="BLOCKED">Closed (blocked)</option>
+            <option value="OPEN">Special hours (open)</option>
+          </select>
+        </label>
+        @if (exceptionForm.controls.type.value === 'BLOCKED') {
+          <label class="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+            <input type="checkbox" formControlName="wholeDay" /> Closed the whole day
+          </label>
+        }
+        @if (showTimes()) {
+          <label class="text-sm font-semibold text-slate-700">From
+            <select hlmInput class="mt-1 w-full" formControlName="start">
+              @for (t of times; track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+          </label>
+          <label class="text-sm font-semibold text-slate-700">To
+            <select hlmInput class="mt-1 w-full" formControlName="end">
+              @for (t of times; track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+          </label>
+        }
+        <label class="text-sm font-semibold text-slate-700 sm:col-span-2">Reason (optional)
+          <input hlmInput type="text" class="mt-1 w-full" formControlName="reason" [attr.maxlength]="reasonMax" />
+        </label>
+        @if (exceptionError(); as err) {
+          <p class="text-sm text-rose-600 sm:col-span-2" role="alert">{{ err }}</p>
+        }
+        <div class="sm:col-span-2">
+          <button hlmBtn type="submit" [disabled]="addingException() || !storeId()">Add override</button>
+        </div>
+      </form>
+
+      <div class="mt-4">
+        @if (exceptionsState() === 'loading') {
+          <p class="text-sm text-slate-500">Loading overrides...</p>
+        } @else if (exceptionsState() === 'failed') {
+          <p class="text-sm text-rose-600">Could not load your date overrides.</p>
+        } @else if (exceptions().length === 0) {
+          <p class="text-sm text-slate-500">No upcoming date overrides.</p>
+        } @else {
+          <ul class="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+            @for (e of exceptions(); track e.id) {
+              <li class="flex items-center justify-between gap-3 p-3 text-sm">
+                <div>
+                  <p class="font-semibold text-slate-900">{{ e.date }} <span class="font-normal text-slate-600">- {{ describe(e) }}</span></p>
+                  @if (e.reason) { <p class="text-xs text-slate-500">{{ e.reason }}</p> }
+                </div>
+                <button hlmBtn variant="outline" size="sm" type="button" (click)="deleteException(e)">Delete</button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  </hlm-tabs>
+</div>

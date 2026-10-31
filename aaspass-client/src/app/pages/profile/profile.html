@@ -623,6 +623,13 @@
               >
                 ✏️ Edit
               </a>
+              <a 
+                routerLink="/owner-dashboard/availability"
+                [queryParams]="{ store: store.id }"
+                class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition"
+              >
+                🗓️ Availability
+              </a>
               <button 
                 type="button" 
                 (click)="deleteStore(store.id)"

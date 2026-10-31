@@ -5,6 +5,7 @@ import { CreateStoreComponent } from './pages/create-store/create-store';
 import { ProfileComponent } from './pages/profile/profile';
 import { AuthPageComponent } from './pages/auth/auth-page';
 import { authGuard } from './guards/auth.guard';
+import { ownerGuard } from './pages/owner/owner.guard';
 
 export const routes: Routes = [
   // Public routes (Authentication not required)
@@ -19,6 +20,8 @@ export const routes: Routes = [
   // Protected routes (Requires login - authGuard triggers popup login modal)
   { path: 'create-store', component: CreateStoreComponent, canActivate: [authGuard], title: 'Open Your Skill Store - AasPass' },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard], title: 'My Profile & Store - AasPass' },
+
+  { path: 'owner-dashboard/availability', loadComponent: () => import('./pages/owner/owner-availability/owner-availability').then(m => m.OwnerAvailabilityComponent), canActivate: [ownerGuard], title: 'Availability - AasPass' },
 
   { path: 'contact', loadComponent: () => import('./pages/contact/contact').then(m => m.ContactComponent), title: 'Contact Us - AasPass' },
 
