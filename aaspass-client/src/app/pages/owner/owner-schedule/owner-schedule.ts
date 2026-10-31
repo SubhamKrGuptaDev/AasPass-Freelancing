@@ -180,8 +180,10 @@ export class OwnerScheduleComponent {
   }
 
   protected bandStyle(start: string, end: string): Record<string, string> {
-    const s = timeToMinutes(start);
-    return { top: `${this.top(s)}px`, height: `${this.height(s, timeToMinutes(end))}px` };
+    const { start: axisStart, end: axisEnd } = this.axis();
+    const s = Math.min(Math.max(timeToMinutes(start), axisStart), axisEnd);
+    const e = Math.min(Math.max(timeToMinutes(end), s), axisEnd);
+    return { top: `${(s - axisStart) * PX_PER_MINUTE}px`, height: `${(e - s) * PX_PER_MINUTE}px` };
   }
 
   /** BLOCKED exceptions to hatch; a blocked exception without times closes the whole day. */

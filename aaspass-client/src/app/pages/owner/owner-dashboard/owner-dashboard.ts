@@ -90,6 +90,11 @@ export class OwnerDashboardComponent {
       .subscribe({
         next: merged => {
           if (seq !== this.requestSeq) return;
+          // Acting on the last row of the last page leaves it empty: step back to the last real page.
+          if (merged.rows.length === 0 && page > 0) {
+            this.load(storeId, Math.max(0, Math.min(page - 1, merged.totalPages - 1)));
+            return;
+          }
           this.rows.set(merged.rows);
           this.page.set(page);
           this.totalPages.set(merged.totalPages);

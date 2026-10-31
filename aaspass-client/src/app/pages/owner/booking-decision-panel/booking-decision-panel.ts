@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmTextareaImports } from '@spartan-ng/helm/textarea';
 import { Booking, BookingAction, ConfirmPreview, OwnerBookingRow } from '../../../models/booking.model';
@@ -23,9 +23,11 @@ export class BookingDecisionPanelComponent {
   readonly decided = output<void>();
 
   protected readonly formatDuration = formatDuration;
-  protected readonly preview = signal<ConfirmPreview | null>(null);
-  protected readonly busy = signal(false);
-  protected readonly note = signal('');
+  /** Per-booking state: each resets to its initial value whenever the input switches to another booking id. */
+  private readonly bookingId = computed(() => this.booking()?.booking?.id);
+  protected readonly preview = linkedSignal<number | undefined, ConfirmPreview | null>({ source: this.bookingId, computation: () => null });
+  protected readonly busy = linkedSignal<number | undefined, boolean>({ source: this.bookingId, computation: () => false });
+  protected readonly note = linkedSignal<number | undefined, string>({ source: this.bookingId, computation: () => '' });
 
   protected readonly status = computed(() => this.booking()?.booking?.status);
   protected readonly isPending = computed(() => this.status() === 'PENDING');
@@ -56,6 +58,7 @@ export class BookingDecisionPanelComponent {
     this.busy.set(true);
     this.http.preview(b.storeId, b.id).subscribe({
       next: p => {
+        if (this.bookingId() !== b.id) return;
         this.preview.set(p);
         this.busy.set(false);
         if (p.canConfirm && (p.willAutoReject?.length ?? 0) === 0) {
@@ -63,6 +66,7 @@ export class BookingDecisionPanelComponent {
         }
       },
       error: () => {
+        if (this.bookingId() !== b.id) return;
         // Typically "Booking is no longer pending" (toasted by the interceptor): refresh the list.
         this.busy.set(false);
         this.decided.emit();
@@ -84,6 +88,10 @@ export class BookingDecisionPanelComponent {
     this.busy.set(true);
     this.http.decide(b.id, action, ownerNote).subscribe({
       next: result => {
+        if (this.bookingId() !== b.id) {
+          this.decided.emit();
+          return;
+        }
         this.busy.set(false);
         this.preview.set(null);
         this.note.set('');
@@ -98,6 +106,10 @@ export class BookingDecisionPanelComponent {
         this.decided.emit();
       },
       error: () => {
+        if (this.bookingId() !== b.id) {
+          this.decided.emit();
+          return;
+        }
         // 409/400 messages are toasted by the error interceptor; refresh so the list reflects the server state.
         this.busy.set(false);
         this.preview.set(null);

@@ -101,4 +101,21 @@ describe('BookingDecisionPanelComponent', () => {
     http.expectOne('/api/bookings/5').flush({ success: false, message: 'This time overlaps a confirmed booking' }, { status: 409, statusText: 'Conflict' });
     expect(decided).toBe(1);
   });
+
+  it('does not carry a preview or note over to another booking', () => {
+    setup(booking(5, 'PENDING'));
+    btn('[data-confirm]')!.click();
+    http.expectOne('/api/stores/7/bookings/5/confirm-preview').flush(ok({
+      canConfirm: true, conflictingConfirmed: [], willAutoReject: [booking(6, 'PENDING')]
+    }));
+    fixture.detectChanges();
+    expect(root.textContent).toContain('auto-reject 1');
+
+    fixture.componentRef.setInput('booking', row(booking(8, 'PENDING')));
+    fixture.detectChanges();
+    expect(root.textContent).not.toContain('auto-reject');
+    btn('[data-confirm]')!.click();
+    http.expectNone('/api/bookings/8');
+    http.expectOne('/api/stores/7/bookings/8/confirm-preview');
+  });
 });
