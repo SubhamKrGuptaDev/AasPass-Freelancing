@@ -48,4 +48,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByUserId(Long userId, Pageable pageable);
 
     Page<Booking> findByUserIdAndStatus(Long userId, BookingStatus status, Pageable pageable);
+
+    /** Bookings of a store in the statuses decided at or after {@code from}. */
+    @Query("select b from Booking b where b.store.id = :storeId and b.status in :statuses and b.decidedAt >= :from")
+    List<Booking> findDecidedSince(@Param("storeId") Long storeId,
+                                   @Param("statuses") Collection<BookingStatus> statuses,
+                                   @Param("from") LocalDateTime from);
+
+    long countByStoreIdAndStatus(Long storeId, BookingStatus status);
 }
