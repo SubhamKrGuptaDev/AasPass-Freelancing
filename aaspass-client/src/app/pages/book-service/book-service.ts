@@ -72,6 +72,17 @@ export class BookServiceComponent {
     const slot = this.day()?.slotMinutes ?? 0;
     return count > 0 && slot > 0 ? count * slot : null;
   });
+  /** Service price is an hourly rate, charged pro rata for the selected minutes (mirrors BookingService.totalPrice). */
+  readonly amount = computed(() => {
+    const price = Number(this.service()?.price);
+    const duration = this.duration();
+    return duration && Number.isFinite(price) ? Math.round(price * duration / 60 * 100) / 100 : null;
+  });
+  /** Hourly rate as shown next to the total, or null when the service has no usable price. */
+  readonly hourlyRate = computed(() => {
+    const price = Number(this.service()?.price);
+    return Number.isFinite(price) ? price : null;
+  });
   readonly endTime = computed(() => {
     const duration = this.duration();
     return this.time() && duration ? minutesToTime(timeToMinutes(this.time()) + duration) : '';
@@ -119,6 +130,13 @@ export class BookServiceComponent {
       const query = { date: this.date(), duration: duration ? String(duration) : null, time: this.time() || null };
       untracked(() => this.mirrorToUrl(query));
     });
+  }
+
+  /** '700' for whole rupees, '262.50' otherwise. */
+  formatAmount(value: number | string | null | undefined): string {
+    const n = Number(value);
+    if (value === null || value === undefined || !Number.isFinite(n)) return '';
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
   }
 
   /** Own pending slots are not startable: the server rejects a second request from the same user at that time. */

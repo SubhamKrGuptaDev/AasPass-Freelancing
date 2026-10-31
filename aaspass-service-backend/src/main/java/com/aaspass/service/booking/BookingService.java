@@ -32,6 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -98,6 +100,15 @@ public class BookingService {
         }
     }
 
+    /** Service price is an hourly rate; charge it pro rata for the booked minutes. */
+    static BigDecimal totalPrice(BigDecimal hourlyRate, int minutes) {
+        if (hourlyRate == null) {
+            return null;
+        }
+        return hourlyRate.multiply(BigDecimal.valueOf(minutes))
+                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+    }
+
     private int requireValidDuration(Integer duration, int slot, int max) {
         if (duration == null || duration < slot || duration > max || duration % slot != 0) {
             throw new BadRequestException("Duration must be a multiple of the slot length up to the maximum");
@@ -145,7 +156,7 @@ public class BookingService {
                 .startAt(startAt).endAt(endAt).durationMinutes(length)
                 .status(BookingStatus.PENDING)
                 .note(req.note())
-                .priceAtBooking(service.getPrice())
+                .priceAtBooking(totalPrice(service.getPrice(), length))
                 .serviceNameAtBooking(service.getName())
                 .build());
 

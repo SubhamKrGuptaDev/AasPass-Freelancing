@@ -187,10 +187,36 @@ describe('BookServiceComponent', () => {
       component.pickTime(slot('11:00'));
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
-      expect(el.querySelector('button[hlmBtn]')?.textContent).toContain('10:00 – 11:30 (1 h 30 min)');
+      expect(el.querySelector('button[hlmBtn]')?.textContent).toContain('10:00 – 11:30 (1 h 30 min) · ₹450');
+      expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain('Amount: ₹450');
       component.submit();
       fixture.detectChanges();
       expect(el.querySelector('[role="status"]')?.textContent).toContain('2026-11-02 · 10:00 – 11:30 · 1 h 30 min');
+      expect(el.querySelector('[role="status"]')?.textContent).toContain('Amount: ₹450');
+    });
+
+    it.each([[4, 350, 700], [1, 350, 175], [3, 125, 187.5]])(
+      'charges the hourly rate pro rata: %i half-hour slots at ₹%i/h = ₹%d', async (count, rate, total) => {
+        STORE.services[0].price = rate;
+        try {
+          const { component } = await ready();
+          component.pickTime(slot('10:00'));
+          if (count > 1) component.pickTime(slot(times[count - 1]));
+          expect(component.amount()).toBe(total);
+        } finally {
+          STORE.services[0].price = 300;
+        }
+      });
+
+    it('prefers the server-saved price on the confirmation', async () => {
+      const { fixture, http, component } = await ready();
+      http.create.mockReturnValue(of({
+        id: 1, status: 'PENDING', startAt: '2026-11-02T10:00:00', endAt: '2026-11-02T10:30:00', durationMinutes: 30, price: 262.5
+      }));
+      component.pickTime(slot('10:00'));
+      component.submit();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[role="status"]')?.textContent).toContain('Amount: ₹262.50');
     });
 
     it('fills the gap when clicking a later free slot', async () => {

@@ -8,6 +8,9 @@
             {{ b.startAt.slice(0, 10) }} · {{ timeOfDay(b.startAt) }} – {{ timeOfDay(b.endAt) }} · {{ formatDuration(b.durationMinutes) }}
           </p>
         }
+        @if (formatAmount(b.price ?? amount()); as total) {
+          <p class="mt-1 text-sm text-emerald-900">Amount: <span class="font-semibold">₹{{ total }}</span></p>
+        }
         <p class="mt-2 text-sm text-emerald-800">We will update the status in your bookings.</p>
         <a hlmBtn class="mt-4" routerLink="/my-bookings">View my bookings</a>
       </div>
@@ -15,7 +18,7 @@
       <p class="rounded-2xl border border-slate-200 p-6 text-sm text-slate-700">Bookings are not open yet for this store.</p>
     } @else if (service(); as srv) {
       <h1 class="text-xl font-bold text-slate-900">Book {{ srv.name }}</h1>
-      <p class="text-sm text-slate-600">{{ s.storeName }} · ₹{{ srv.price }}</p>
+      <p class="text-sm text-slate-600">{{ s.storeName }} · ₹{{ formatAmount(srv.price) }} per hour</p>
 
       <section class="mt-6" aria-labelledby="date-label">
         <h2 id="date-label" class="text-sm font-semibold text-slate-800">Date</h2>
@@ -81,7 +84,15 @@
           }
           @if (duration(); as dur) {
             <div class="mt-3 flex items-center justify-between gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
-              <span>Selected: <span class="font-semibold">{{ time() }} – {{ endTime() }}</span> · {{ formatDuration(dur) }}</span>
+              <span>
+                Selected: <span class="font-semibold">{{ time() }} – {{ endTime() }}</span> · {{ formatDuration(dur) }}
+                @if (amount() !== null) {
+                  <span class="block">
+                    Amount: <span class="font-semibold">₹{{ formatAmount(amount()) }}</span>
+                    <span class="text-xs">(₹{{ formatAmount(hourlyRate()) }}/h × {{ formatDuration(dur) }})</span>
+                  </span>
+                }
+              </span>
               <button type="button" class="text-xs font-semibold underline" (click)="clearSelection()">Clear</button>
             </div>
           }
@@ -102,7 +113,7 @@
         @if (submitting()) {
           Sending…
         } @else if (duration(); as dur) {
-          Send request · {{ time() }} – {{ endTime() }} ({{ formatDuration(dur) }})
+          Send request · {{ time() }} – {{ endTime() }} ({{ formatDuration(dur) }})@if (amount() !== null) { · ₹{{ formatAmount(amount()) }}}
         } @else {
           Select a time slot
         }
